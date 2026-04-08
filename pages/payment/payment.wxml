@@ -1,0 +1,109 @@
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-content">
+      <view class="back-btn" bindtap="goBack">
+        <text class="iconfont icon-back"></text>
+      </view>
+      <text class="nav-title">物业缴费</text>
+    </view>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content">
+    <!-- 账单概览 -->
+    <view class="overview-card">
+      <view class="overview-header">
+        <text class="overview-title">当前待缴</text>
+        <text class="overview-subtitle">{{userInfo.room}}</text>
+      </view>
+      <view class="overview-amount">
+        <text class="currency">¥</text>
+        <text class="amount">{{totalUnpaid}}</text>
+      </view>
+      <view class="overview-detail">
+        <view class="detail-item">
+          <text class="detail-value">{{unpaidCount}}</text>
+          <text class="detail-label">待缴账单</text>
+        </view>
+        <view class="detail-line"></view>
+        <view class="detail-item">
+          <text class="detail-value">{{paidCount}}</text>
+          <text class="detail-label">已缴账单</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 账单类型筛选 -->
+    <view class="filter-tabs">
+      <view 
+        class="tab-item {{currentTab === 'all' ? 'active' : ''}}" 
+        data-tab="all"
+        bindtap="switchTab">
+        <text>全部</text>
+      </view>
+      <view 
+        class="tab-item {{currentTab === 'unpaid' ? 'active' : ''}}" 
+        data-tab="unpaid"
+        bindtap="switchTab">
+        <text>待支付</text>
+      </view>
+      <view 
+        class="tab-item {{currentTab === 'paid' ? 'active' : ''}}" 
+        data-tab="paid"
+        bindtap="switchTab">
+        <text>已支付</text>
+      </view>
+    </view>
+
+    <!-- 账单列表 -->
+    <view class="bill-list">
+      <view class="bill-item" wx:for="{{filteredBills}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+        <view class="bill-header">
+          <view class="bill-type-icon {{item.type}}">
+            <text class="iconfont {{item.type === 'property' ? 'icon-property' : item.type === 'water' ? 'icon-water' : 'icon-electricity'}}"></text>
+          </view>
+          <view class="bill-header-info">
+            <text class="bill-title">{{item.title}}</text>
+            <text class="bill-room">{{item.room}}</text>
+          </view>
+          <view class="bill-status-badge {{item.status}}">
+            <text>{{item.status === 'paid' ? '已支付' : '待支付'}}</text>
+          </view>
+        </view>
+        
+        <view class="bill-body">
+          <view class="bill-info-row">
+            <text class="info-label">账单周期</text>
+            <text class="info-value">{{item.period}}</text>
+          </view>
+          <view class="bill-info-row">
+            <text class="info-label">{{item.status === 'paid' ? '支付日期' : '截止日期'}}</text>
+            <text class="info-value">{{item.status === 'paid' ? item.paidDate : item.dueDate}}</text>
+          </view>
+        </view>
+        
+        <view class="bill-footer">
+          <view class="bill-amount-info">
+            <text class="amount-label">应付金额</text>
+            <text class="amount-value {{item.status}}">¥{{item.amount}}</text>
+          </view>
+          <view class="bill-action" wx:if="{{item.status === 'unpaid'}}">
+            <text class="action-btn">立即支付</text>
+          </view>
+          <view class="bill-action" wx:else>
+            <text class="action-btn-text">查看详情</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{filteredBills.length === 0}}">
+        <view class="empty-icon">
+          <text class="iconfont icon-empty"></text>
+        </view>
+        <text class="empty-text">暂无账单</text>
+      </view>
+    </view>
+  </view>
+</view>

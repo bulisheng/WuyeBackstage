@@ -1,0 +1,102 @@
+<view class="container">
+  <view class="content">
+    <!-- 代收快递统计 -->
+    <view class="stats-card">
+      <view class="stats-item">
+        <text class="stats-value">{{stats.pending}}</text>
+        <text class="stats-label">待取件</text>
+      </view>
+      <view class="stats-divider"></view>
+      <view class="stats-item">
+        <text class="stats-value">{{stats.today}}</text>
+        <text class="stats-label">今日新增</text>
+      </view>
+      <view class="stats-divider"></view>
+      <view class="stats-item">
+        <text class="stats-value">{{stats.total}}</text>
+        <text class="stats-label">本月代收</text>
+      </view>
+    </view>
+
+    <!-- 代寄服务入口 -->
+    <view class="section">
+      <view class="send-section" bindtap="goToSend">
+        <view class="send-left">
+          <view class="send-icon">
+            <text class="iconfont icon-send"></text>
+          </view>
+          <view class="send-info">
+            <text class="send-title">我要寄件</text>
+            <text class="send-desc">上门取件，方便快捷</text>
+          </view>
+        </view>
+        <view class="send-btn">预约</view>
+      </view>
+    </view>
+
+    <!-- 快递列表 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">待取快递</text>
+        <text class="section-more" bindtap="refreshList">刷新</text>
+      </view>
+      
+      <view class="express-list">
+        <view class="express-item" wx:for="{{expressList}}" wx:key="id">
+          <view class="express-header">
+            <text class="express-company">{{item.company}}</text>
+            <text class="express-status {{item.status}}">{{item.statusText}}</text>
+          </view>
+          <view class="express-info">
+            <view class="express-time">
+              <text class="label">到件时间</text>
+              <text class="value">{{item.arriveTime}}</text>
+            </view>
+            <view class="express-code">
+              <text class="label">取件码</text>
+              <text class="value code">{{item.code}}</text>
+            </view>
+          </view>
+          <view class="express-actions">
+            <button class="action-btn confirm" bindtap="confirmPickup" data-id="{{item.id}}">确认取件</button>
+            <button class="action-btn abnormal" bindtap="reportAbnormal" data-id="{{item.id}}">异常</button>
+          </view>
+        </view>
+
+        <view class="empty-state" wx:if="{{expressList.length === 0}}">
+          <text class="iconfont icon-package"></text>
+          <text class="empty-text">暂无待取快递</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 寄件记录 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">我的寄件</text>
+      </view>
+      
+      <view class="send-list">
+        <view class="send-item" wx:for="{{sendList}}" wx:key="id" bindtap="viewSendDetail" data-id="{{item.id}}">
+          <view class="send-info-row">
+            <text class="send-company">{{item.company}}</text>
+            <text class="send-status {{item.status}}">{{item.statusText}}</text>
+          </view>
+          <view class="send-route">
+            <text>{{item.from}}</text>
+            <text class="route-arrow">→</text>
+            <text>{{item.to}}</text>
+          </view>
+          <view class="send-time">
+            <text>{{item.createTime}}</text>
+          </view>
+        </view>
+
+        <view class="empty-state" wx:if="{{sendList.length === 0}}">
+          <text class="iconfont icon-send"></text>
+          <text class="empty-text">暂无寄件记录</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

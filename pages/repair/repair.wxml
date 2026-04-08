@@ -1,0 +1,153 @@
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-content">
+      <view class="back-btn" bindtap="goBack">
+        <text class="iconfont icon-back"></text>
+      </view>
+      <text class="nav-title">在线报修</text>
+    </view>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content">
+    <!-- 报修表单 -->
+    <view class="form-card">
+      <view class="form-title">一键报修，简单快捷</view>
+      
+      <!-- 报修类型 -->
+      <view class="type-section">
+        <text class="section-label">请选择报修类型</text>
+        <view class="type-grid">
+          <view 
+            class="type-item {{selectedType === item.value ? 'active' : ''}}" 
+            wx:for="{{repairTypes}}" 
+            wx:key="value"
+            bindtap="selectType"
+            data-type="{{item.value}}"
+          >
+            <text class="type-icon">{{item.icon}}</text>
+            <text class="type-name">{{item.name}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 问题描述 -->
+      <view class="desc-section">
+        <view class="section-header">
+          <text class="section-label">描述一下问题</text>
+          <text class="section-tip">方便师傅提前了解情况</text>
+        </view>
+        <view class="textarea-wrapper">
+          <textarea 
+            class="desc-textarea" 
+            placeholder="比如：水龙头滴水、门锁打不开、灯不亮了..." 
+            placeholder-class="placeholder"
+            maxlength="200"
+            value="{{description}}"
+            bindinput="inputDescription"
+          ></textarea>
+          <text class="word-count">{{description.length || 0}}/200</text>
+        </view>
+      </view>
+
+      <!-- 预约时间 -->
+      <view class="time-section">
+        <view class="section-header">
+          <text class="section-label">预约上门时间</text>
+          <text class="section-tip">师傅将在此时段上门</text>
+        </view>
+        <view class="time-grid">
+          <view 
+            class="time-item {{selectedDate === item.date ? 'active' : ''}}" 
+            wx:for="{{availableDates}}" 
+            wx:key="date"
+            bindtap="selectDate"
+            data-date="{{item.date}}"
+          >
+            <text class="time-day">{{item.day}}</text>
+            <text class="time-date">{{item.dateStr}}</text>
+          </view>
+        </view>
+        <view class="time-slots">
+          <view 
+            class="slot-item {{selectedSlot === item.value ? 'active' : ''}}" 
+            wx:for="{{timeSlots}}" 
+            wx:key="value"
+            bindtap="selectSlot"
+            data-slot="{{item.value}}"
+          >
+            {{item.name}}
+          </view>
+        </view>
+      </view>
+
+      <!-- 联系方式 -->
+      <view class="contact-section">
+        <view class="section-header">
+          <text class="section-label">联系方式</text>
+        </view>
+        <view class="contact-card">
+          <text class="contact-icon">📞</text>
+          <text class="contact-phone">{{phone}}</text>
+          <text class="contact-tip">来自您的账户信息</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="submit-btn {{canSubmit ? '' : 'disabled'}}" bindtap="submitRepair">
+      <text>提交报修</text>
+    </view>
+
+    <!-- 报修记录 -->
+    <view class="records-section">
+      <view class="section-header">
+        <text class="section-title">我的报修记录</text>
+        <text class="section-count" wx:if="{{repairs.length > 0}}">{{repairs.length}}条</text>
+      </view>
+
+      <view class="record-list">
+        <view class="record-item" wx:for="{{repairs}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
+          <view class="record-header">
+            <view class="record-category {{item.category}}">
+              <text class="category-icon">{{item.icon}}</text>
+              <text class="category-name">{{item.categoryName}}</text>
+            </view>
+            <view class="record-status {{item.status}}">
+              <view class="status-dot"></view>
+              <text>{{item.statusName}}</text>
+            </view>
+          </view>
+          
+          <view class="record-desc">{{item.description}}</view>
+          
+          <view class="record-footer">
+            <view class="record-info">
+              <text class="info-item">
+                <text class="iconfont icon-time"></text>
+                {{item.createTime}}
+              </text>
+              <text class="info-item" wx:if="{{item.appointmentTime}}">
+                <text class="iconfont icon-calendar"></text>
+                {{item.appointmentTime}}
+              </text>
+            </view>
+            <view class="record-arrow">
+              <text>></text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 空状态 -->
+        <view class="empty-state" wx:if="{{repairs.length === 0}}">
+          <view class="empty-icon">
+            <text>🔧</text>
+          </view>
+          <text class="empty-text">暂无报修记录</text>
+          <text class="empty-sub">有需要随时提交，我们随时服务</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

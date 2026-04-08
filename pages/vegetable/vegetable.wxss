@@ -1,0 +1,345 @@
+/* 蔬菜代买页面样式 */
+.container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* 导航栏 */
+.nav-bar {
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+  padding: 20rpx 30rpx;
+  padding-top: calc(20rpx + env(safe-area-inset-top));
+}
+
+.nav-content {
+  display: flex;
+  align-items: center;
+}
+
+.back-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-btn .iconfont {
+  font-size: 40rpx;
+  color: #fff;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-left: 20rpx;
+}
+
+/* 内容区域 */
+.content {
+  padding: 30rpx;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+}
+
+.service-banner {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.banner-icon {
+  width: 100rpx;
+  height: 100rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+
+.banner-icon .iconfont {
+  font-size: 50rpx;
+  color: #fff;
+}
+
+.banner-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #fff;
+  display: block;
+}
+
+.banner-desc {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  display: block;
+  margin-top: 8rpx;
+}
+
+.discount-list {
+  display: flex;
+  gap: 16rpx;
+  overflow-x: auto;
+  padding-bottom: 10rpx;
+}
+
+.discount-item {
+  flex-shrink: 0;
+  width: 200rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  position: relative;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.discount-img {
+  width: 100%;
+  height: 120rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+}
+
+.discount-img .iconfont {
+  font-size: 60rpx;
+  color: #52c41a;
+}
+
+.discount-info {
+  text-align: center;
+}
+
+.discount-name {
+  font-size: 26rpx;
+  color: #333;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discount-price {
+  margin-top: 8rpx;
+}
+
+.price {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #ff4d4f;
+}
+
+.original {
+  font-size: 22rpx;
+  color: #999;
+  text-decoration: line-through;
+  margin-left: 8rpx;
+}
+
+.discount-tag {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.category-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+}
+
+.category-icon .iconfont {
+  font-size: 40rpx;
+  color: #fff;
+}
+
+.category-icon.bg-green {
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+}
+
+.category-icon.bg-orange {
+  background: linear-gradient(135deg, #fa8c16 0%, #ffc53d 100%);
+}
+
+.category-icon.bg-yellow {
+  background: linear-gradient(135deg, #faad14 0%, #ffe58f 100%);
+}
+
+.category-icon.bg-brown {
+  background: linear-gradient(135deg, #8b4513 0%, #d2691e 100%);
+}
+
+.category-name {
+  font-size: 24rpx;
+  color: #333;
+}
+
+.product-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.product-item {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.product-img {
+  width: 100%;
+  height: 200rpx;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-img .iconfont {
+  font-size: 80rpx;
+  color: #52c41a;
+}
+
+.product-info {
+  padding: 20rpx;
+}
+
+.product-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+}
+
+.product-desc {
+  font-size: 24rpx;
+  color: #999;
+  display: block;
+  margin-top: 6rpx;
+}
+
+.product-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16rpx;
+}
+
+.product-price {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #ff4d4f;
+}
+
+.add-btn {
+  width: 48rpx;
+  height: 48rpx;
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+}
+
+.cart-bar {
+  position: fixed;
+  bottom: 40rpx;
+  left: 30rpx;
+  right: 30rpx;
+  height: 100rpx;
+  background: #333;
+  border-radius: 50rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.2);
+}
+
+.cart-icon {
+  position: relative;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.cart-icon .iconfont {
+  font-size: 40rpx;
+  color: #fff;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 20rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+}
+
+.cart-info {
+  flex: 1;
+}
+
+.cart-total {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.cart-submit {
+  background: #666;
+  color: #fff;
+  padding: 20rpx 40rpx;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+}
+
+.cart-submit.active {
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+}

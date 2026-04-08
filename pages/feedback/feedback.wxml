@@ -1,0 +1,254 @@
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-content">
+      <view class="back-btn" bindtap="goBack">
+        <text class="iconfont icon-back"></text>
+      </view>
+      <text class="nav-title">投诉表扬</text>
+    </view>
+  </view>
+
+  <!-- Tab切换 -->
+  <view class="tabs">
+    <view class="tab-item {{currentTab === 'complaint' ? 'active' : ''}}" bindtap="switchTab" data-tab="complaint">
+      <text class="tab-text">投诉</text>
+      <view class="tab-badge" wx:if="{{complaintList.length > 0}}">{{complaintList.length}}</view>
+    </view>
+    <view class="tab-item {{currentTab === 'praise' ? 'active' : ''}}" bindtap="switchTab" data-tab="praise">
+      <text class="tab-text">表扬</text>
+    </view>
+  </view>
+
+  <!-- 投诉内容 -->
+  <view class="tab-content" wx:if="{{currentTab === 'complaint'}}">
+    <!-- 一键投诉 -->
+    <view class="quick-card">
+      <view class="quick-header">
+        <text class="quick-icon">⚡</text>
+        <text class="quick-title">遇到问题？快速反馈</text>
+      </view>
+      <view class="quick-grid">
+        <view class="quick-item" bindtap="quickComplaint" data-type="环境卫生">
+          <text class="item-icon">🧹</text>
+          <text class="item-text">环境卫生</text>
+        </view>
+        <view class="quick-item" bindtap="quickComplaint" data-type="噪音扰民">
+          <text class="item-icon">🔊</text>
+          <text class="item-text">噪音扰民</text>
+        </view>
+        <view class="quick-item" bindtap="quickComplaint" data-type="安全隐患">
+          <text class="item-icon">⚠️</text>
+          <text class="item-text">安全隐患</text>
+        </view>
+        <view class="quick-item" bindtap="quickComplaint" data-type="设施损坏">
+          <text class="item-icon">🔧</text>
+          <text class="item-text">设施损坏</text>
+        </view>
+        <view class="quick-item" bindtap="quickComplaint" data-type="停车问题">
+          <text class="item-icon">🚗</text>
+          <text class="item-text">停车问题</text>
+        </view>
+        <view class="quick-item" bindtap="quickComplaint" data-type="其他">
+          <text class="item-icon">📝</text>
+          <text class="item-text">其他问题</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 投诉记录 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">我的投诉</text>
+      </view>
+      
+      <view class="record-list">
+        <view class="record-item" wx:for="{{complaintList}}" wx:key="id">
+          <view class="record-header">
+            <view class="record-type">
+              <text class="type-icon">{{item.icon}}</text>
+              <text class="type-name">{{item.type}}</text>
+            </view>
+            <view class="record-status {{item.status}}">
+              <view class="status-dot"></view>
+              <text>{{item.statusText}}</text>
+            </view>
+          </view>
+          <text class="record-content">{{item.content}}</text>
+          <view class="record-footer">
+            <text class="record-time">{{item.createTime}}</text>
+          </view>
+          <view class="record-reply" wx:if="{{item.reply}}">
+            <text class="reply-icon">💬</text>
+            <text class="reply-text">{{item.reply}}</text>
+          </view>
+        </view>
+
+        <view class="empty-state" wx:if="{{complaintList.length === 0}}">
+          <view class="empty-icon">✅</view>
+          <text class="empty-text">暂无投诉</text>
+          <text class="empty-sub">有问题随时反馈，我们会尽快处理</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 表扬内容 -->
+  <view class="tab-content" wx:if="{{currentTab === 'praise'}}">
+    <!-- 表扬入口 -->
+    <view class="praise-card" bindtap="showPraiseModal">
+      <view class="praise-icon">👏</view>
+      <view class="praise-info">
+        <text class="praise-title">表扬物业人员</text>
+        <text class="praise-desc">传递正能量，感谢优秀服务</text>
+      </view>
+      <view class="praise-btn">去表扬</view>
+    </view>
+
+    <!-- 表扬墙 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">表扬墙</text>
+      </view>
+      
+      <view class="praise-list">
+        <view class="praise-card-item" wx:for="{{praiseList}}" wx:key="id">
+          <view class="praise-header">
+            <view class="praise-avatar">
+              <text>{{item.staffName ? item.staffName.substr(0,1) : '?'}}</text>
+            </view>
+            <view class="praise-info-row">
+              <text class="praise-name">{{item.staffName}}</text>
+              <text class="praise-position">{{item.staffPosition}}</text>
+            </view>
+          </view>
+          <text class="praise-content">{{item.content}}</text>
+          <view class="praise-footer">
+            <text class="praise-from">来自：{{item.fromName}}</text>
+            <text class="praise-time">{{item.createTime}}</text>
+          </view>
+        </view>
+
+        <view class="empty-state" wx:if="{{praiseList.length === 0}}">
+          <view class="empty-icon">👏</view>
+          <text class="empty-text">暂无表扬</text>
+          <text class="empty-sub">感谢员工付出，表扬随时发布</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 投诉弹窗 -->
+<view class="modal" wx:if="{{showComplaintModal}}" bindtap="hideComplaintModal">
+  <view class="modal-content" catchtap="preventBubble">
+    <view class="modal-header">
+      <text class="modal-title">{{complaintType}}反馈</text>
+      <text class="modal-close" bindtap="hideComplaintModal">×</text>
+    </view>
+    
+    <view class="modal-body">
+      <view class="input-group">
+        <view class="input-label">
+          <text class="label-icon">📍</text>
+          <text>问题地点</text>
+          <text class="label-tip">选填</text>
+        </view>
+        <input 
+          class="input-field" 
+          placeholder="如：A栋楼下、停车场" 
+          value="{{complaintForm.location}}" 
+          bindinput="onFormInput" 
+          data-field="location"
+        />
+      </view>
+
+      <view class="input-group">
+        <view class="input-label">
+          <text class="label-icon">📝</text>
+          <text>问题描述</text>
+        </view>
+        <textarea 
+          class="textarea-field" 
+          placeholder="请描述具体情况..." 
+          placeholder-class="placeholder"
+          maxlength="200"
+          value="{{complaintForm.content}}" 
+          bindinput="onFormTextarea"
+          data-field="content"
+        ></textarea>
+        <text class="word-count">{{complaintForm.content.length || 0}}/200</text>
+      </view>
+    </view>
+    
+    <view class="modal-footer">
+      <view class="submit-btn {{canSubmitComplaint ? '' : 'disabled'}}" bindtap="submitComplaint">
+        <text>提交反馈</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 表扬弹窗 -->
+<view class="modal" wx:if="{{showPraiseModal}}" bindtap="hidePraiseModal">
+  <view class="modal-content" catchtap="preventBubble">
+    <view class="modal-header">
+      <text class="modal-title">提交表扬</text>
+      <text class="modal-close" bindtap="hidePraiseModal">×</text>
+    </view>
+    
+    <view class="modal-body">
+      <view class="input-group">
+        <view class="input-label">
+          <text class="label-icon">👤</text>
+          <text>员工姓名</text>
+        </view>
+        <input 
+          class="input-field" 
+          placeholder="请输入员工姓名" 
+          value="{{praiseForm.staffName}}" 
+          bindinput="onPraiseInput" 
+          data-field="staffName"
+        />
+      </view>
+
+      <view class="input-group">
+        <view class="input-label">
+          <text class="label-icon">💼</text>
+          <text>员工岗位</text>
+          <text class="label-tip">选填</text>
+        </view>
+        <input 
+          class="input-field" 
+          placeholder="如：保安、清洁工、物业管家" 
+          value="{{praiseForm.staffPosition}}" 
+          bindinput="onPraiseInput" 
+          data-field="staffPosition"
+        />
+      </view>
+
+      <view class="input-group">
+        <view class="input-label">
+          <text class="label-icon">💬</text>
+          <text>表扬内容</text>
+        </view>
+        <textarea 
+          class="textarea-field" 
+          placeholder="描述一下这位员工的优秀表现..." 
+          placeholder-class="placeholder"
+          maxlength="200"
+          value="{{praiseForm.content}}" 
+          bindinput="onPraiseTextarea"
+          data-field="content"
+        ></textarea>
+        <text class="word-count">{{praiseForm.content.length || 0}}/200</text>
+      </view>
+    </view>
+    
+    <view class="modal-footer">
+      <view class="submit-btn {{canSubmitPraise ? '' : 'disabled'}}" bindtap="submitPraise">
+        <text>提交表扬</text>
+      </view>
+    </view>
+  </view>
+</view>

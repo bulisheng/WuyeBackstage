@@ -1,0 +1,244 @@
+.stats-card {
+  display: flex;
+  background: linear-gradient(135deg, #1890ff 0%, #70b3f5 100%);
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.stats-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stats-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.stats-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+}
+
+.stats-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: rgba(255, 255, 255, 0.3);
+  margin-top: 10rpx;
+}
+
+.send-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.send-left {
+  display: flex;
+  align-items: center;
+}
+
+.send-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.send-icon .iconfont {
+  font-size: 40rpx;
+  color: #fff;
+}
+
+.send-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+}
+
+.send-desc {
+  font-size: 24rpx;
+  color: #999;
+  display: block;
+  margin-top: 6rpx;
+}
+
+.send-btn {
+  background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+  color: #fff;
+  padding: 16rpx 32rpx;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+}
+
+.express-list,
+.send-list {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.express-item {
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.express-item:last-child {
+  border-bottom: none;
+}
+
+.express-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.express-company {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.express-status {
+  font-size: 24rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.express-status.pending {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.express-info {
+  display: flex;
+  margin-bottom: 20rpx;
+}
+
+.express-time,
+.express-code {
+  flex: 1;
+}
+
+.label {
+  font-size: 24rpx;
+  color: #999;
+  margin-right: 10rpx;
+}
+
+.value {
+  font-size: 26rpx;
+  color: #333;
+}
+
+.value.code {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1890ff;
+  letter-spacing: 2rpx;
+}
+
+.express-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 16rpx 0;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  border: none;
+}
+
+.action-btn.confirm {
+  background: linear-gradient(135deg, #1890ff 0%, #70b3f5 100%);
+  color: #fff;
+}
+
+.action-btn.abnormal {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.send-item {
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.send-item:last-child {
+  border-bottom: none;
+}
+
+.send-info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.send-company {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.send-status {
+  font-size: 24rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+}
+
+.send-status.completed {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.send-route {
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.route-arrow {
+  margin: 0 16rpx;
+  color: #999;
+}
+
+.send-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 0;
+}
+
+.empty-state .iconfont {
+  font-size: 80rpx;
+  color: #ddd;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
+}

@@ -1,0 +1,112 @@
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-content">
+      <view class="back-btn" bindtap="goBack">
+        <text class="iconfont icon-back"></text>
+      </view>
+      <text class="nav-title">报修详情</text>
+    </view>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content">
+    <!-- 状态卡片 -->
+    <view class="status-card {{repair.status}}">
+      <view class="status-icon">
+        <text class="iconfont {{repair.status === 'completed' ? 'icon-success' : 'icon-processing'}}"></text>
+      </view>
+      <view class="status-info">
+        <text class="status-text">{{repair.statusName}}</text>
+        <text class="status-desc" wx:if="{{repair.status === 'pending'}}">工作人员将尽快处理您的报修申请</text>
+        <text class="status-desc" wx:elif="{{repair.status === 'processing'}}">维修人员已接单，正在准备上门服务</text>
+        <text class="status-desc" wx:else>感谢您的使用，如有其他问题可再次报修</text>
+      </view>
+    </view>
+
+    <!-- 报修信息 -->
+    <view class="info-card">
+      <view class="info-header">
+        <text class="info-title">报修信息</text>
+      </view>
+      <view class="info-list">
+        <view class="info-item">
+          <text class="info-label">报修类型</text>
+          <text class="info-value">{{repair.categoryName}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">报修标题</text>
+          <text class="info-value">{{repair.title}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">报修描述</text>
+          <text class="info-value description">{{repair.description}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">预约时间</text>
+          <text class="info-value">{{repair.appointmentTime}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">联系电话</text>
+          <text class="info-value phone" bindtap="callPhone">{{repair.phone}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">报修时间</text>
+          <text class="info-value">{{repair.createTime}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 处理信息 -->
+    <view class="info-card" wx:if="{{repair.handler}}">
+      <view class="info-header">
+        <text class="info-title">处理信息</text>
+      </view>
+      <view class="info-list">
+        <view class="info-item">
+          <text class="info-label">维修人员</text>
+          <view class="handler-info">
+            <text class="info-value">{{repair.handler}}</text>
+            <view class="call-btn" bindtap="callHandler">
+              <text class="iconfont icon-phone"></text>
+            </view>
+          </view>
+        </view>
+        <view class="info-item" wx:if="{{repair.completionTime}}">
+          <text class="info-label">完成时间</text>
+          <text class="info-value">{{repair.completionTime}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 处理进度 -->
+    <view class="progress-card">
+      <view class="progress-header">
+        <text class="progress-title">处理进度</text>
+      </view>
+      <view class="timeline">
+        <view class="timeline-item {{index <= currentStep ? 'active' : ''}}" wx:for="{{progressSteps}}" wx:key="index">
+          <view class="timeline-dot">
+            <text class="iconfont {{item.icon}}"></text>
+          </view>
+          <view class="timeline-content">
+            <text class="timeline-title">{{item.title}}</text>
+            <text class="timeline-time" wx:if="{{item.time}}">{{item.time}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 温馨提示 -->
+    <view class="tips-card">
+      <view class="tips-header">
+        <text class="tips-title">温馨提示</text>
+      </view>
+      <view class="tips-list">
+        <text class="tips-item">1. 如需修改或取消报修，请联系物业服务中心</text>
+        <text class="tips-item">2. 维修人员上门时，请保持电话畅通</text>
+        <text class="tips-item">3. 如有紧急情况，可直接拨打物业热线</text>
+      </view>
+    </view>
+  </view>
+</view>

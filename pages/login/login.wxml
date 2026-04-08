@@ -1,0 +1,197 @@
+<view class="container">
+  <!-- 顶部装饰 -->
+  <view class="top-decoration">
+    <view class="decoration-circle circle-1"></view>
+    <view class="decoration-circle circle-2"></view>
+  </view>
+
+  <!-- Logo区域 -->
+  <view class="logo-section">
+    <view class="logo-wrapper">
+      <text class="logo-icon">🏠</text>
+    </view>
+    <text class="app-name">盛兴物业</text>
+    <text class="app-slogan">便捷生活，从这里开始</text>
+  </view>
+
+  <!-- 登录表单 -->
+  <view class="form-section">
+    <!-- 手机号输入 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text class="label-icon">📱</text>
+        <text class="label-text">手机号</text>
+      </view>
+      <view class="input-wrapper">
+        <input 
+          class="form-input" 
+          type="number" 
+          maxlength="11" 
+          placeholder="请输入手机号" 
+          placeholder-class="placeholder"
+          value="{{phone}}"
+          bindinput="onPhoneInput"
+        />
+        <view class="input-clear" bindtap="clearPhone" wx:if="{{phone.length > 0}}">
+          <text class="clear-icon">×</text>
+        </view>
+      </view>
+      <view class="form-tip" wx:if="{{phoneError}}">
+        <text class="error-text">{{phoneError}}</text>
+      </view>
+    </view>
+
+    <!-- 验证码输入 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text class="label-icon">🔐</text>
+        <text class="label-text">验证码</text>
+      </view>
+      <view class="input-wrapper code-wrapper">
+        <input 
+          class="form-input" 
+          type="number" 
+          maxlength="6" 
+          placeholder="请输入验证码" 
+          placeholder-class="placeholder"
+          value="{{code}}"
+          bindinput="onCodeInput"
+        />
+        <view class="code-btn {{codeDisabled ? 'disabled' : ''}}" bindtap="sendCode">
+          <text>{{codeText}}</text>
+        </view>
+      </view>
+      <view class="form-tip" wx:if="{{codeError}}">
+        <text class="error-text">{{codeError}}</text>
+      </view>
+    </view>
+
+    <!-- 房屋信息 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text class="label-icon">🏢</text>
+        <text class="label-text">房屋信息</text>
+      </view>
+      <view class="house-form">
+        <!-- 小区 -->
+        <view class="house-row">
+          <view class="house-field">
+            <text class="field-label">小区</text>
+            <view class="field-picker" bindtap="selectCommunity">
+              <text class="{{community ? 'picker-value' : 'picker-placeholder'}}">
+                {{community || '请选择小区'}}
+              </text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 楼栋 -->
+        <view class="house-row">
+          <view class="house-field">
+            <text class="field-label">楼栋</text>
+            <view class="field-picker" bindtap="selectBuilding">
+              <text class="{{building ? 'picker-value' : 'picker-placeholder'}}">
+                {{building || '请选择楼栋'}}
+              </text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 单元 -->
+        <view class="house-row">
+          <view class="house-field">
+            <text class="field-label">单元</text>
+            <view class="field-picker" bindtap="selectUnit">
+              <text class="{{unit ? 'picker-value' : 'picker-placeholder'}}">
+                {{unit || '请选择单元'}}
+              </text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 房间号 -->
+        <view class="house-row">
+          <view class="house-field">
+            <text class="field-label">房间号</text>
+            <view class="field-input-wrapper">
+              <input 
+                class="field-input" 
+                type="text" 
+                maxlength="10"
+                placeholder="如：101" 
+                placeholder-class="placeholder"
+                value="{{room}}"
+                bindinput="onRoomInput"
+              />
+              <text class="field-unit">室</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 登录按钮 -->
+    <view class="login-btn-wrapper">
+      <view class="login-btn {{canLogin ? '' : 'disabled'}}" bindtap="doLogin">
+        <text class="btn-text">立即登录</text>
+      </view>
+    </view>
+
+    <!-- 协议 -->
+    <view class="agreement">
+      <view class="checkbox-wrapper" bindtap="toggleAgreement">
+        <view class="checkbox {{agreed ? 'checked' : ''}}">
+          <text class="check-icon" wx:if="{{agreed}}">✓</text>
+        </view>
+        <text class="agreement-text">我已阅读并同意</text>
+      </view>
+      <text class="link-text" bindtap="showAgreement">《用户服务协议》</text>
+      <text class="agreement-text">和</text>
+      <text class="link-text" bindtap="showPrivacy">《隐私政策》</text>
+    </view>
+  </view>
+
+  <!-- 协议弹窗 -->
+  <view class="modal" wx:if="{{showModal}}" bindtap="hideModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">{{modalTitle}}</text>
+        <view class="modal-close" bindtap="hideModal">×</view>
+      </view>
+      <scroll-view class="modal-body" scroll-y>
+        <text class="modal-text">{{modalContent}}</text>
+      </scroll-view>
+      <view class="modal-footer">
+        <view class="modal-btn" bindtap="hideModal">
+          <text>我已阅读</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选择器弹窗 -->
+  <view class="picker-modal" wx:if="{{showPicker}}" bindtap="hidePicker">
+    <view class="picker-content" catchtap="stopPropagation">
+      <view class="picker-header">
+        <text class="picker-title">{{pickerTitle}}</text>
+        <view class="picker-confirm" bindtap="confirmPicker">
+          <text>确定</text>
+        </view>
+      </view>
+      <picker-view 
+        class="picker-view" 
+        value="{{pickerIndex}}" 
+        bindchange="onPickerChange"
+      >
+        <picker-view-column>
+          <view class="picker-item" wx:for="{{pickerOptions}}" wx:key="index">
+            {{item}}
+          </view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
+</view>

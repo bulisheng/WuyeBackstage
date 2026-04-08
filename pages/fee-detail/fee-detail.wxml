@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="header">
+    <view class="header-content">
+      <text class="header-title">缴费详情</text>
+    </view>
+  </view>
+
+  <view class="main-content">
+    <view class="detail-card card">
+      <view class="detail-header">
+        <text class="detail-type">{{feeItem.type}}</text>
+        <view class="status-tag paid">
+          <text>已支付</text>
+        </view>
+      </view>
+
+      <view class="detail-body">
+        <view class="detail-row">
+          <text class="row-label">缴费周期</text>
+          <text class="row-value">{{feeItem.period}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">缴费金额</text>
+          <text class="row-value amount">¥{{feeItem.amount}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">支付方式</text>
+          <text class="row-value">微信支付</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">支付时间</text>
+          <text class="row-value">{{feeItem.paidDate}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">订单编号</text>
+          <text class="row-value order-no">{{orderNo}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="tips-card card">
+      <text class="tips-title">温馨提示</text>
+      <text class="tips-content">如有疑问，请联系物业服务中心或拨打服务热线：400-888-8888</text>
+    </view>
+  </view>
+</view>

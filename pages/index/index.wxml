@@ -1,0 +1,194 @@
+<view class="container">
+  <!-- 内容区域 -->
+  <view class="content">
+    <!-- 通知公告 -->
+    <view class="notice-banner" bindtap="goToNotice">
+      <view class="notice-icon">
+        <text class="iconfont icon-notification"></text>
+      </view>
+      <swiper class="notice-swiper" vertical autoplay circular interval="3000">
+        <block wx:for="{{notices}}" wx:key="id">
+          <swiper-item>
+            <text class="notice-text {{item.important ? 'important' : ''}}">{{item.title}}</text>
+          </swiper-item>
+        </block>
+      </swiper>
+      <view class="more-arrow">></view>
+    </view>
+
+    <!-- 快捷入口 -->
+    <view class="quick-entry">
+      <view class="entry-item" bindtap="goToPayment">
+        <view class="entry-icon bg-blue">
+          <text class="iconfont icon-payment"></text>
+        </view>
+        <text class="entry-title">物业缴费</text>
+      </view>
+      <view class="entry-item" bindtap="goToRepair">
+        <view class="entry-icon bg-green">
+          <text class="iconfont icon-repair"></text>
+        </view>
+        <text class="entry-title">在线报修</text>
+      </view>
+      <view class="entry-item" bindtap="goToVisitor">
+        <view class="entry-icon bg-purple">
+          <text class="iconfont icon-visitor"></text>
+        </view>
+        <text class="entry-title">访客通行</text>
+      </view>
+      <view class="entry-item" bindtap="goToDecoration">
+        <view class="entry-icon bg-orange-dark">
+          <text class="iconfont icon-decoration"></text>
+        </view>
+        <text class="entry-title">装修登记</text>
+      </view>
+      <view class="entry-item" bindtap="goToExpress">
+        <view class="entry-icon bg-blue-dark">
+          <text class="iconfont icon-express"></text>
+        </view>
+        <text class="entry-title">快递代寄</text>
+      </view>
+      <view class="entry-item" bindtap="goToVegetable">
+        <view class="entry-icon bg-green-light">
+          <text class="iconfont icon-vegetable"></text>
+        </view>
+        <text class="entry-title">蔬菜代买</text>
+      </view>
+    </view>
+
+    <!-- 更多服务 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">更多服务</text>
+      </view>
+      <view class="service-grid">
+        <view class="service-item" bindtap="goToNotice">
+          <view class="service-icon bg-orange">
+            <text class="iconfont icon-notice"></text>
+          </view>
+          <text class="service-name">小区公告</text>
+        </view>
+        <view class="service-item" bindtap="goToFeedback">
+          <view class="service-icon bg-red">
+            <text class="iconfont icon-feedback"></text>
+          </view>
+          <text class="service-name">投诉表扬</text>
+        </view>
+        <view class="service-item" bindtap="contactProperty">
+          <view class="service-icon bg-blue-dark">
+            <text class="iconfont icon-phone"></text>
+          </view>
+          <text class="service-name">联系物业</text>
+        </view>
+        <view class="service-item" bindtap="goToMine">
+          <view class="service-icon bg-gray">
+            <text class="iconfont icon-person2"></text>
+          </view>
+          <text class="service-name">个人中心</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 小区信息 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">小区信息</text>
+      </view>
+      <view class="community-card">
+        <view class="community-info">
+          <view class="community-icon">
+            <text class="iconfont icon-property"></text>
+          </view>
+          <view class="community-detail">
+            <text class="community-name">{{communityInfo.name}}</text>
+            <text class="community-address">{{communityInfo.address}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 待缴费提醒 -->
+    <view class="section" wx:if="{{unpaidBills.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">待缴费账单</text>
+        <text class="section-more" bindtap="goToPayment">查看全部 ></text>
+      </view>
+      <view class="bill-card" wx:for="{{unpaidBills}}" wx:key="id" bindtap="goToPaymentDetail" data-id="{{item.id}}">
+        <view class="bill-info">
+          <view class="bill-type {{item.type}}"></view>
+          <view class="bill-detail">
+            <text class="bill-title">{{item.title}}</text>
+            <text class="bill-period">{{item.period}}</text>
+          </view>
+        </view>
+        <view class="bill-right">
+          <text class="bill-amount">¥{{item.amount}}</text>
+          <text class="bill-status unpaid">待支付</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 我的房屋信息 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">房屋信息</text>
+      </view>
+      <view class="house-card">
+        <view class="house-info">
+          <view class="house-icon">
+            <text class="iconfont icon-house"></text>
+          </view>
+          <view class="house-detail">
+            <text class="house-room">{{userInfo.room}}</text>
+            <text class="house-address">{{communityInfo.address}}</text>
+          </view>
+        </view>
+        <view class="house-status">
+          <view class="status-item">
+            <text class="status-value normal">正常</text>
+            <text class="status-label">房屋状态</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 报修进度 -->
+    <view class="section" wx:if="{{processingRepairs.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">报修进度</text>
+        <text class="section-more" bindtap="goToRepair">查看全部 ></text>
+      </view>
+      <view class="repair-card" wx:for="{{processingRepairs}}" wx:key="id" bindtap="goToRepairDetail" data-id="{{item.id}}">
+        <view class="repair-header">
+          <text class="repair-title">{{item.title}}</text>
+          <text class="repair-status processing">{{item.statusName}}</text>
+        </view>
+        <view class="repair-info">
+          <text class="repair-time">预约时间：{{item.appointmentTime}}</text>
+          <text class="repair-handler">维修员：{{item.handler}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 小区概览 -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">小区概览</text>
+      </view>
+      <view class="overview-card">
+        <view class="overview-item">
+          <text class="overview-value">{{communityInfo.totalHouse}}</text>
+          <text class="overview-label">总户数</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-value">{{communityInfo.totalPark}}</text>
+          <text class="overview-label">车位数</text>
+        </view>
+        <view class="overview-item">
+          <text class="overview-value">{{communityInfo.availablePark}}</text>
+          <text class="overview-label">空闲车位</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

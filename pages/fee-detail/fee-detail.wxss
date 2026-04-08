@@ -1,0 +1,103 @@
+.page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.header {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  padding: 40rpx 30rpx;
+}
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.main-content {
+  padding: 24rpx;
+}
+
+.detail-card {
+  padding: 30rpx;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.detail-type {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.status-tag {
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+}
+
+.status-tag.paid {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.detail-body {
+  margin-top: 30rpx;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.row-label {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+.row-value {
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.row-value.amount {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #52c41a;
+}
+
+.row-value.order-no {
+  font-size: 24rpx;
+  color: #666666;
+}
+
+.tips-card {
+  padding: 30rpx;
+  background: #f8f8f8;
+  margin-top: 24rpx;
+}
+
+.tips-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #666666;
+}
+
+.tips-content {
+  font-size: 26rpx;
+  color: #999999;
+  margin-top: 12rpx;
+  line-height: 1.6;
+}

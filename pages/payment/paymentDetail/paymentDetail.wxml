@@ -1,0 +1,119 @@
+<view class="container">
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-content">
+      <view class="back-btn" bindtap="goBack">
+        <text class="iconfont icon-back"></text>
+      </view>
+      <text class="nav-title">账单详情</text>
+    </view>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content">
+    <!-- 账单状态卡片 -->
+    <view class="status-card {{bill.status}}">
+      <view class="status-icon">
+        <text class="iconfont {{bill.status === 'paid' ? 'icon-success' : 'icon-waiting'}}"></text>
+      </view>
+      <text class="status-text">{{bill.status === 'paid' ? '已支付' : '待支付'}}</text>
+      <text class="status-time" wx:if="{{bill.status === 'paid'}}">{{bill.paidDate}}</text>
+      <text class="status-time" wx:else>请于 {{bill.dueDate}} 前完成支付</text>
+    </view>
+
+    <!-- 账单信息 -->
+    <view class="info-card">
+      <view class="info-header">
+        <view class="bill-type-icon {{bill.type}}">
+          <text class="iconfont {{bill.type === 'property' ? 'icon-property' : bill.type === 'water' ? 'icon-water' : 'icon-electricity'}}"></text>
+        </view>
+        <view class="bill-info">
+          <text class="bill-title">{{bill.title}}</text>
+          <text class="bill-room">{{bill.room}}</text>
+        </view>
+      </view>
+      
+      <view class="info-list">
+        <view class="info-item">
+          <text class="info-label">账单周期</text>
+          <text class="info-value">{{bill.period}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">账单编号</text>
+          <text class="info-value">NO.{{bill.id}}20260408</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">生成时间</text>
+          <text class="info-value">2026-04-01</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">{{bill.status === 'paid' ? '支付时间' : '截止日期'}}</text>
+          <text class="info-value">{{bill.status === 'paid' ? bill.paidDate : bill.dueDate}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 费用明细 -->
+    <view class="detail-card">
+      <view class="detail-header">
+        <text class="detail-title">费用明细</text>
+      </view>
+      <view class="detail-list">
+        <view class="detail-item">
+          <view class="detail-left">
+            <view class="detail-icon {{bill.type}}">
+              <text class="iconfont {{bill.type === 'property' ? 'icon-property' : bill.type === 'water' ? 'icon-water' : 'icon-electricity'}}"></text>
+            </view>
+            <text class="detail-name">{{bill.title}}</text>
+          </view>
+          <text class="detail-amount">¥{{bill.amount}}</text>
+        </view>
+      </view>
+      <view class="detail-total">
+        <text class="total-label">应付总额</text>
+        <text class="total-amount">¥{{bill.amount}}</text>
+      </view>
+    </view>
+
+    <!-- 支付方式 -->
+    <view class="payment-card" wx:if="{{bill.status === 'unpaid'}}">
+      <view class="payment-header">
+        <text class="payment-title">支付方式</text>
+      </view>
+      <radio-group bindchange="selectPayment">
+        <label class="payment-item selected">
+          <view class="payment-left">
+            <view class="payment-icon wechat">
+              <text class="iconfont icon-wechat"></text>
+            </view>
+            <text class="payment-name">微信支付</text>
+          </view>
+          <radio value="wechat" checked="{{true}}"></radio>
+        </label>
+      </radio-group>
+    </view>
+
+    <!-- 温馨提示 -->
+    <view class="tips-card">
+      <view class="tips-header">
+        <text class="tips-title">温馨提示</text>
+      </view>
+      <view class="tips-list">
+        <text class="tips-item">1. 如有疑问，请联系物业服务中心</text>
+        <text class="tips-item">2. 支付完成后，可在"我的"-"缴费记录"中查看</text>
+        <text class="tips-item">3. 支持信用卡、花呗等支付方式</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="bottom-bar" wx:if="{{bill.status === 'unpaid'}}">
+    <view class="total-info">
+      <text class="total-label">应付金额</text>
+      <text class="total-price">¥{{bill.amount}}</text>
+    </view>
+    <view class="pay-btn" bindtap="handlePay">
+      <text>立即支付</text>
+    </view>
+  </view>
+</view>
