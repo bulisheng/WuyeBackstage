@@ -20,10 +20,10 @@ Page({
 
   loadData() {
     const globalData = app.globalData;
-    const user = globalData.user;
+    const user = globalData.user || globalData.userInfo || {};
     
     // 分离待缴费和已缴费
-    const allFees = globalData.propertyFee.details;
+    const allFees = (globalData.propertyFee && globalData.propertyFee.details) || globalData.bills || [];
     const unpaidList = allFees.filter(item => item.status === 'unpaid').map(item => ({
       ...item,
       selected: false
@@ -39,7 +39,9 @@ Page({
       paidList,
       unpaidAmount: unpaidAmount.toFixed(2),
       selectedAmount: '0.00',
-      selectedCount: 0
+      selectedCount: 0,
+      repairCount: (globalData.repairList || globalData.repairs || []).length,
+      complaintCount: (globalData.complaintList || globalData.complaints || []).length
     });
   },
 
@@ -70,7 +72,7 @@ Page({
     });
   },
 
-  goToPay() {
+  async goToPay() {
     const selectedItems = this.data.unpaidList.filter(item => item.selected);
     
     if (selectedItems.length === 0) {
@@ -84,31 +86,28 @@ Page({
     wx.showModal({
       title: '确认支付',
       content: `确认支付 ${selectedItems.length} 笔费用，共计 ¥${this.data.selectedAmount}？`,
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          // 模拟支付
           wx.showLoading({ title: '支付中...' });
-          
-          setTimeout(() => {
+          try {
+            for (const item of selectedItems) {
+              await app.services.payBill(item.id, {
+                paymentMethod: 'wechat'
+              });
+            }
             wx.hideLoading();
-            
-            // 更新数据
-            const globalData = app.globalData;
-            selectedItems.forEach(item => {
-              const feeItem = globalData.propertyFee.details.find(f => f.id === item.id);
-              if (feeItem) {
-                feeItem.status = 'paid';
-                feeItem.paidDate = new Date().toISOString().split('T')[0];
-              }
-            });
-            
             wx.showToast({
               title: '支付成功',
               icon: 'success'
             });
-            
             this.loadData();
-          }, 1500);
+          } catch (error) {
+            wx.hideLoading();
+            wx.showToast({
+              title: error.message || '支付失败',
+              icon: 'none'
+            });
+          }
         }
       }
     });

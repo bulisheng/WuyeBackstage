@@ -73,7 +73,7 @@ Page({
 
   // 加载报修记录
   loadRepairs() {
-    const repairs = app.globalData.repairs || [];
+    const repairs = app.globalData.repairs || app.globalData.repairList || [];
     this.setData({ repairs });
   },
 
@@ -94,23 +94,31 @@ Page({
   selectDate(e) {
     const date = e.currentTarget.dataset.date;
     this.setData({ selectedDate: date });
+    this.updateCanSubmit();
   },
 
   // 选择时段
   selectSlot(e) {
     const slot = e.currentTarget.dataset.slot;
     this.setData({ selectedSlot: slot });
+    this.updateCanSubmit();
   },
 
   // 更新提交按钮状态
   updateCanSubmit() {
-    const { selectedType, description } = this.data;
-    const canSubmit = selectedType && description.trim().length >= 5;
+    const { selectedType, description, selectedDate, selectedSlot } = this.data;
+    const canSubmit = Boolean(
+      selectedType &&
+      description.trim().length >= 2 &&
+      selectedDate &&
+      selectedSlot
+    );
     this.setData({ canSubmit });
   },
 
   // 提交报修
-  submitRepair() {
+  async submitRepair() {
+    this.updateCanSubmit();
     if (!this.data.canSubmit) {
       wx.showToast({ title: '请完善报修信息', icon: 'none' });
       return;
@@ -126,44 +134,53 @@ Page({
     const dateInfo = this.data.availableDates.find(d => d.date === selectedDate) || {};
     const appointmentTime = `${dateInfo.day || ''} ${slotInfo.name || ''}`;
 
-    // 创建报修记录
-    const newRepair = {
-      id: Date.now().toString(),
-      category: selectedType,
-      categoryName: typeInfo.name,
-      icon: typeInfo.icon,
-      description: description,
-      status: 'pending',
-      statusName: '待处理',
-      createTime: this.formatTime(new Date()),
-      appointmentTime: appointmentTime,
-      phone: phone
-    };
-
-    // 保存到全局数据
-    app.globalData.repairs = [newRepair, ...this.data.repairs];
-
     wx.showLoading({ title: '提交中...', mask: true });
-    
-    setTimeout(() => {
+
+    try {
+      const newRepair = await app.services.createRepair({
+        type: selectedType,
+        description: description,
+        appointmentDate: selectedDate,
+        appointmentSlot: slotInfo.name || '',
+        phone: phone
+      });
+
+      if (!newRepair.categoryName) {
+        newRepair.categoryName = typeInfo.name;
+      }
+      if (!newRepair.icon) {
+        newRepair.icon = typeInfo.icon;
+      }
+      if (!newRepair.appointmentTime) {
+        newRepair.appointmentTime = appointmentTime;
+      }
+
+      app.globalData.repairs = [newRepair].concat(this.data.repairs || []);
+      app.globalData.repairList = app.globalData.repairs;
+
       wx.hideLoading();
       wx.showToast({
         title: '提交成功',
         icon: 'success',
         duration: 2000
       });
-      
-      // 重置表单
+
       this.setData({
         selectedType: '',
         description: '',
+        selectedDate: this.data.availableDates.length > 0 ? this.data.availableDates[0].date : '',
         selectedSlot: '',
         canSubmit: false
       });
-      
-      // 刷新列表
+      this.updateCanSubmit();
       this.loadRepairs();
-    }, 800);
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '提交失败',
+        icon: 'none'
+      });
+    }
   },
 
   // 格式化时间

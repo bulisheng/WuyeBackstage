@@ -25,8 +25,11 @@ Page({
     const globalData = app.globalData;
     
     // 处理状态显示
-    const complaintList = globalData.complaintList.map(item => ({
+    const complaintList = (globalData.complaintList || globalData.complaints || []).map(item => ({
       ...item,
+      title: item.title || item.category || item.type || '投诉建议',
+      description: item.description || item.content || item.location || '',
+      content: item.content || item.description || '',
       statusText: this.getStatusText(item.status),
       replyTime: item.reply ? '2026-04-02 10:00' : ''
     }));
@@ -45,7 +48,7 @@ Page({
   },
 
   showNewComplaint() {
-    const user = app.globalData.user;
+    const user = app.globalData.user || app.globalData.userInfo || {};
     this.setData({
       showModal: true,
       formData: {
@@ -89,7 +92,7 @@ Page({
     });
   },
 
-  submitComplaint() {
+  async submitComplaint() {
     const { formData, selectedType } = this.data;
 
     if (!formData.title.trim()) {
@@ -105,25 +108,39 @@ Page({
       return;
     }
 
-    const newComplaint = {
-      id: Date.now(),
-      title: formData.title,
-      type: this.data.complaintTypes[selectedType],
-      description: formData.description,
-      status: 'pending',
-      statusText: '待处理',
-      createTime: new Date().toISOString().replace('T', ' ').substr(0, 16)
-    };
-
-    // 添加到全局数据
-    app.globalData.complaintList.unshift(newComplaint);
-
-    wx.showToast({
-      title: '提交成功',
-      icon: 'success'
-    });
-
-    this.hideModal();
-    this.loadData();
+    wx.showLoading({ title: '提交中...' });
+    try {
+      const created = await app.services.createFeedback({
+        type: '投诉',
+        category: this.data.complaintTypes[selectedType],
+        title: formData.title,
+        description: formData.description,
+        content: formData.description,
+        location: formData.title,
+        phone: formData.phone
+      });
+      const normalized = Object.assign({}, created, {
+        title: formData.title,
+        description: formData.description,
+        content: formData.description,
+        type: this.data.complaintTypes[selectedType],
+        location: formData.title
+      });
+      app.globalData.complaints = [normalized].concat((app.globalData.complaints || []).slice(1));
+      app.globalData.complaintList = app.globalData.complaints;
+      wx.hideLoading();
+      wx.showToast({
+        title: '提交成功',
+        icon: 'success'
+      });
+      this.hideModal();
+      this.loadData();
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '提交失败',
+        icon: 'none'
+      });
+    }
   }
 });

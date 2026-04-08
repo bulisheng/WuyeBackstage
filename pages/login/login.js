@@ -292,7 +292,7 @@ Page({
   stopPropagation() {},
 
   // 执行登录
-  doLogin() {
+  async doLogin() {
     // 验证手机号
     const phoneError = this.validatePhone(this.data.phone);
     if (phoneError) {
@@ -332,16 +332,26 @@ Page({
 
     // 执行登录
     wx.showLoading({ title: '登录中...', mask: true });
-    
-    setTimeout(() => {
-      // 保存用户信息到全局
-      const userInfo = {
+
+    try {
+      const result = await app.services.login({
+        phone: this.data.phone,
+        code: this.data.code,
+        community: this.data.community,
+        building: this.data.building,
+        unit: this.data.unit,
+        room: this.data.room,
+        userInfo: {
+          nickName: '业主'
+        }
+      });
+
+      const userInfo = result.user || {
         phone: this.data.phone,
         name: '业主',
         avatar: '/assets/images/default-avatar.png'
       };
-      
-      const communityInfo = {
+      const communityInfo = result.community || {
         name: this.data.community,
         building: this.data.building,
         unit: this.data.unit,
@@ -352,26 +362,32 @@ Page({
       app.globalData.userInfo = userInfo;
       app.globalData.communityInfo = communityInfo;
       app.globalData.isLoggedIn = true;
-
-      // 保存到本地存储
+      if (result.token) {
+        app.globalData.token = result.token;
+        wx.setStorageSync('authToken', result.token);
+      }
       wx.setStorageSync('isLoggedIn', true);
       wx.setStorageSync('userInfo', userInfo);
       wx.setStorageSync('communityInfo', communityInfo);
 
       wx.hideLoading();
-      
       wx.showToast({
         title: '登录成功',
         icon: 'success',
         duration: 1500,
         success: () => {
           setTimeout(() => {
-            // 跳转到首页
             wx.reLaunch({ url: '/pages/index/index' });
           }, 1500);
         }
       });
-    }, 1000);
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '登录失败',
+        icon: 'none'
+      });
+    }
   },
 
   onUnload() {

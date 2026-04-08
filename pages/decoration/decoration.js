@@ -148,7 +148,7 @@ Page({
   },
 
   // 提交申请
-  submitApply() {
+  async submitApply() {
     if (!this.data.canSubmit) {
       wx.showToast({ title: '请完善申请信息', icon: 'none' });
       return;
@@ -179,21 +179,33 @@ Page({
       applyDate: this.formatTime(new Date())
     };
 
-    app.globalData.decorations = [newRecord, ...(app.globalData.decorations || [])];
-
     wx.showLoading({ title: '提交中...', mask: true });
-    
-    setTimeout(() => {
+
+    try {
+      const created = await app.services.createDecoration({
+        decorationType: decorationType,
+        area: area,
+        description: description,
+        startDate: startDate,
+        endDate: endDate,
+        company: company,
+        phone: phone
+      });
       wx.hideLoading();
       wx.showToast({
         title: '提交成功',
         icon: 'success',
         duration: 2000
       });
-      
       this.setData({ showModal: false });
       this.loadRecords();
-    }, 800);
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '提交失败',
+        icon: 'none'
+      });
+    }
   },
 
   // 格式化时间

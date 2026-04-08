@@ -120,7 +120,7 @@ Page({
   },
 
   // 提交访客
-  submitVisitor() {
+  async submitVisitor() {
     if (!this.data.canSubmit) {
       wx.showToast({ title: '请完善信息', icon: 'none' });
       return;
@@ -134,34 +134,34 @@ Page({
     expireDate.setHours(expireDate.getHours() + expireHours);
     const expireText = `${expireDate.getMonth() + 1}/${expireDate.getDate()} ${expireDate.getHours()}:${expireDate.getMinutes().toString().padStart(2, '0')}`;
 
-    // 创建记录
-    const newRecord = {
-      id: Date.now().toString(),
-      visitorName,
-      visitorPhone,
-      visitPurpose,
-      passCode: code,
-      status: 'active',
-      statusText: '有效',
-      visitTime: this.formatTime(new Date()),
-      expireTime: expireText
-    };
-
-    // 保存
-    app.globalData.visitors = [newRecord, ...(app.globalData.visitors || [])];
-
     wx.showLoading({ title: '生成中...', mask: true });
-    
-    setTimeout(() => {
+
+    try {
+      const newRecord = await app.services.createVisitor({
+        visitorName: visitorName,
+        visitorPhone: visitorPhone,
+        visitPurpose: visitPurpose,
+        expireHours: expireHours,
+        passCode: code
+      });
+      newRecord.expireTime = newRecord.expireTime || expireText;
+      newRecord.passCode = newRecord.passCode || code;
+
       wx.hideLoading();
       this.setData({
         showModal: false,
         showCodeModal: true,
-        generatedCode: code,
-        expireText
+        generatedCode: newRecord.passCode,
+        expireText: newRecord.expireTime || expireText
       });
       this.loadRecords();
-    }, 500);
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '生成失败',
+        icon: 'none'
+      });
+    }
   },
 
   // 格式化时间

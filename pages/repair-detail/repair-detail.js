@@ -19,7 +19,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           // 更新数据
-          const repairList = app.globalData.repairList;
+          const repairList = app.globalData.repairList || app.globalData.repairs || [];
           const item = repairList.find(r => r.id === this.data.repairItem.id);
           if (item) {
             item.status = 'cancelled';

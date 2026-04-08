@@ -19,10 +19,10 @@ Page({
 
   loadData() {
     const globalData = app.globalData;
-    const user = globalData.user;
+    const user = globalData.user || globalData.userInfo || {};
     
     // 计算费用统计
-    const allFees = globalData.propertyFee.details;
+    const allFees = (globalData.propertyFee && globalData.propertyFee.details) || globalData.bills || [];
     const unpaidAmount = allFees.filter(item => item.status === 'unpaid')
       .reduce((sum, item) => sum + item.amount, 0);
     const paidAmount = allFees.filter(item => item.status === 'paid')
@@ -32,13 +32,13 @@ Page({
       user,
       unpaidAmount: unpaidAmount.toFixed(2),
       paidAmount: paidAmount.toFixed(2),
-      repairCount: globalData.repairList.length,
-      complaintCount: globalData.complaintList.length
+      repairCount: (globalData.repairList || globalData.repairs || []).length,
+      complaintCount: (globalData.complaintList || globalData.complaints || []).length
     });
   },
 
   goToRepair() {
-    wx.switchTab({ url: '/pages/repair/repair' });
+    wx.navigateTo({ url: '/pages/repair/repair' });
   },
 
   goToComplaint() {
@@ -46,7 +46,7 @@ Page({
   },
 
   goToFee() {
-    wx.switchTab({ url: '/pages/property-fee/property-fee' });
+    wx.navigateTo({ url: '/pages/property-fee/property-fee' });
   },
 
   callService() {

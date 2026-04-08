@@ -20,11 +20,11 @@ Page({
   loadData() {
     const appData = app.globalData;
     this.setData({
-      userInfo: appData.userInfo,
-      communityInfo: appData.communityInfo,
-      unpaidCount: appData.bills.filter(bill => bill.status === 'unpaid').length,
-      repairCount: appData.repairs.length,
-      noticeCount: appData.notices.filter(notice => notice.important).length
+      userInfo: appData.userInfo || {},
+      communityInfo: appData.communityInfo || {},
+      unpaidCount: (appData.bills || []).filter(bill => bill.status === 'unpaid').length,
+      repairCount: (appData.repairs || []).length,
+      noticeCount: (appData.notices || []).filter(notice => notice.important).length
     });
   },
 
@@ -72,9 +72,8 @@ Page({
 
   // 意见反馈
   goToFeedback() {
-    wx.showToast({
-      title: '功能开发中',
-      icon: 'none'
+    wx.navigateTo({
+      url: '/pages/feedback/feedback'
     });
   },
 

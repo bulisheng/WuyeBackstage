@@ -31,7 +31,7 @@ Page({
 
   // 加载数据
   loadData() {
-    const complaints = app.globalData.complaints || [];
+    const complaints = app.globalData.complaints || app.globalData.complaintList || [];
     const praises = app.globalData.praises || [];
     this.setData({
       complaintList: complaints,
@@ -108,7 +108,7 @@ Page({
   },
 
   // 提交投诉
-  submitComplaint() {
+  async submitComplaint() {
     if (!this.data.canSubmitComplaint) {
       wx.showToast({ title: '请描述问题详情', icon: 'none' });
       return;
@@ -125,33 +125,31 @@ Page({
       '其他': '📝'
     };
 
-    const newComplaint = {
-      id: Date.now().toString(),
-      type: complaintType,
-      icon: typeIcons[complaintType] || '📝',
-      content: complaintForm.content,
-      location: complaintForm.location,
-      status: 'pending',
-      statusText: '待处理',
-      createTime: this.formatTime(new Date()),
-      reply: ''
-    };
-
-    app.globalData.complaints = [newComplaint, ...(app.globalData.complaints || [])];
-
     wx.showLoading({ title: '提交中...', mask: true });
-    
-    setTimeout(() => {
+
+    try {
+      await app.services.createFeedback({
+        type: '投诉',
+        category: complaintType,
+        content: complaintForm.content,
+        location: complaintForm.location,
+        phone: app.globalData.userInfo && app.globalData.userInfo.phone
+      });
       wx.hideLoading();
       wx.showToast({
         title: '提交成功',
         icon: 'success',
         duration: 2000
       });
-      
       this.setData({ showComplaintModal: false });
       this.loadData();
-    }, 500);
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '提交失败',
+        icon: 'none'
+      });
+    }
   },
 
   // 显示表扬弹窗
@@ -194,7 +192,7 @@ Page({
   },
 
   // 提交表扬
-  submitPraise() {
+  async submitPraise() {
     if (!this.data.canSubmitPraise) {
       wx.showToast({ title: '请完善表扬信息', icon: 'none' });
       return;
@@ -203,31 +201,32 @@ Page({
     const { praiseForm } = this.data;
     const userInfo = app.globalData.userInfo || {};
 
-    const newPraise = {
-      id: Date.now().toString(),
-      staffName: praiseForm.staffName,
-      staffPosition: praiseForm.staffPosition || '物业员工',
-      content: praiseForm.content,
-      fromName: userInfo.name || '业主',
-      createTime: this.formatTime(new Date()),
-      likes: Math.floor(Math.random() * 10) + 1
-    };
-
-    app.globalData.praises = [newPraise, ...(app.globalData.praises || [])];
-
     wx.showLoading({ title: '提交中...', mask: true });
-    
-    setTimeout(() => {
+
+    try {
+      await app.services.createFeedback({
+        type: '表扬',
+        category: praiseForm.staffPosition || '物业员工',
+        content: praiseForm.content,
+        staffName: praiseForm.staffName,
+        staffPosition: praiseForm.staffPosition,
+        phone: app.globalData.userInfo && app.globalData.userInfo.phone
+      });
       wx.hideLoading();
       wx.showToast({
         title: '感谢您的表扬',
         icon: 'success',
         duration: 2000
       });
-      
       this.setData({ showPraiseModal: false });
       this.loadData();
-    }, 500);
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({
+        title: error.message || '提交失败',
+        icon: 'none'
+      });
+    }
   },
 
   // 格式化时间
