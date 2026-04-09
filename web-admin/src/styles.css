@@ -59,22 +59,24 @@ textarea {
 }
 
 .sidebar {
-  padding: 24px;
+  position: sticky;
+  top: 0;
+  padding: 18px;
   background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
   color: #e5e7eb;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   border-right: 1px solid rgba(148, 163, 184, 0.15);
-  max-height: 100vh;
-  overflow-y: auto;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .brand {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 8px 4px 12px;
+  padding: 4px 4px 8px;
 }
 
 .brand-badge {
@@ -110,17 +112,22 @@ textarea {
   background: rgba(15, 23, 42, 0.42);
   border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 12px;
 }
 
 .nav-group {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+}
+
+.sidebar-batch {
+  display: grid;
+  gap: 10px;
 }
 
 .nav-section {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .nav-section-head {
@@ -130,7 +137,7 @@ textarea {
   width: 100%;
   border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 14px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   background: rgba(255, 255, 255, 0.04);
   color: #e2e8f0;
   font-weight: 700;
@@ -145,7 +152,7 @@ textarea {
 
 .nav-section-body {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   padding-left: 4px;
 }
 
@@ -156,7 +163,7 @@ textarea {
   width: 100%;
   border: 1px solid transparent;
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 11px 14px;
   background: rgba(255, 255, 255, 0.04);
   color: inherit;
   cursor: pointer;
@@ -175,7 +182,7 @@ textarea {
 
 .panel {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .panel-top {
@@ -240,7 +247,7 @@ textarea {
 .topbar-switch {
   display: grid;
   gap: 8px;
-  min-width: 280px;
+  min-width: 0;
 }
 
 .switch-row {
@@ -250,7 +257,49 @@ textarea {
 }
 
 .switch-select {
-  min-width: 280px;
+  min-width: 0;
+  width: 100%;
+}
+
+.topbar-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.topbar-status .panel {
+  padding: 10px 12px;
+}
+
+.status-strip {
+  gap: 8px;
+}
+
+.status-strip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.status-strip-row .stat-row {
+  min-width: 0;
+  flex: 1 1 150px;
+}
+
+.topbar-status .panel-title {
+  font-size: 12px;
+}
+
+.topbar-status .stat-row {
+  gap: 8px;
+}
+
+.topbar-status .stat-row strong {
+  font-size: 14px;
+}
+
+.topbar-actions {
+  align-items: center;
 }
 
 .btn {
@@ -325,12 +374,26 @@ textarea {
   padding: 24px 26px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 18px;
   overflow: hidden;
   background:
     linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 118, 110, 0.10)),
     rgba(255, 255, 255, 0.9);
+}
+
+.topbar-main {
+  display: grid;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-side {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 480px);
+  flex: 0 0 min(100%, 480px);
 }
 
 .topbar h1 {
@@ -343,6 +406,27 @@ textarea {
   margin: 0;
   color: var(--muted);
   max-width: 52ch;
+}
+
+.topbar-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.topbar-projects {
+  display: grid;
+  gap: 8px;
+}
+
+.topbar-projects .chip-row.compact {
+  gap: 8px;
+}
+
+.topbar-projects .chip-row.compact .chip {
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 10px;
 }
 
 .search {
@@ -890,6 +974,9 @@ textarea {
   }
 
   .sidebar {
+    position: static;
+    height: auto;
+    overflow: visible;
     border-right: none;
     border-bottom: 1px solid rgba(148, 163, 184, 0.15);
   }

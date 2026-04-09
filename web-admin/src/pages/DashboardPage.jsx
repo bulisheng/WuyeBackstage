@@ -1750,7 +1750,31 @@ export default function DashboardPage() {
     activeTab === 'product' ? vegetableProducts :
     activeTab === 'order' ? vegetableOrders :
     notices;
-  const currentRows = useMemo(() => currentList, [currentList]);
+  const activeCommunity = useMemo(() => communities.find((item) => Boolean(item.active)) || communities[0] || null, [communities]);
+  const activeCommunityName = useMemo(() => communityDisplayName(activeCommunity), [activeCommunity]);
+  const activeCommunityId = useMemo(() => String(activeCommunity?.id || '').trim(), [activeCommunity]);
+  const scopeRows = (list, tab = activeTab) => {
+    if (tab === 'community') {
+      return list;
+    }
+    if (!activeCommunityId && !activeCommunityName) {
+      return list;
+    }
+    return list.filter((item) => {
+      const itemCommunityId = String(item.communityId || '').trim();
+      const itemCommunityName = String(item.community || '').trim();
+      if (activeCommunityId && itemCommunityId) {
+        return itemCommunityId === activeCommunityId;
+      }
+      if (activeCommunityId && !itemCommunityId) {
+        return itemCommunityName === activeCommunityName;
+      }
+      return itemCommunityName === activeCommunityName;
+    });
+  };
+  const currentRows = useMemo(() => {
+    return scopeRows(currentList, activeTab);
+  }, [activeTab, currentList, activeCommunityId, activeCommunityName]);
   const residentOptions = useMemo(() => users.map((user) => ({
     value: user.id,
     label: `${user.name || '未命名'}${user.phone ? ` / ${user.phone}` : ''}${user.houseNo ? ` / ${user.houseNo}` : ''}`
@@ -1763,7 +1787,6 @@ export default function DashboardPage() {
     const names = Array.from(new Set(houses.map((house) => house.building).filter(Boolean)));
     return names.map((name) => ({ value: name, label: name }));
   }, [houses]);
-  const activeCommunity = useMemo(() => communities.find((item) => Boolean(item.active)) || communities[0] || null, [communities]);
   const visibleNavGroups = useMemo(() => communityVisibleGroups(activeCommunity), [activeCommunity]);
   const visibleTabs = useMemo(() => visibleNavGroups.flatMap((group) => group.tabs), [visibleNavGroups]);
   const communityOptions = useMemo(() => {
@@ -1804,11 +1827,14 @@ export default function DashboardPage() {
       .filter(Boolean);
   }, [staffs]);
   const currentCommunityStaffOptions = useMemo(() => {
-    const currentCommunityName = communityDisplayName(activeCommunity);
-    const source = currentCommunityName
+    const source = activeCommunityName
       ? staffs.filter((staff) => {
+        const staffCommunityId = String(staff.communityId || '').trim();
         const staffCommunity = String(staff.community || '').trim();
-        return !staffCommunity || staffCommunity === currentCommunityName;
+        if (activeCommunityId && staffCommunityId) {
+          return staffCommunityId === activeCommunityId;
+        }
+        return !staffCommunity || staffCommunity === activeCommunityName;
       })
       : staffs;
     const seen = new Set();
@@ -1828,7 +1854,7 @@ export default function DashboardPage() {
         return { value, label };
       })
       .filter(Boolean);
-  }, [activeCommunity, staffs]);
+  }, [activeCommunityId, activeCommunityName, staffs]);
   const currentCommunityStaffSummary = useMemo(() => {
     const names = currentCommunityStaffOptions.map((item) => item.value);
     const head = names.slice(0, 6).join('、');
@@ -1839,6 +1865,15 @@ export default function DashboardPage() {
     value: community.id,
     label: `${communityDisplayName(community)}${community.active ? ' / 当前' : ''}${community.defaultSupervisor ? ` / ${community.defaultSupervisor}` : ''}`
   })), [communities]);
+  const communityNamePreview = useMemo(() => {
+    if (!communitySwitchOptions.length) {
+      return '暂无小区';
+    }
+    const names = communitySwitchOptions.map((option) => option.label.split(' / ')[0]);
+    const head = names.slice(0, 5).join('、');
+    const more = names.length > 5 ? ` 等${names.length}个项目` : ` 共${names.length}个项目`;
+    return `${head}${more}`;
+  }, [communitySwitchOptions]);
   const staffSupervisorOptions = useMemo(() => {
     const communitySupervisors = communities.flatMap((community) => splitTextList(community.supervisors || community.defaultSupervisor));
     const defaults = activeCommunity?.defaultSupervisor ? [activeCommunity.defaultSupervisor] : [];
@@ -2058,7 +2093,7 @@ export default function DashboardPage() {
     }
   }, [apiBase, token, logout, navigate]);
 
-  const setTab = (tab) => {
+  function setTab(tab) {
     if (tab === activeTab) return;
     setActiveTab(tab);
     setSearchText('');
@@ -2087,7 +2122,7 @@ export default function DashboardPage() {
     setCommunityFilters((prev) => ({ ...prev, [tab]: 'all' }));
     setDrawer(null);
     setModal(null);
-  };
+  }
 
   const updateSelected = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
@@ -2108,23 +2143,26 @@ export default function DashboardPage() {
     setCurrentPage(1);
   };
 
-  const tabCount = (tab) => (
-    tab === 'notice' ? notices.length :
-    tab === 'bill' ? bills.length :
-    tab === 'repair' ? repairs.length :
-    tab === 'community' ? communities.length :
-    tab === 'resident' ? users.length :
-    tab === 'house' ? houses.length :
-    tab === 'staff' ? staffs.length :
-    tab === 'feedback' ? feedbacks.length :
-    tab === 'complaintQueue' ? complaintQueue.length :
-    tab === 'complaintRule' ? complaintRules.length :
-    tab === 'visitor' ? visitors.length :
-    tab === 'decoration' ? decorations.length :
-    tab === 'express' ? expressItems.length :
-    tab === 'product' ? vegetableProducts.length :
-    vegetableOrders.length
-  );
+  const listForTab = (tab) => {
+    const raw = tab === 'notice' ? notices :
+      tab === 'bill' ? bills :
+      tab === 'repair' ? repairs :
+      tab === 'community' ? communities :
+      tab === 'resident' ? users :
+      tab === 'house' ? houses :
+      tab === 'staff' ? staffs :
+      tab === 'feedback' ? feedbacks :
+      tab === 'complaintQueue' ? complaintQueue :
+      tab === 'complaintRule' ? complaintRules :
+      tab === 'visitor' ? visitors :
+      tab === 'decoration' ? decorations :
+      tab === 'express' ? expressItems :
+      tab === 'product' ? vegetableProducts :
+      vegetableOrders;
+    return scopeRows(raw, tab);
+  };
+
+  const tabCount = (tab) => listForTab(tab).length;
 
   const toggleGroup = (key) => {
     setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -2258,6 +2296,12 @@ export default function DashboardPage() {
     if ((type === 'resident' || type === 'house' || type === 'feedback') && !String(payload.community || '').trim()) {
       payload.community = communityDisplayName(activeCommunity);
     }
+    if ((type === 'notice' || type === 'bill' || type === 'repair' || type === 'resident' || type === 'house' || type === 'staff' || type === 'feedback' || type === 'visitor' || type === 'decoration' || type === 'express' || type === 'product' || type === 'order') && !String(payload.communityId || '').trim()) {
+      payload.communityId = String(activeCommunity?.id || '').trim();
+    }
+    if ((type === 'notice' || type === 'bill' || type === 'repair' || type === 'resident' || type === 'house' || type === 'staff' || type === 'feedback' || type === 'visitor' || type === 'decoration' || type === 'express' || type === 'product' || type === 'order') && !String(payload.community || '').trim()) {
+      payload.community = communityDisplayName(activeCommunity);
+    }
     if (type === 'order' && typeof payload.items === 'string') {
       try {
         payload.items = JSON.parse(payload.items || '[]');
@@ -2292,9 +2336,11 @@ export default function DashboardPage() {
         if (payload.houseId && houseById[payload.houseId]) {
           const linkedHouse = houseById[payload.houseId];
           const relatedCommunity = String(payload.community || linkedHouse.community || communityDisplayName(activeCommunity) || '').trim();
+          const relatedCommunityId = String(payload.communityId || linkedHouse.communityId || activeCommunity?.id || '').trim();
           await saveHouse(apiBase, token, stripUiFields({
             ...linkedHouse,
             community: relatedCommunity || linkedHouse.community || '',
+            communityId: relatedCommunityId || linkedHouse.communityId || '',
             houseNo: payload.houseNo || formatHouseNo(linkedHouse),
             building: payload.building || linkedHouse.building || '',
             unit: payload.unit || linkedHouse.unit || '',
@@ -2332,9 +2378,11 @@ export default function DashboardPage() {
         if (payload.boundUserId && userById[payload.boundUserId]) {
           const linkedUser = userById[payload.boundUserId];
           const relatedCommunity = String(payload.community || linkedUser.community || communityDisplayName(activeCommunity) || '').trim();
+          const relatedCommunityId = String(payload.communityId || linkedUser.communityId || activeCommunity?.id || '').trim();
           await saveUser(apiBase, token, stripUiFields({
             ...linkedUser,
             community: relatedCommunity || linkedUser.community || '',
+            communityId: relatedCommunityId || linkedUser.communityId || '',
             houseId: houseId || linkedUser.houseId || '',
             houseNo: payload.houseNo || formatHouseNo(payload),
             building: payload.building || linkedUser.building || '',
@@ -2841,14 +2889,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="panel panel-top">
-          <div className="panel-title">登录信息</div>
-          <div className="stat-row"><span>当前状态</span><strong>{statusText}</strong></div>
-          <div className="stat-row"><span>API 地址</span><strong>{apiBase}</strong></div>
-          <div className="stat-row"><span>登录态</span><strong>{token ? '已登录' : '未登录'}</strong></div>
-          <button type="button" className="btn btn-ghost block-btn" onClick={logout}>退出登录</button>
-        </div>
-
         <div className="nav-group">
           {visibleNavGroups.map((group) => (
             <section key={group.key} className="nav-section">
@@ -2870,18 +2910,14 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="panel">
-          <div className="stat-row"><span>当前结果</span><strong>{filteredItems.length}</strong></div>
-          <div className="stat-row"><span>分页</span><strong>{currentPage} / {totalPages}</strong></div>
-          <div className="stat-row"><span>已选中</span><strong>{selectedIds.length}</strong></div>
-        </div>
-
-        <div className="panel">
+        <div className="panel sidebar-batch">
           <div className="panel-title">批量操作</div>
           {currentBatchOptions.length ? (
             <>
-              <button type="button" className="btn btn-ghost block-btn" onClick={selectPage}>选中当前页</button>
-              <button type="button" className="btn btn-ghost block-btn" onClick={clearSelection}>清空选择</button>
+              <div className="button-row">
+                <button type="button" className="btn btn-ghost block-btn" onClick={selectPage}>选中当前页</button>
+                <button type="button" className="btn btn-ghost block-btn" onClick={clearSelection}>清空选择</button>
+              </div>
               <div className="batch-stack">
                 {currentBatchOptions.map(([action, label]) => (
                   <button key={action} type="button" className={`btn ${action === 'delete' ? 'danger' : 'btn-primary'} block-btn tiny`} onClick={() => batchRun(action)}>
@@ -2898,7 +2934,7 @@ export default function DashboardPage() {
 
       <main className="workspace">
         <header className="topbar card">
-          <div>
+          <div className="topbar-main">
             <div className="eyebrow">物业管理控制台</div>
             <h1>{TABS[activeTab].title}</h1>
             <p>{TABS[activeTab].subtitle}</p>
@@ -2908,8 +2944,38 @@ export default function DashboardPage() {
                 <span className="badge">当前默认负责人：{defaultSupervisorName}</span>
               </div>
             ) : null}
+            <div className="topbar-summary">
+              <span className="badge">状态：{statusText}</span>
+              <span className="badge">API：{apiBase}</span>
+              <span className="badge">登录：{token ? '已登录' : '未登录'}</span>
+              <span className="badge">当前小区：{communityDisplayName(activeCommunity) || '未选择'}</span>
+              <span className="badge">项目数：{communitySwitchOptions.length}</span>
+            </div>
+            <div className="topbar-projects">
+              <div className="toolbar-title">当前项目列表</div>
+              <div className="chip-row compact">
+                {communitySwitchOptions.length ? communitySwitchOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`chip ${activeCommunity?.id === option.value ? 'active' : ''}`}
+                    onClick={() => {
+                      if (option.value && option.value !== activeCommunity?.id) {
+                        activateCommunity(apiBase, token, option.value)
+                          .then(refreshLists)
+                          .catch((error) => window.alert(error.message || '切换失败'));
+                      }
+                    }}
+                  >
+                    {option.label.split(' / ')[0]}
+                  </button>
+                )) : <div className="hint">暂无项目</div>}
+              </div>
+              <div className="hint">{communityNamePreview}</div>
+            </div>
           </div>
-          <div className="topbar-actions">
+          <div className="topbar-side">
+            <div className="topbar-actions">
             <input className="search" placeholder="搜索标题、内容、房号、处理人..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
             {activeTab === 'complaintQueue' ? (
               <button type="button" className="btn btn-primary" onClick={refreshLists}>刷新投诉队列</button>
@@ -2918,6 +2984,22 @@ export default function DashboardPage() {
             ) : (
               <button type="button" className="btn btn-primary" onClick={openModal}>新增{TABS[activeTab].label}</button>
             )}
+            <button type="button" className="btn btn-ghost" onClick={logout}>退出登录</button>
+            </div>
+          <div className="topbar-status">
+            <div className="panel panel-inline panel-stat status-strip">
+              <div className="status-strip-row">
+                <div className="stat-row"><span>当前状态</span><strong>{statusText}</strong></div>
+                <div className="stat-row"><span>API 地址</span><strong>{apiBase}</strong></div>
+                <div className="stat-row"><span>登录态</span><strong>{token ? '已登录' : '未登录'}</strong></div>
+              </div>
+              <div className="status-strip-row">
+                <div className="stat-row"><span>当前结果</span><strong>{filteredItems.length}</strong></div>
+                <div className="stat-row"><span>分页</span><strong>{currentPage} / {totalPages}</strong></div>
+                <div className="stat-row"><span>已选中</span><strong>{selectedIds.length}</strong></div>
+              </div>
+            </div>
+          </div>
           </div>
           {communitySwitchOptions.length ? (
             <div className="topbar-switch">

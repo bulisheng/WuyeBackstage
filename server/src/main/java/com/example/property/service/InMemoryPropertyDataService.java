@@ -134,6 +134,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if (count(ADMIN_SESSIONS_COLLECTION) > 0) {
       loadMapCollection(ADMIN_SESSIONS_COLLECTION, adminSessions);
     }
+    normalizeCommunityBindings();
     persistAll();
   }
 
@@ -1048,8 +1049,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", currentCommunityName())));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> notice = mapOf(
         "id", id,
+        "communityId", communityId,
+        "community", communityName,
         "title", String.valueOf(payload.getOrDefault("title", "")),
         "content", String.valueOf(payload.getOrDefault("content", "")),
         "time", payload.getOrDefault("time", now()),
@@ -1134,7 +1139,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         : String.valueOf(payload.get("id"));
     String room = String.valueOf(payload.getOrDefault("room", ""));
     String houseNo = String.valueOf(payload.getOrDefault("houseNo", room));
-    String communityName = String.valueOf(payload.getOrDefault("community", currentCommunityName()));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", currentCommunityName())));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> bill = mapOf(
         "id", id,
         "type", String.valueOf(payload.getOrDefault("type", "property")),
@@ -1147,6 +1153,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "room", room,
         "houseNo", houseNo.isEmpty() ? room : houseNo,
         "houseId", String.valueOf(payload.getOrDefault("houseId", "")),
+        "communityId", communityId,
         "community", communityName,
         "openid", String.valueOf(payload.getOrDefault("openid", DEMO_OPENID)),
         "createTime", payload.getOrDefault("createTime", now()),
@@ -1181,6 +1188,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   public Map<String, Object> createRepair(String token, CreateRepairRequest request) {
     Map<String, Object> current = currentUser(token);
     String id = newId();
+    String currentCommunityId = String.valueOf(current.getOrDefault("communityId", communityIdByName(String.valueOf(current.getOrDefault("community", currentCommunityName())))));
+    String currentCommunityName = String.valueOf(current.getOrDefault("community", communityNameById(currentCommunityId)));
     Map<String, Object> repair = mapOf(
         "id", id,
         "title", repairTypeName(request.type),
@@ -1201,6 +1210,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "dispatchRemark", "",
         "dispatchShift", "",
         "dispatchBuilding", "",
+        "communityId", currentCommunityId,
+        "community", currentCommunityName,
         "comments", new ArrayList<>(),
         "dispatchHistory", new ArrayList<>(),
         "lastModifiedBy", current.getOrDefault("name", "业主"),
@@ -1283,6 +1294,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", currentCommunityName())));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> repair = mapOf(
         "id", id,
         "title", String.valueOf(payload.getOrDefault("title", repairTypeName(String.valueOf(payload.getOrDefault("category", "other"))))),
@@ -1304,6 +1317,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "dispatchRemark", payload.getOrDefault("dispatchRemark", ""),
         "dispatchShift", payload.getOrDefault("dispatchShift", ""),
         "dispatchBuilding", payload.getOrDefault("dispatchBuilding", ""),
+        "communityId", communityId,
+        "community", communityName,
         "dispatchHistory", payload.get("dispatchHistory") instanceof List ? payload.get("dispatchHistory") : new ArrayList<>(),
         "lastModifiedBy", payload.getOrDefault("lastModifiedBy", ""),
         "lastModifiedAt", payload.getOrDefault("lastModifiedAt", ""),
@@ -1600,6 +1615,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", currentCommunityName())));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> rule = mapOf(
         "id", id,
         "name", payload.getOrDefault("name", "未命名规则"),
@@ -1611,6 +1628,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "matchBuildings", normalizeStringList(payload.get("matchBuildings")),
         "supervisorName", payload.getOrDefault("supervisorName", currentSupervisorName()),
         "mentionTargets", normalizeStringList(payload.get("mentionTargets")),
+        "communityId", communityId,
+        "community", communityName,
         "onlyCurrentCommunityStaff", payload.getOrDefault("onlyCurrentCommunityStaff", true),
         "autoPush", payload.getOrDefault("autoPush", false),
         "autoAnalyze", payload.getOrDefault("autoAnalyze", true),
@@ -1636,11 +1655,14 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       return null;
     }
     String id = String.valueOf(feedback.get("id"));
+    String communityId = communityIdByName(communityNameForFeedback(feedback));
+    String communityName = String.valueOf(feedback.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> queueItem = new LinkedHashMap<>();
     queueItem.put("id", id);
     queueItem.put("feedbackId", id);
     queueItem.put("type", feedback.getOrDefault("type", "投诉"));
-    queueItem.put("community", communityNameForFeedback(feedback));
+    queueItem.put("communityId", communityId);
+    queueItem.put("community", communityName);
     queueItem.put("category", feedback.getOrDefault("category", ""));
     queueItem.put("content", feedback.getOrDefault("content", ""));
     queueItem.put("title", feedback.getOrDefault("title", feedback.getOrDefault("category", "投诉")));
@@ -1985,6 +2007,74 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
     String text = value == null ? "" : String.valueOf(value).trim();
     return text.isEmpty() ? "阳光花园小区" : text;
+  }
+
+  private String currentCommunityId() {
+    Object value = community.get("id");
+    String text = value == null ? "" : String.valueOf(value).trim();
+    return text.isEmpty() ? "community" : text;
+  }
+
+  private String communityIdByName(String name) {
+    String target = textValue(name);
+    if (target.isEmpty()) {
+      return currentCommunityId();
+    }
+    return communities.values().stream()
+        .filter(item -> target.equals(textValue(item.get("projectName"))) || target.equals(textValue(item.get("name"))))
+        .map(item -> textValue(item.get("id")))
+        .filter(id -> !id.isEmpty())
+        .findFirst()
+        .orElseGet(this::currentCommunityId);
+  }
+
+  private String communityNameById(String id) {
+    String target = textValue(id);
+    if (target.isEmpty()) {
+      return currentCommunityName();
+    }
+    Map<String, Object> record = communities.get(target);
+    if (record == null) {
+      return currentCommunityName();
+    }
+    String projectName = textValue(record.get("projectName"));
+    if (!projectName.isEmpty()) {
+      return projectName;
+    }
+    String name = textValue(record.get("name"));
+    return name.isEmpty() ? currentCommunityName() : name;
+  }
+
+  private void bindCommunityFields(Map<String, Object> record) {
+    if (record == null) {
+      return;
+    }
+    String communityId = textValue(record.get("communityId"));
+    String communityName = textValue(record.get("community"));
+    if (communityId.isEmpty()) {
+      communityId = communityIdByName(communityName);
+      record.put("communityId", communityId);
+    }
+    if (communityName.isEmpty()) {
+      record.put("community", communityNameById(communityId));
+    }
+  }
+
+  private void normalizeCommunityBindings() {
+    notices.values().forEach(this::bindCommunityFields);
+    bills.values().forEach(this::bindCommunityFields);
+    repairs.values().forEach(this::bindCommunityFields);
+    visitors.values().forEach(this::bindCommunityFields);
+    decorations.values().forEach(this::bindCommunityFields);
+    feedbacks.values().forEach(this::bindCommunityFields);
+    complaintQueue.values().forEach(this::bindCommunityFields);
+    complaintRules.values().forEach(this::bindCommunityFields);
+    express.values().forEach(this::bindCommunityFields);
+    vegetableOrders.values().forEach(this::bindCommunityFields);
+    houses.values().forEach(this::bindCommunityFields);
+    staffs.values().forEach(this::bindCommunityFields);
+    vegetableProducts.forEach(this::bindCommunityFields);
+    users.values().forEach(this::bindCommunityFields);
   }
 
   private Map<String, Object> activeCommunityRecord() {
@@ -2399,13 +2489,16 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> user = mapOf(
         "id", id,
         "openid", String.valueOf(payload.getOrDefault("openid", id)),
         "name", String.valueOf(payload.getOrDefault("name", "业主")),
         "avatar", String.valueOf(payload.getOrDefault("avatar", "/assets/images/default-avatar.png")),
         "phone", String.valueOf(payload.getOrDefault("phone", "")),
-        "community", String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))),
+        "communityId", communityId,
+        "community", communityName,
         "building", String.valueOf(payload.getOrDefault("building", "")),
         "unit", String.valueOf(payload.getOrDefault("unit", "")),
         "room", String.valueOf(payload.getOrDefault("room", "")),
@@ -2446,9 +2539,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> house = mapOf(
         "id", id,
-        "community", String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))),
+        "communityId", communityId,
+        "community", communityName,
         "houseNo", String.valueOf(payload.getOrDefault("houseNo", String.valueOf(payload.getOrDefault("building", "")) + String.valueOf(payload.getOrDefault("unit", "")) + String.valueOf(payload.getOrDefault("room", "")))),
         "building", String.valueOf(payload.getOrDefault("building", "")),
         "unit", String.valueOf(payload.getOrDefault("unit", "")),
@@ -2497,9 +2593,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> staff = mapOf(
         "id", id,
-        "community", String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))),
+        "communityId", communityId,
+        "community", communityName,
         "name", String.valueOf(payload.getOrDefault("name", "")),
         "role", String.valueOf(payload.getOrDefault("role", "物业人员")),
         "position", String.valueOf(payload.getOrDefault("position", "")),
@@ -2549,9 +2648,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", communityNameById(currentCommunityId()))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> feedback = mapOf(
         "id", id,
-        "community", String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))),
+        "communityId", communityId,
+        "community", communityName,
         "type", String.valueOf(payload.getOrDefault("type", "投诉")),
         "category", String.valueOf(payload.getOrDefault("category", payload.getOrDefault("type", "投诉"))),
         "title", String.valueOf(payload.getOrDefault("title", payload.getOrDefault("category", "投诉"))),
@@ -2602,6 +2704,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     int hours = 24;
     Object rawHours = payload.get("expireHours");
     if (rawHours != null && !String.valueOf(rawHours).isEmpty()) {
@@ -2613,6 +2717,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
     Map<String, Object> visitor = mapOf(
         "id", id,
+        "communityId", communityId,
+        "community", communityName,
         "visitorName", String.valueOf(payload.getOrDefault("visitorName", "")),
         "visitorPhone", String.valueOf(payload.getOrDefault("visitorPhone", "")),
         "visitPurpose", String.valueOf(payload.getOrDefault("visitPurpose", "走亲访友")),
@@ -2666,8 +2772,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> decoration = mapOf(
         "id", id,
+        "communityId", communityId,
+        "community", communityName,
         "decorationType", String.valueOf(payload.getOrDefault("decorationType", "其他")),
         "icon", payload.getOrDefault("icon", decorationIcon(String.valueOf(payload.getOrDefault("decorationType", "其他")))),
         "area", String.valueOf(payload.getOrDefault("area", "")),
@@ -2717,8 +2827,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> item = mapOf(
         "id", id,
+        "communityId", communityId,
+        "community", communityName,
         "company", String.valueOf(payload.getOrDefault("company", "")),
         "arriveTime", String.valueOf(payload.getOrDefault("arriveTime", now())),
         "code", String.valueOf(payload.getOrDefault("code", "")),
@@ -2767,8 +2881,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> product = mapOf(
         "id", id,
+        "communityId", communityId,
+        "community", communityName,
         "name", String.valueOf(payload.getOrDefault("name", "")),
         "spec", String.valueOf(payload.getOrDefault("spec", "")),
         "price", payload.getOrDefault("price", 0),
@@ -2818,6 +2936,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
+    String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     List<Map<String, Object>> items = new ArrayList<>();
     Object rawItems = payload.get("items");
     if (rawItems instanceof List) {
@@ -2835,6 +2955,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
     Map<String, Object> order = mapOf(
         "id", id,
+        "communityId", communityId,
+        "community", communityName,
         "orderNo", String.valueOf(payload.getOrDefault("orderNo", "VEG" + System.currentTimeMillis())),
         "items", items,
         "totalAmount", payload.getOrDefault("totalAmount", totalAmount),
