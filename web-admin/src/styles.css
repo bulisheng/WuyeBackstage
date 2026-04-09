@@ -261,43 +261,6 @@ textarea {
   width: 100%;
 }
 
-.topbar-status {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-}
-
-.topbar-status .panel {
-  padding: 10px 12px;
-}
-
-.status-strip {
-  gap: 8px;
-}
-
-.status-strip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-
-.status-strip-row .stat-row {
-  min-width: 0;
-  flex: 1 1 150px;
-}
-
-.topbar-status .panel-title {
-  font-size: 12px;
-}
-
-.topbar-status .stat-row {
-  gap: 8px;
-}
-
-.topbar-status .stat-row strong {
-  font-size: 14px;
-}
-
 .topbar-actions {
   align-items: center;
 }
@@ -417,6 +380,24 @@ textarea {
 .topbar-projects {
   display: grid;
   gap: 8px;
+}
+
+.topbar-projects-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.66);
+  cursor: pointer;
+  color: inherit;
+}
+
+.topbar-projects-head .toolbar-title {
+  margin-right: auto;
 }
 
 .topbar-projects .chip-row.compact {

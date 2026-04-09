@@ -1733,6 +1733,7 @@ export default function DashboardPage() {
   const [modalDraft, setModalDraft] = useState(null);
   const [feishuBindModal, setFeishuBindModal] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({ core: false, communityConfig: false, asset: false, organization: false, service: false, mall: false });
+  const [projectsCollapsed, setProjectsCollapsed] = useState(true);
 
   const currentList =
     activeTab === 'bill' ? bills :
@@ -2950,28 +2951,39 @@ export default function DashboardPage() {
               <span className="badge">登录：{token ? '已登录' : '未登录'}</span>
               <span className="badge">当前小区：{communityDisplayName(activeCommunity) || '未选择'}</span>
               <span className="badge">项目数：{communitySwitchOptions.length}</span>
+              <span className="badge">当前结果：{filteredItems.length}</span>
+              <span className="badge">分页：{currentPage} / {totalPages}</span>
+              <span className="badge">已选中：{selectedIds.length}</span>
             </div>
             <div className="topbar-projects">
-              <div className="toolbar-title">当前项目列表</div>
-              <div className="chip-row compact">
-                {communitySwitchOptions.length ? communitySwitchOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`chip ${activeCommunity?.id === option.value ? 'active' : ''}`}
-                    onClick={() => {
-                      if (option.value && option.value !== activeCommunity?.id) {
-                        activateCommunity(apiBase, token, option.value)
-                          .then(refreshLists)
-                          .catch((error) => window.alert(error.message || '切换失败'));
-                      }
-                    }}
-                  >
-                    {option.label.split(' / ')[0]}
-                  </button>
-                )) : <div className="hint">暂无项目</div>}
-              </div>
-              <div className="hint">{communityNamePreview}</div>
+              <button type="button" className="topbar-projects-head" onClick={() => setProjectsCollapsed((prev) => !prev)}>
+                <span className="toolbar-title">当前项目列表</span>
+                <span className="badge">{communitySwitchOptions.length} 个项目</span>
+                <span className="chip-state">{projectsCollapsed ? '展开' : '收起'}</span>
+              </button>
+              {!projectsCollapsed ? (
+                <>
+                  <div className="chip-row compact">
+                    {communitySwitchOptions.length ? communitySwitchOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`chip ${activeCommunity?.id === option.value ? 'active' : ''}`}
+                        onClick={() => {
+                          if (option.value && option.value !== activeCommunity?.id) {
+                            activateCommunity(apiBase, token, option.value)
+                              .then(refreshLists)
+                              .catch((error) => window.alert(error.message || '切换失败'));
+                          }
+                        }}
+                      >
+                        {option.label.split(' / ')[0]}
+                      </button>
+                    )) : <div className="hint">暂无项目</div>}
+                  </div>
+                  <div className="hint">{communityNamePreview}</div>
+                </>
+              ) : null}
             </div>
           </div>
           <div className="topbar-side">
@@ -2986,20 +2998,6 @@ export default function DashboardPage() {
             )}
             <button type="button" className="btn btn-ghost" onClick={logout}>退出登录</button>
             </div>
-          <div className="topbar-status">
-            <div className="panel panel-inline panel-stat status-strip">
-              <div className="status-strip-row">
-                <div className="stat-row"><span>当前状态</span><strong>{statusText}</strong></div>
-                <div className="stat-row"><span>API 地址</span><strong>{apiBase}</strong></div>
-                <div className="stat-row"><span>登录态</span><strong>{token ? '已登录' : '未登录'}</strong></div>
-              </div>
-              <div className="status-strip-row">
-                <div className="stat-row"><span>当前结果</span><strong>{filteredItems.length}</strong></div>
-                <div className="stat-row"><span>分页</span><strong>{currentPage} / {totalPages}</strong></div>
-                <div className="stat-row"><span>已选中</span><strong>{selectedIds.length}</strong></div>
-              </div>
-            </div>
-          </div>
           </div>
           {communitySwitchOptions.length ? (
             <div className="topbar-switch">
