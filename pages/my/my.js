@@ -22,7 +22,10 @@ Page({
     const user = globalData.user || globalData.userInfo || {};
     
     // 计算费用统计
-    const allFees = (globalData.propertyFee && globalData.propertyFee.details) || globalData.bills || [];
+    const allFeesSource = (globalData.propertyFee && globalData.propertyFee.details) || globalData.bills || [];
+    const allFees = typeof app.getVisibleBills === 'function'
+      ? app.getVisibleBills(allFeesSource, globalData.userInfo, globalData.communityInfo)
+      : allFeesSource;
     const unpaidAmount = allFees.filter(item => item.status === 'unpaid')
       .reduce((sum, item) => sum + item.amount, 0);
     const paidAmount = allFees.filter(item => item.status === 'paid')

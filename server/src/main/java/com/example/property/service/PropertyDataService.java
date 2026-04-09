@@ -68,6 +68,120 @@ public interface PropertyDataService {
 
   void adminDeleteRepair(String id);
 
+  List<Map<String, Object>> adminListComplaints();
+
+  Map<String, Object> adminGetComplaint(String id);
+
+  Map<String, Object> adminReplyComplaint(String id, Map<String, Object> payload);
+
+  List<Map<String, Object>> adminListComplaintQueue();
+
+  Map<String, Object> adminGetComplaintQueue(String id);
+
+  Map<String, Object> adminAnalyzeComplaintQueue(String id, Map<String, Object> payload);
+
+  Map<String, Object> adminPushComplaintQueueToFeishu(String id, Map<String, Object> payload);
+
+  List<Map<String, Object>> adminListComplaintRules();
+
+  Map<String, Object> adminGetComplaintRule(String id);
+
+  Map<String, Object> adminSaveComplaintRule(Map<String, Object> payload);
+
+  void adminDeleteComplaintRule(String id);
+
+  Map<String, Object> adminGetCommunity();
+
+  Map<String, Object> adminSaveCommunity(Map<String, Object> payload);
+
+  List<Map<String, Object>> adminListCommunities();
+
+  Map<String, Object> adminGetCommunityById(String id);
+
+  void adminDeleteCommunity(String id);
+
+  Map<String, Object> adminActivateCommunity(String id);
+
+  List<Map<String, Object>> adminListUsers();
+
+  Map<String, Object> adminGetUser(String id);
+
+  Map<String, Object> adminSaveUser(Map<String, Object> payload);
+
+  void adminDeleteUser(String id);
+
+  List<Map<String, Object>> adminListHouses();
+
+  Map<String, Object> adminGetHouse(String id);
+
+  Map<String, Object> adminSaveHouse(Map<String, Object> payload);
+
+  void adminDeleteHouse(String id);
+
+  List<Map<String, Object>> adminListStaffs();
+
+  Map<String, Object> adminGetStaff(String id);
+
+  Map<String, Object> adminSaveStaff(Map<String, Object> payload);
+
+  void adminDeleteStaff(String id);
+
+  List<Map<String, Object>> adminListFeedbacks();
+
+  Map<String, Object> adminGetFeedback(String id);
+
+  Map<String, Object> adminSaveFeedback(Map<String, Object> payload);
+
+  void adminDeleteFeedback(String id);
+
+  Map<String, Object> adminReplyFeedback(String id, Map<String, Object> payload);
+
+  List<Map<String, Object>> adminListVisitors();
+
+  Map<String, Object> adminGetVisitor(String id);
+
+  Map<String, Object> adminSaveVisitor(Map<String, Object> payload);
+
+  void adminDeleteVisitor(String id);
+
+  Map<String, Object> adminInvalidateVisitor(String id);
+
+  List<Map<String, Object>> adminListDecorations();
+
+  Map<String, Object> adminGetDecoration(String id);
+
+  Map<String, Object> adminSaveDecoration(Map<String, Object> payload);
+
+  void adminDeleteDecoration(String id);
+
+  Map<String, Object> adminReviewDecoration(String id, Map<String, Object> payload);
+
+  List<Map<String, Object>> adminListExpress();
+
+  Map<String, Object> adminGetExpress(String id);
+
+  Map<String, Object> adminSaveExpress(Map<String, Object> payload);
+
+  void adminDeleteExpress(String id);
+
+  Map<String, Object> adminPickupExpress(String id, Map<String, Object> payload);
+
+  List<Map<String, Object>> adminListVegetableProducts();
+
+  Map<String, Object> adminGetVegetableProduct(String id);
+
+  Map<String, Object> adminSaveVegetableProduct(Map<String, Object> payload);
+
+  void adminDeleteVegetableProduct(String id);
+
+  List<Map<String, Object>> adminListVegetableOrders();
+
+  Map<String, Object> adminGetVegetableOrder(String id);
+
+  Map<String, Object> adminSaveVegetableOrder(Map<String, Object> payload);
+
+  void adminDeleteVegetableOrder(String id);
+
   List<Map<String, Object>> listVisitors(String token);
 
   Map<String, Object> getVisitor(String token, String id);

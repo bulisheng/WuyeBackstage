@@ -1,4 +1,7 @@
 {
   "libVersion": "3.3.0",
-  "projectname": "miniprogram-1"
+  "projectname": "miniprogram-1",
+  "setting": {
+    "urlCheck": false
+  }
 }

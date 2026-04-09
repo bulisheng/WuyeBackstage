@@ -1,25 +1,42 @@
 const defaultUserInfo = {
   name: '张三',
   phone: '13800138000',
-  room: 'A栋 1001室',
+  room: 'A栋 101室',
   avatar: '/assets/images/avatar.png'
 };
 
 const defaultCommunityInfo = {
   name: '阳光花园小区',
+  projectName: '阳光花园小区',
   address: '北京市朝阳区阳光路88号',
   propertyCompany: '阳光物业服务公司',
   propertyPhone: '010-88888888',
   totalHouse: 500,
   totalPark: 300,
-  availablePark: 45
+  availablePark: 45,
+  defaultSupervisor: '卜立胜',
+  supervisors: ['卜立胜', '维修主管'],
+  enableNotice: true,
+  enableBill: true,
+  enableRepair: true,
+  enableResident: true,
+  enableHouse: true,
+  enableStaff: true,
+  enableFeedback: true,
+  enableComplaintQueue: true,
+  enableComplaintRule: true,
+  enableVisitor: true,
+  enableDecoration: true,
+  enableExpress: true,
+  enableProduct: true,
+  enableOrder: true
 };
 
 const mockBills = [
-  { id: '1', type: 'property', title: '物业费', amount: 350.00, period: '2026年3月', dueDate: '2026-04-15', status: 'unpaid', room: 'A栋 1001室' },
-  { id: '2', type: 'water', title: '水费', amount: 86.50, period: '2026年3月', dueDate: '2026-04-15', status: 'unpaid', room: 'A栋 1001室' },
-  { id: '3', type: 'electricity', title: '电费', amount: 156.80, period: '2026年3月', dueDate: '2026-04-15', status: 'unpaid', room: 'A栋 1001室' },
-  { id: '4', type: 'property', title: '物业费', amount: 350.00, period: '2026年2月', dueDate: '2026-03-15', status: 'paid', paidDate: '2026-03-10', room: 'A栋 1001室' }
+  { id: '1', type: 'property', title: '物业费', amount: 350.00, period: '2026年3月', dueDate: '2026-04-15', status: 'unpaid', room: 'A栋 101室' },
+  { id: '2', type: 'water', title: '水费', amount: 86.50, period: '2026年3月', dueDate: '2026-04-15', status: 'unpaid', room: 'A栋 102室' },
+  { id: '3', type: 'electricity', title: '电费', amount: 156.80, period: '2026年3月', dueDate: '2026-04-15', status: 'unpaid', room: 'A栋 102室' },
+  { id: '4', type: 'property', title: '物业费', amount: 350.00, period: '2026年2月', dueDate: '2026-03-15', status: 'paid', paidDate: '2026-03-10', room: 'A栋 101室' }
 ];
 
 const mockRepairs = [
@@ -167,6 +184,7 @@ function buildMockState() {
     complaints,
     complaintList: complaints,
     praises,
+    feedbackList: complaints.concat(praises),
     express,
     vegetableProducts: clone(mockVegetableProducts),
     vegetableOrders: [],
@@ -210,6 +228,7 @@ function normalizeRemoteState(remoteState, fallbackState) {
     base.complaints = remoteState.feedbacks.filter(function (item) { return item.type === '投诉'; });
     base.complaintList = base.complaints;
     base.praises = remoteState.feedbacks.filter(function (item) { return item.type === '表扬'; });
+    base.feedbackList = remoteState.feedbacks;
   }
   if (remoteState.complaints) {
     base.complaints = remoteState.complaints;
@@ -217,6 +236,9 @@ function normalizeRemoteState(remoteState, fallbackState) {
   }
   if (remoteState.praises) {
     base.praises = remoteState.praises;
+  }
+  if (remoteState.feedbackList) {
+    base.feedbackList = remoteState.feedbackList;
   }
   if (remoteState.express) {
     base.express = remoteState.express;

@@ -26,6 +26,40 @@ Page({
     tempSelected: ''
   },
 
+  onLoad() {
+    this.restoreSavedProfile();
+  },
+
+  restoreSavedProfile() {
+    try {
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      const communityInfo = wx.getStorageSync('communityInfo') || {};
+      if (!userInfo && !communityInfo) {
+        return;
+      }
+      const room = String(userInfo.room || '').replace(/室$/, '');
+      this.setData({
+        phone: userInfo.phone || this.data.phone,
+        community: userInfo.community || communityInfo.name || this.data.community,
+        building: userInfo.building || this.data.building,
+        unit: userInfo.unit || this.data.unit,
+        room: room || this.data.room,
+        agreed: true
+      });
+      this.updateCanLogin(
+        userInfo.phone || this.data.phone,
+        this.data.code,
+        userInfo.community || communityInfo.name || this.data.community,
+        userInfo.building || this.data.building,
+        userInfo.unit || this.data.unit,
+        room || this.data.room,
+        true
+      );
+    } catch (error) {
+      // ignore storage errors
+    }
+  },
+
   // 手机号输入
   onPhoneInput(e) {
     const phone = e.detail.value;
@@ -369,6 +403,14 @@ Page({
       wx.setStorageSync('isLoggedIn', true);
       wx.setStorageSync('userInfo', userInfo);
       wx.setStorageSync('communityInfo', communityInfo);
+
+      if (app.bootstrap) {
+        try {
+          await app.bootstrap();
+        } catch (bootstrapError) {
+          // ignore bootstrap errors during login, keep the login flow moving
+        }
+      }
 
       wx.hideLoading();
       wx.showToast({

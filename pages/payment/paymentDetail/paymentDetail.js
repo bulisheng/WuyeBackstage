@@ -16,7 +16,10 @@ Page({
   },
 
   loadBillDetail() {
-    const bills = app.globalData.bills || (app.globalData.propertyFee && app.globalData.propertyFee.details) || [];
+    const sourceBills = app.globalData.bills || (app.globalData.propertyFee && app.globalData.propertyFee.details) || [];
+    const bills = typeof app.getVisibleBills === 'function'
+      ? app.getVisibleBills(sourceBills, app.globalData.userInfo, app.globalData.communityInfo)
+      : sourceBills;
     const bill = bills.find(item => item.id === this.data.billId);
     if (bill) {
       this.setData({
@@ -66,7 +69,10 @@ Page({
               bills[billIndex] = Object.assign({}, bills[billIndex], updatedBill);
             }
             app.globalData.bills = bills;
-            app.globalData.propertyFee = { details: bills };
+            app.globalData.visibleBills = typeof app.getVisibleBills === 'function'
+              ? app.getVisibleBills(bills, app.globalData.userInfo, app.globalData.communityInfo)
+              : bills;
+            app.globalData.propertyFee = { details: app.globalData.visibleBills };
 
             wx.hideLoading();
             wx.showToast({

@@ -16,7 +16,10 @@ Page({
 
     if (options.id) {
       const app = getApp();
-      const allFees = (app.globalData.propertyFee && app.globalData.propertyFee.details) || app.globalData.bills || [];
+      const allFeesSource = (app.globalData.propertyFee && app.globalData.propertyFee.details) || app.globalData.bills || [];
+      const allFees = typeof app.getVisibleBills === 'function'
+        ? app.getVisibleBills(allFeesSource, app.globalData.userInfo, app.globalData.communityInfo)
+        : allFeesSource;
       const feeItem = allFees.find(item => item.id === options.id);
       if (feeItem) {
         this.setData({

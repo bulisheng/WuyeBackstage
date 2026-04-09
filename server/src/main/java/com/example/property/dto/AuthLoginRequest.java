@@ -22,5 +22,9 @@ public class AuthLoginRequest {
   @NotBlank
   public String room;
 
+  public String houseId;
+  public String houseNo;
+  public String relationship;
+
   public Map<String, Object> userInfo;
 }

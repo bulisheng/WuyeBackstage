@@ -23,7 +23,10 @@ Page({
     const user = globalData.user || globalData.userInfo || {};
     
     // 分离待缴费和已缴费
-    const allFees = (globalData.propertyFee && globalData.propertyFee.details) || globalData.bills || [];
+    const allFeesSource = (globalData.propertyFee && globalData.propertyFee.details) || globalData.bills || [];
+    const allFees = typeof app.getVisibleBills === 'function'
+      ? app.getVisibleBills(allFeesSource, globalData.userInfo, globalData.communityInfo)
+      : allFeesSource;
     const unpaidList = allFees.filter(item => item.status === 'unpaid').map(item => ({
       ...item,
       selected: false

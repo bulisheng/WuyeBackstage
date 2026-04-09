@@ -26,7 +26,6 @@
         <input 
           class="form-input" 
           type="number" 
-          maxlength="11" 
           placeholder="请输入手机号" 
           placeholder-class="placeholder"
           value="{{phone}}"
@@ -51,7 +50,6 @@
         <input 
           class="form-input" 
           type="number" 
-          maxlength="6" 
           placeholder="请输入验证码" 
           placeholder-class="placeholder"
           value="{{code}}"
@@ -120,7 +118,6 @@
               <input 
                 class="field-input" 
                 type="text" 
-                maxlength="10"
                 placeholder="如：101" 
                 placeholder-class="placeholder"
                 value="{{room}}"

@@ -52,6 +52,10 @@ textarea {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(15, 118, 110, 0.08), transparent 24%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
 .sidebar {
@@ -62,6 +66,8 @@ textarea {
   flex-direction: column;
   gap: 18px;
   border-right: 1px solid rgba(148, 163, 184, 0.15);
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .brand {
@@ -109,7 +115,38 @@ textarea {
 
 .nav-group {
   display: grid;
+  gap: 12px;
+}
+
+.nav-section {
+  display: grid;
   gap: 10px;
+}
+
+.nav-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav-section-head b {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.nav-section-body {
+  display: grid;
+  gap: 8px;
+  padding-left: 4px;
 }
 
 .nav-item {
@@ -139,6 +176,10 @@ textarea {
 .panel {
   display: grid;
   gap: 10px;
+}
+
+.panel-top {
+  margin-top: 2px;
 }
 
 .panel-title {
@@ -182,6 +223,36 @@ textarea {
   gap: 10px;
 }
 
+.feature-switches {
+  gap: 8px;
+}
+
+.feature-switches-field {
+  grid-column: 1 / -1;
+}
+
+.chip-state {
+  margin-left: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.topbar-switch {
+  display: grid;
+  gap: 8px;
+  min-width: 280px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.switch-select {
+  min-width: 280px;
+}
+
 .btn {
   border: none;
   border-radius: 14px;
@@ -214,6 +285,32 @@ textarea {
   padding: 24px;
   display: grid;
   gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace::before,
+.workspace::after {
+  content: '';
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  filter: blur(28px);
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.workspace::before {
+  top: -100px;
+  right: -90px;
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.workspace::after {
+  left: -80px;
+  bottom: 120px;
+  background: rgba(15, 118, 110, 0.14);
 }
 
 .card {
@@ -225,60 +322,88 @@ textarea {
 }
 
 .topbar {
-  padding: 22px 24px;
+  padding: 24px 26px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
+  align-items: center;
+  gap: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 118, 110, 0.10)),
+    rgba(255, 255, 255, 0.9);
 }
 
 .topbar h1 {
   margin: 4px 0 8px;
-  font-size: 28px;
+  font-size: 30px;
+  letter-spacing: -0.02em;
 }
 
 .topbar p {
   margin: 0;
   color: var(--muted);
+  max-width: 52ch;
 }
 
 .search {
   min-width: 320px;
+  background: rgba(255, 255, 255, 0.98);
 }
 
 .toolbar {
   padding: 18px 20px;
   display: grid;
   gap: 14px;
+  grid-template-columns: 1fr 1fr;
 }
 
 .toolbar-group {
   display: grid;
   gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.toolbar-group-wide {
+  grid-column: 1 / -1;
+}
+
+.toolbar-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .chip {
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(255, 255, 255, 0.88);
-  border-radius: 999px;
-  padding: 8px 12px;
+  border-radius: 12px;
+  padding: 7px 14px;
+  min-height: 34px;
   cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: none;
 }
 
 .chip.active {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.30);
   color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.04);
 }
 
 .table-card {
   overflow: hidden;
+  border-radius: 24px;
 }
 
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 2fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr);
+  grid-template-columns: 42px minmax(0, 2.2fr) minmax(170px, 1fr) minmax(170px, 1fr) minmax(180px, 1fr);
   gap: 12px;
   align-items: center;
   padding: 14px 20px;
@@ -294,14 +419,38 @@ textarea {
 .table-row {
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .table-row:hover {
-  background: rgba(37, 99, 235, 0.04);
+  background: rgba(37, 99, 235, 0.05);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .table-row.selected {
   background: rgba(37, 99, 235, 0.08);
+}
+
+.queue-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 20px 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(15, 118, 110, 0.08));
+  border: 1px solid rgba(37, 99, 235, 0.12);
+}
+
+.queue-group-title {
+  font-weight: 700;
+}
+
+.queue-group-count {
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .row-main {
@@ -328,6 +477,7 @@ textarea {
   background: rgba(37, 99, 235, 0.1);
   color: #1d4ed8;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .status-pill.success {
@@ -346,8 +496,10 @@ textarea {
 }
 
 .tiny {
-  padding: 8px 10px;
+  padding: 6px 10px;
   font-size: 12px;
+  min-height: 30px;
+  border-radius: 10px;
 }
 
 .danger {
@@ -360,6 +512,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: rgba(255, 255, 255, 0.88);
 }
 
 .pager-text {
@@ -390,11 +543,12 @@ textarea {
   display: grid;
   place-items: end;
   z-index: 1000;
+  backdrop-filter: blur(6px);
 }
 
 .drawer,
 .modal {
-  width: min(640px, calc(100vw - 24px));
+  width: min(760px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
   margin: 12px;
   overflow: auto;
@@ -423,6 +577,7 @@ textarea {
 .drawer-head h2 {
   margin: 4px 0 0;
   font-size: 24px;
+  letter-spacing: -0.02em;
 }
 
 .drawer-body {
@@ -454,6 +609,169 @@ textarea {
   white-space: pre-wrap;
 }
 
+.recommendation-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(15, 118, 110, 0.08));
+}
+
+.recommendation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.recommendation-title {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.recommendation-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.badge,
+.mini-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  color: #334155;
+}
+
+.recommendation-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recommendation-block {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.recommendation-block-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.recommendation-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.recommendation-meta strong {
+  color: var(--text);
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recommendation-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.recommendation-item:hover {
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.recommendation-item.primary {
+  border-color: rgba(15, 118, 110, 0.26);
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.07), rgba(37, 99, 235, 0.08));
+}
+
+.recommendation-name {
+  font-weight: 700;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.recommendation-desc,
+.recommendation-score {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.recommendation-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.history-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  border-radius: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  background: rgba(248, 250, 252, 0.9);
+  padding: 12px 14px;
+}
+
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.history-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .form-grid {
   display: grid;
   gap: 12px;
@@ -466,6 +784,30 @@ textarea {
 .form-field {
   display: grid;
   gap: 8px;
+}
+
+.form-field-span {
+  grid-column: 1 / -1;
+}
+
+.topbar-note {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.multi-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.multi-select-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .textarea {
@@ -557,8 +899,16 @@ textarea {
     flex-direction: column;
   }
 
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .search {
     min-width: 0;
+  }
+
+  .recommendation-columns {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -589,5 +939,13 @@ textarea {
   .modal {
     width: calc(100vw - 16px);
     margin: 8px;
+  }
+
+  .topbar {
+    padding: 18px;
+  }
+
+  .toolbar-group {
+    padding: 12px;
   }
 }

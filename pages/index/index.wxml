@@ -1,8 +1,29 @@
 <view class="container">
   <!-- 内容区域 -->
   <view class="content">
+    <!-- 开发调试信息 -->
+    <view class="debug-panel" wx:if="{{debugInfo.visible}}">
+      <view class="debug-panel-header">
+        <text class="debug-panel-title">调试信息</text>
+        <text class="debug-panel-tag">{{debugInfo.connectionHint}}</text>
+      </view>
+      <view class="debug-row">
+        <text class="debug-label">runtimeEnv</text>
+        <text class="debug-value">{{debugInfo.runtimeEnv}}</text>
+      </view>
+      <view class="debug-row">
+        <text class="debug-label">devApiBaseUrl</text>
+        <text class="debug-value debug-url">{{debugInfo.apiBaseUrl}}</text>
+      </view>
+      <view class="debug-actions">
+        <view class="debug-copy-btn" bindtap="copyDebugApiBaseUrl">
+          <text>复制接口地址</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 通知公告 -->
-    <view class="notice-banner" bindtap="goToNotice">
+    <view class="notice-banner" bindtap="navigateByUrl" data-url="/pages/notice/notice" wx:if="{{featureFlags.enableNotice}}">
       <view class="notice-icon">
         <text class="iconfont icon-notification"></text>
       </view>
@@ -18,42 +39,14 @@
 
     <!-- 快捷入口 -->
     <view class="quick-entry">
-      <view class="entry-item" bindtap="goToPayment">
-        <view class="entry-icon bg-blue">
-          <text class="iconfont icon-payment"></text>
+      <block wx:for="{{quickEntries}}" wx:key="url">
+        <view class="entry-item" bindtap="navigateByUrl" data-url="{{item.url}}">
+          <view class="entry-icon {{item.className}}">
+            <text class="iconfont {{item.icon}}"></text>
+          </view>
+          <text class="entry-title">{{item.label}}</text>
         </view>
-        <text class="entry-title">物业缴费</text>
-      </view>
-      <view class="entry-item" bindtap="goToRepair">
-        <view class="entry-icon bg-green">
-          <text class="iconfont icon-repair"></text>
-        </view>
-        <text class="entry-title">在线报修</text>
-      </view>
-      <view class="entry-item" bindtap="goToVisitor">
-        <view class="entry-icon bg-purple">
-          <text class="iconfont icon-visitor"></text>
-        </view>
-        <text class="entry-title">访客通行</text>
-      </view>
-      <view class="entry-item" bindtap="goToDecoration">
-        <view class="entry-icon bg-orange-dark">
-          <text class="iconfont icon-decoration"></text>
-        </view>
-        <text class="entry-title">装修登记</text>
-      </view>
-      <view class="entry-item" bindtap="goToExpress">
-        <view class="entry-icon bg-blue-dark">
-          <text class="iconfont icon-express"></text>
-        </view>
-        <text class="entry-title">快递代寄</text>
-      </view>
-      <view class="entry-item" bindtap="goToVegetable">
-        <view class="entry-icon bg-green-light">
-          <text class="iconfont icon-vegetable"></text>
-        </view>
-        <text class="entry-title">蔬菜代买</text>
-      </view>
+      </block>
     </view>
 
     <!-- 更多服务 -->
@@ -62,30 +55,20 @@
         <text class="section-title">更多服务</text>
       </view>
       <view class="service-grid">
-        <view class="service-item" bindtap="goToNotice">
-          <view class="service-icon bg-orange">
-            <text class="iconfont icon-notice"></text>
+        <block wx:for="{{serviceEntries}}" wx:key="label">
+          <view class="service-item" wx:if="{{!item.call}}" bindtap="navigateByUrl" data-url="{{item.url}}">
+            <view class="service-icon {{item.className}}">
+              <text class="iconfont {{item.icon}}"></text>
+            </view>
+            <text class="service-name">{{item.label}}</text>
           </view>
-          <text class="service-name">小区公告</text>
-        </view>
-        <view class="service-item" bindtap="goToFeedback">
-          <view class="service-icon bg-red">
-            <text class="iconfont icon-feedback"></text>
+          <view class="service-item" wx:if="{{item.call}}" bindtap="contactProperty">
+            <view class="service-icon {{item.className}}">
+              <text class="iconfont {{item.icon}}"></text>
+            </view>
+            <text class="service-name">{{item.label}}</text>
           </view>
-          <text class="service-name">投诉表扬</text>
-        </view>
-        <view class="service-item" bindtap="contactProperty">
-          <view class="service-icon bg-blue-dark">
-            <text class="iconfont icon-phone"></text>
-          </view>
-          <text class="service-name">联系物业</text>
-        </view>
-        <view class="service-item" bindtap="goToMine">
-          <view class="service-icon bg-gray">
-            <text class="iconfont icon-person2"></text>
-          </view>
-          <text class="service-name">个人中心</text>
-        </view>
+        </block>
       </view>
     </view>
 
@@ -108,7 +91,7 @@
     </view>
 
     <!-- 待缴费提醒 -->
-    <view class="section" wx:if="{{unpaidBills.length > 0}}">
+    <view class="section" wx:if="{{featureFlags.enableBill && unpaidBills.length > 0}}">
       <view class="section-header">
         <text class="section-title">待缴费账单</text>
         <text class="section-more" bindtap="goToPayment">查看全部 ></text>
@@ -129,7 +112,7 @@
     </view>
 
     <!-- 我的房屋信息 -->
-    <view class="section">
+    <view class="section" wx:if="{{featureFlags.enableResident || featureFlags.enableHouse}}">
       <view class="section-header">
         <text class="section-title">房屋信息</text>
       </view>
@@ -153,7 +136,7 @@
     </view>
 
     <!-- 报修进度 -->
-    <view class="section" wx:if="{{processingRepairs.length > 0}}">
+    <view class="section" wx:if="{{featureFlags.enableRepair && processingRepairs.length > 0}}">
       <view class="section-header">
         <text class="section-title">报修进度</text>
         <text class="section-more" bindtap="goToRepair">查看全部 ></text>

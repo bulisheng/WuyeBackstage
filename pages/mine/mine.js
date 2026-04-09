@@ -19,10 +19,13 @@ Page({
 
   loadData() {
     const appData = app.globalData;
+    const visibleBills = typeof app.getVisibleBills === 'function'
+      ? app.getVisibleBills(appData.bills || [], appData.userInfo, appData.communityInfo)
+      : (appData.visibleBills || appData.bills || []);
     this.setData({
       userInfo: appData.userInfo || {},
       communityInfo: appData.communityInfo || {},
-      unpaidCount: (appData.bills || []).filter(bill => bill.status === 'unpaid').length,
+      unpaidCount: visibleBills.filter(bill => bill.status === 'unpaid').length,
       repairCount: (appData.repairs || []).length,
       noticeCount: (appData.notices || []).filter(notice => notice.important).length
     });

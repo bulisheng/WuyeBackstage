@@ -110,7 +110,7 @@ Page({
   // 更新提交按钮状态
   updateCanSubmit() {
     const { visitorName, visitorPhone } = this.data.formData;
-    const canSubmit = visitorName.trim().length >= 2 && /^1[3-9]\d{9}$/.test(visitorPhone);
+    const canSubmit = visitorName.trim().length > 0 && /^1[3-9]\d{9}$/.test(visitorPhone);
     this.setData({ canSubmit });
   },
 

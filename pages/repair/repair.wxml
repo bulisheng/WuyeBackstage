@@ -43,11 +43,9 @@
             class="desc-textarea" 
             placeholder="比如：水龙头滴水、门锁打不开、灯不亮了..." 
             placeholder-class="placeholder"
-            maxlength="200"
             value="{{description}}"
             bindinput="inputDescription"
           ></textarea>
-          <text class="word-count">{{description.length || 0}}/200</text>
         </view>
       </view>
 

@@ -21,7 +21,10 @@ Page({
 
   loadData() {
     const appData = app.globalData;
-    const bills = appData.bills || (appData.propertyFee && appData.propertyFee.details) || [];
+    const sourceBills = appData.bills || (appData.propertyFee && appData.propertyFee.details) || [];
+    const bills = typeof app.getVisibleBills === 'function'
+      ? app.getVisibleBills(sourceBills, appData.userInfo, appData.communityInfo)
+      : sourceBills;
     const unpaidBills = bills.filter(bill => bill.status === 'unpaid');
     const totalUnpaid = unpaidBills.reduce((sum, bill) => sum + bill.amount, 0).toFixed(2);
 

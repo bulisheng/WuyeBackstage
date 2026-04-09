@@ -9,6 +9,7 @@ public class CreateFeedbackRequest {
   public String category;
   public String title;
   public String description;
+  public String community;
 
   @NotBlank
   public String content;

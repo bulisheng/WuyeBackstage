@@ -130,8 +130,8 @@ Page({
       app.globalData.complaintList = app.globalData.complaints;
       wx.hideLoading();
       wx.showToast({
-        title: '提交成功',
-        icon: 'success'
+        title: created && created.syncStatus === 'pending' ? '已本地保存' : '提交成功',
+        icon: created && created.syncStatus === 'pending' ? 'none' : 'success'
       });
       this.hideModal();
       this.loadData();

@@ -32,11 +32,13 @@ App({
     this.globalData.mockPraises = clone(mockPraises);
     this.globalData.mockExpress = clone(mockExpress);
     this.globalData.mockVegetableProducts = clone(mockVegetableProducts);
+    this.globalData.pendingFeedbackQueue = [];
 
     this.restoreSession();
     this.syncLegacyState();
     this.bootstrap();
     this.initServices();
+    this.loadPendingFeedbackQueue();
   },
 
   initServices() {
@@ -101,14 +103,22 @@ App({
       },
 
       async createFeedback(payload) {
+        const requestPayload = clone(payload || {});
+        const localRequestId = `feedback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         try {
-          const res = await api.createFeedback(payload);
+          const res = await api.createFeedback(requestPayload);
           const feedback = res.data;
           app.addFeedback(feedback);
           return feedback;
         } catch (error) {
-          const feedback = app.createLocalFeedback(payload);
+          const feedback = app.createLocalFeedback(requestPayload, localRequestId);
           app.addFeedback(feedback);
+          app.enqueuePendingFeedback({
+            requestId: localRequestId,
+            payload: requestPayload,
+            createdAt: new Date().toISOString()
+          });
+          app.savePendingFeedbackQueue();
           return feedback;
         }
       },
@@ -203,9 +213,12 @@ App({
   syncLegacyState() {
     this.globalData.user = this.globalData.userInfo;
     this.globalData.community = this.globalData.communityInfo;
-    this.globalData.propertyFee = { details: this.globalData.bills };
+    this.globalData.visibleBills = this.getVisibleBills(this.globalData.bills || [], this.globalData.userInfo, this.globalData.communityInfo);
+    this.globalData.propertyFee = { details: this.globalData.visibleBills };
     this.globalData.repairList = this.globalData.repairs;
     this.globalData.complaintList = this.globalData.complaints;
+    this.globalData.praiseList = this.globalData.praises;
+    this.globalData.feedbackList = [].concat(this.globalData.complaints || [], this.globalData.praises || []);
     this.globalData.expressList = this.globalData.express;
     this.globalData.vegetable = {
       products: this.globalData.vegetableProducts,
@@ -216,6 +229,81 @@ App({
   applyState(partialState) {
     this.globalData = Object.assign({}, this.globalData, partialState);
     this.syncLegacyState();
+  },
+
+  loadPendingFeedbackQueue() {
+    try {
+      const queue = wx.getStorageSync('pendingFeedbackQueue');
+      if (Array.isArray(queue)) {
+        this.globalData.pendingFeedbackQueue = queue;
+      }
+    } catch (error) {
+      this.globalData.pendingFeedbackQueue = [];
+    }
+  },
+
+  savePendingFeedbackQueue() {
+    try {
+      wx.setStorageSync('pendingFeedbackQueue', this.globalData.pendingFeedbackQueue || []);
+    } catch (error) {
+      // ignore storage errors
+    }
+  },
+
+  enqueuePendingFeedback(item) {
+    if (!item || !item.requestId) {
+      return;
+    }
+    const current = Array.isArray(this.globalData.pendingFeedbackQueue) ? this.globalData.pendingFeedbackQueue : [];
+    const next = current.filter(function (entry) {
+      return entry.requestId !== item.requestId;
+    });
+    next.unshift(item);
+    this.globalData.pendingFeedbackQueue = next;
+  },
+
+  replaceLocalFeedback(requestId, feedback) {
+    if (!feedback) {
+      return;
+    }
+    const replaceItem = function (list) {
+      return (list || []).map(function (item) {
+        return item && item.localRequestId === requestId ? feedback : item;
+      });
+    };
+    if (feedback.type === '表扬') {
+      this.globalData.praises = replaceItem(this.globalData.praises);
+    } else {
+      this.globalData.complaints = replaceItem(this.globalData.complaints);
+    }
+    this.syncLegacyState();
+  },
+
+  async syncPendingFeedbackQueue() {
+    const queue = Array.isArray(this.globalData.pendingFeedbackQueue) ? this.globalData.pendingFeedbackQueue.slice() : [];
+    if (!queue.length) {
+      return;
+    }
+    const remaining = [];
+    for (const item of queue) {
+      try {
+        const res = await api.createFeedback(item.payload || {});
+        const feedback = res.data;
+        this.replaceLocalFeedback(item.requestId, feedback);
+      } catch (error) {
+        remaining.push(item);
+      }
+    }
+    this.globalData.pendingFeedbackQueue = remaining;
+    this.savePendingFeedbackQueue();
+  },
+
+  async flushPendingFeedbackQueue() {
+    try {
+      await this.syncPendingFeedbackQueue();
+    } catch (error) {
+      // ignore sync errors
+    }
   },
 
   async bootstrap() {
@@ -290,6 +378,7 @@ App({
     merged.openclawBaseUrl = this.globalData.openclawBaseUrl;
     merged.runtimeEnv = this.globalData.runtimeEnv;
     this.applyState(merged);
+    this.flushPendingFeedbackQueue();
   },
 
   setAuthState(token, userInfo, communityInfo) {
@@ -302,6 +391,65 @@ App({
     wx.setStorageSync('authToken', this.globalData.token);
     wx.setStorageSync('userInfo', this.globalData.userInfo);
     wx.setStorageSync('communityInfo', this.globalData.communityInfo);
+  },
+
+  normalizeHouseLabel(value) {
+    return String(value || '')
+      .replace(/\s+/g, '')
+      .replace(/[室号楼栋单元-]/g, '')
+      .replace(/[^\dA-Za-z\u4e00-\u9fa5]+/g, '')
+      .trim();
+  },
+
+  sameHouseLabel(left, right) {
+    const leftText = this.normalizeHouseLabel(left);
+    const rightText = this.normalizeHouseLabel(right);
+    if (!leftText || !rightText) {
+      return false;
+    }
+    if (leftText === rightText) {
+      return true;
+    }
+    const leftDigits = leftText.replace(/\D+/g, '');
+    const rightDigits = rightText.replace(/\D+/g, '');
+    return !!leftDigits && leftDigits === rightDigits;
+  },
+
+  getVisibleBills(bills, userInfo, communityInfo) {
+    const list = Array.isArray(bills) ? bills : [];
+    const user = userInfo || this.globalData.userInfo || {};
+    const community = communityInfo || this.globalData.communityInfo || {};
+    const userHouseId = String(user.houseId || '').trim();
+    const userHouseNo = String(user.houseNo || user.room || '').trim();
+    const userCommunity = String(user.community || community.name || '').trim();
+    const hasHouseBinding = !!(userHouseId || userHouseNo || String(user.building || '').trim() || String(user.unit || '').trim() || String(user.room || '').trim());
+    if (!userHouseId && !userHouseNo && !userCommunity) {
+      return list.slice();
+    }
+    return list.filter((bill) => {
+      if (!bill) {
+        return false;
+      }
+      const billHouseId = String(bill.houseId || '').trim();
+      const billHouseNo = String(bill.houseNo || bill.room || '').trim();
+      const billCommunity = String(bill.community || '').trim();
+      if (userHouseId && billHouseId && userHouseId === billHouseId) {
+        return true;
+      }
+      if (userHouseNo && billHouseNo && this.sameHouseLabel(userHouseNo, billHouseNo)) {
+        return true;
+      }
+      if (userHouseNo && billHouseNo && this.sameHouseLabel(user.room || userHouseNo, billHouseNo)) {
+        return true;
+      }
+      if (hasHouseBinding) {
+        return false;
+      }
+      if (userCommunity && billCommunity && userCommunity === billCommunity) {
+        return true;
+      }
+      return false;
+    });
   },
 
   addRepair(repair) {
@@ -382,9 +530,11 @@ App({
     this.syncLegacyState();
   },
 
-  createLocalFeedback(payload) {
+  createLocalFeedback(payload, localRequestId) {
     return {
       id: String(Date.now()),
+      localRequestId: localRequestId || '',
+      syncStatus: 'pending',
       type: payload.type,
       category: payload.category || payload.type,
       content: payload.content,

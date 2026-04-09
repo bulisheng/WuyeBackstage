@@ -32,7 +32,7 @@ Page({
   // 加载数据
   loadData() {
     const complaints = app.globalData.complaints || app.globalData.complaintList || [];
-    const praises = app.globalData.praises || [];
+    const praises = app.globalData.praises || app.globalData.praiseList || [];
     this.setData({
       complaintList: complaints,
       praiseList: praises
@@ -103,7 +103,7 @@ Page({
   // 更新投诉提交状态
   updateComplaintSubmit() {
     const content = this.data.complaintForm.content;
-    const canSubmit = content && content.trim().length >= 5;
+    const canSubmit = content && content.trim().length > 0;
     this.setData({ canSubmitComplaint: canSubmit });
   },
 
@@ -128,7 +128,7 @@ Page({
     wx.showLoading({ title: '提交中...', mask: true });
 
     try {
-      await app.services.createFeedback({
+      const created = await app.services.createFeedback({
         type: '投诉',
         category: complaintType,
         content: complaintForm.content,
@@ -137,8 +137,8 @@ Page({
       });
       wx.hideLoading();
       wx.showToast({
-        title: '提交成功',
-        icon: 'success',
+        title: created && created.syncStatus === 'pending' ? '已本地保存' : '提交成功',
+        icon: created && created.syncStatus === 'pending' ? 'none' : 'success',
         duration: 2000
       });
       this.setData({ showComplaintModal: false });
@@ -187,7 +187,7 @@ Page({
   // 更新表扬提交状态
   updatePraiseSubmit() {
     const { staffName, content } = this.data.praiseForm;
-    const canSubmit = staffName.trim().length >= 2 && content && content.trim().length >= 5;
+    const canSubmit = staffName.trim().length > 0 && content && content.trim().length > 0;
     this.setData({ canSubmitPraise: canSubmit });
   },
 

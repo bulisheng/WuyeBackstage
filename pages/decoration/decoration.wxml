@@ -161,7 +161,6 @@
           class="textarea-field" 
           placeholder="比如：厨房橱柜翻新、卫生间防水..." 
           placeholder-class="placeholder"
-          maxlength="100"
           value="{{formData.description}}"
           bindinput="onInput"
           data-field="description"

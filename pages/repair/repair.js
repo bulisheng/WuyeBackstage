@@ -109,7 +109,7 @@ Page({
     const { selectedType, description, selectedDate, selectedSlot } = this.data;
     const canSubmit = Boolean(
       selectedType &&
-      description.trim().length >= 2 &&
+      description.trim().length > 0 &&
       selectedDate &&
       selectedSlot
     );

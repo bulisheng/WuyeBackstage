@@ -10,6 +10,74 @@
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 }
 
+/* 调试信息 */
+.debug-panel {
+  background: linear-gradient(135deg, #102a43 0%, #1e3a5f 100%);
+  border-radius: 18rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 30rpx;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(16, 42, 67, 0.18);
+}
+
+.debug-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18rpx;
+}
+
+.debug-panel-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.debug-panel-tag {
+  font-size: 22rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20rpx;
+  margin-top: 14rpx;
+}
+
+.debug-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.72);
+  flex-shrink: 0;
+}
+
+.debug-value {
+  font-size: 24rpx;
+  color: #fff;
+  text-align: right;
+  word-break: break-all;
+}
+
+.debug-url {
+  font-family: monospace;
+}
+
+.debug-actions {
+  margin-top: 18rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.debug-copy-btn {
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 24rpx;
+}
+
 /* 通知公告 */
 .notice-banner {
   background: #fff;

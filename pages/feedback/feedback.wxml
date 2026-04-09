@@ -172,12 +172,10 @@
           class="textarea-field" 
           placeholder="请描述具体情况..." 
           placeholder-class="placeholder"
-          maxlength="200"
           value="{{complaintForm.content}}" 
           bindinput="onFormTextarea"
           data-field="content"
         ></textarea>
-        <text class="word-count">{{complaintForm.content.length || 0}}/200</text>
       </view>
     </view>
     
@@ -236,12 +234,10 @@
           class="textarea-field" 
           placeholder="描述一下这位员工的优秀表现..." 
           placeholder-class="placeholder"
-          maxlength="200"
           value="{{praiseForm.content}}" 
           bindinput="onPraiseTextarea"
           data-field="content"
         ></textarea>
-        <text class="word-count">{{praiseForm.content.length || 0}}/200</text>
       </view>
     </view>
     
