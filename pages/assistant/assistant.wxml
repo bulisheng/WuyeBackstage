@@ -1,0 +1,126 @@
+<view class="container assistant-page">
+  <view class="hero card">
+    <view class="hero-top">
+      <view>
+        <text class="eyebrow">物业AI客服</text>
+        <view class="hero-title-row">
+          <text class="hero-title">问答 + 办事 + 转人工</text>
+          <text class="hero-tag">智能客服接入</text>
+        </view>
+        <text class="hero-subtitle">优先回答当前小区和当前房屋的问题，涉及报修和投诉时先生成草稿再确认。</text>
+      </view>
+      <view class="hero-emoji">🤖</view>
+    </view>
+    <view class="context-tags">
+      <text class="context-chip" wx:for="{{contextTags}}" wx:key="index">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">当前上下文</text>
+      <text class="section-more" bindtap="copySessionUrl">复制会话链接</text>
+    </view>
+    <view class="context-card card">
+      <view class="context-grid">
+        <view class="context-item">
+          <text class="context-label">当前小区</text>
+          <text class="context-value">{{contextCard.communityName}}</text>
+        </view>
+        <view class="context-item">
+          <text class="context-label">当前房屋</text>
+          <text class="context-value">{{contextCard.houseNo}}</text>
+        </view>
+        <view class="context-item">
+          <text class="context-label">当前住户</text>
+          <text class="context-value">{{contextCard.userName}}</text>
+        </view>
+        <view class="context-item">
+          <text class="context-label">待缴账单</text>
+          <text class="context-value">{{contextCard.billCount}} 条</text>
+        </view>
+      </view>
+      <view class="context-note">{{contextCard.communityAddress}}</view>
+      <view class="session-note" wx:if="{{openclawUrl}}">
+        <text class="session-label">会话地址</text>
+        <text class="session-url">{{openclawUrl}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">快捷服务</text>
+      <text class="section-more">一键办理</text>
+    </view>
+    <view class="service-grid">
+      <block wx:for="{{serviceCards}}" wx:key="id">
+        <view class="service-card tone-{{item.tone}}" bindtap="tapServiceCard" data-text="{{item.text}}">
+          <text class="service-card-title">{{item.title}}</text>
+          <text class="service-card-subtitle">{{item.subtitle}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <scroll-view class="chat-panel card" scroll-y>
+    <block wx:for="{{messages}}" wx:key="time">
+      <view class="message {{item.role}}">
+        <view class="message-bubble">
+          <view class="message-meta">
+            <text class="message-role">{{item.role === 'user' ? '我' : item.role === 'assistant' ? 'AI' : '系统'}}</text>
+            <text class="message-time">{{item.time}}</text>
+          </view>
+          <text class="message-text">{{item.text}}</text>
+          <view class="message-card" wx:if="{{item.card}}">
+            <text class="card-title">{{item.card.title}}</text>
+            <text class="card-line" wx:if="{{item.card.amount}}">金额：¥{{item.card.amount}}</text>
+            <text class="card-line" wx:if="{{item.card.period}}">周期：{{item.card.period}}</text>
+            <text class="card-line" wx:if="{{item.card.status}}">状态：{{item.card.status}}</text>
+            <text class="card-line" wx:if="{{item.card.statusName}}">状态：{{item.card.statusName}}</text>
+            <text class="card-line" wx:if="{{item.card.handler}}">处理人：{{item.card.handler}}</text>
+            <text class="card-line" wx:if="{{item.card.suggestion}}">建议：{{item.card.suggestion}}</text>
+          </view>
+          <view class="message-meta-line" wx:if="{{item.meta}}">
+            <text class="meta-pill">意图：{{item.meta.intent}}</text>
+            <text class="meta-pill">置信度：{{item.meta.confidence}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <view class="draft-card card" wx:if="{{draftCard}}">
+    <view class="section-header">
+      <text class="section-title">待确认草稿</text>
+      <text class="section-more" bindtap="cancelDraft">取消</text>
+    </view>
+    <view class="draft-body">
+      <text class="draft-title">{{draftCard.title}}</text>
+      <text class="draft-line">分类：{{draftCard.category}}</text>
+      <text class="draft-line">{{draftCard.suggestion}}</text>
+    </view>
+    <view class="draft-actions">
+      <view class="draft-primary" bindtap="confirmDraft">{{draftCard.buttonText || '确认并跳转'}}</view>
+      <view class="draft-secondary" bindtap="cancelDraft">稍后再说</view>
+    </view>
+  </view>
+
+  <view class="quick-row">
+    <block wx:for="{{quickReplies}}" wx:key="index">
+      <view class="quick-chip" bindtap="useQuickReply" data-text="{{item}}">{{item}}</view>
+    </block>
+  </view>
+
+  <view class="input-bar card">
+    <input
+      class="assistant-input"
+      placeholder="请输入你的问题，例如：查本月物业费"
+      value="{{inputText}}"
+      bindinput="onInput"
+      confirm-type="send"
+      bindconfirm="sendMessage"
+    />
+    <button class="send-btn" type="primary" bindtap="sendMessage" loading="{{loading}}">发送</button>
+  </view>
+</view>

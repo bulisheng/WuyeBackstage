@@ -20,10 +20,17 @@
 - 多小区已经支持，所有住户、房屋、投诉、人员都要考虑 `community` 字段。
 - 切换小区后，Web 管理台顶部会显示当前项目列表，左侧批量操作已经移到控制台底部。
 - 顶部项目列表默认折叠，展开后才是项目按钮；不要把它改回一大块横排内容。
+- AI 客服确认草稿后，会先把草稿写到本地存储，再跳转到报修页或反馈页；不要把这条链路改成纯聊天。
+- 会话详情页里的 `openclaw 原始 JSON` 可以在 Web 端直接看格式化 / 原始两种展示。
+- Prompt 页支持 `恢复上一次保存`，改 prompt 时尽量保留这一能力。
+- FAQ 现在多了 `负责人` 字段和 `只看当前负责人相关 FAQ` 筛选；如果新增 FAQ 字段，优先补 `responsibleSupervisor`。
 - 飞书真 `@` 只认 `feishuUserId`，名字只是显示用。
 - `负责人` 是规则负责人，`飞书通知人` 才是实际通知对象。
+- 当前本地 openclaw 默认入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`，如果要改 AI 默认地址，优先改这个模板。
+- 后台现在支持 openclaw `本地 / 远程` 两套预设，部署到云服务器 + Mac mini 时优先改 `openclawMode` 和对应的本地/远程地址，不要只改单一 baseUrl。
 - 小区配置里会有 `项目名称`、`功能开关` 和 `当前启用功能` 概览，别再用英文字段当展示名。
 - 投诉和表扬已经统一进同一个反馈集合，后台反馈页要一起处理。
+- AI 客服现在是可测试状态：先起后端、Web 管理台和本地 openclaw，再在小程序里测 `查物业费 / 提报修 / 提投诉 / 转人工` 四个场景。
 
 ## 优先看这些文件
 
@@ -33,6 +40,7 @@
 - 小程序首页：[pages/index/index.js](../pages/index/index.js)
 - 小程序配置：[utils/config.js](../utils/config.js)
 - 小程序 mock 数据：[utils/mock-data.js](../utils/mock-data.js)
+- 小程序 AI 客服：[pages/assistant/assistant.js](../pages/assistant/assistant.js)
 - 后端总服务：[server/src/main/java/com/example/property/service/InMemoryPropertyDataService.java](../server/src/main/java/com/example/property/service/InMemoryPropertyDataService.java)
 - 后端 API：[server/src/main/java/com/example/property/controller/ApiController.java](../server/src/main/java/com/example/property/controller/ApiController.java)
 - 后端管理员 API：[server/src/main/java/com/example/property/controller/AdminController.java](../server/src/main/java/com/example/property/controller/AdminController.java)
@@ -77,6 +85,22 @@
 ### 表扬数据
 - 表扬和投诉都走 `feedbacks`。
 - 前端 `pages/feedback/feedback.js` 和 `pages/complaint/complaint.js` 都会写入同一条反馈链路。
+
+### AI 客服
+- Web 端有 `FAQ / Prompt / 会话日志` 三个页面，入口在 `web-admin/src/pages/`。
+- 小程序 AI 客服页会把报修草稿写入 `assistantPendingRepairDraft`，投诉草稿写入 `assistantPendingFeedbackDraft`，然后跳到对应页面。
+- 如果要改 AI 客服的返回结构，优先看 `assistantMessage`、`assistantHandoff` 和 `assistant/settings` 相关接口。
+- 如果要确认 AI 链路是否真的走了 openclaw，优先看 Web 端 `会话日志` 页面里的原始 JSON。
+- 如果要测 openclaw 的本地调试，默认优先入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`。
+
+### AI 客服测试顺序
+1. 启动 MongoDB、后端、Web 管理台、本地 openclaw。
+2. 小程序首页点击 `AI客服`。
+3. 先测 `查本月物业费`，看账单查询是否正常。
+4. 再测 `帮我提报修，水管漏水`，看是否生成报修草稿。
+5. 再测 `帮我生成一条投诉，楼上太吵`，看是否生成投诉草稿。
+6. 再测 `转人工`，看是否进入 handoff。
+7. 最后去 `会话日志` 确认原始 JSON、格式化 JSON、回退逻辑都正常。
 
 ## 修改入口建议
 

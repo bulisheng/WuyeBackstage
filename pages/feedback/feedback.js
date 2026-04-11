@@ -1,5 +1,11 @@
 const app = getApp();
 
+const STORAGE_FEEDBACK_DRAFT = 'assistantPendingFeedbackDraft';
+
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
 Page({
   data: {
     currentTab: 'complaint',
@@ -23,10 +29,12 @@ Page({
 
   onLoad() {
     this.loadData();
+    this.applyAssistantDraft();
   },
 
   onShow() {
     this.loadData();
+    this.applyAssistantDraft();
   },
 
   // 加载数据
@@ -37,6 +45,43 @@ Page({
       complaintList: complaints,
       praiseList: praises
     });
+  },
+
+  applyAssistantDraft() {
+    try {
+      const draft = wx.getStorageSync(STORAGE_FEEDBACK_DRAFT);
+      if (!draft || typeof draft !== 'object') {
+        return;
+      }
+      const feedbackType = normalizeText(draft.feedbackType || draft.type || '投诉');
+      if (feedbackType === '表扬') {
+        this.setData({
+          currentTab: 'praise',
+          showPraiseModal: true,
+          praiseForm: {
+            staffName: draft.staffName || '',
+            staffPosition: draft.staffPosition || '',
+            content: draft.content || draft.title || ''
+          },
+          canSubmitPraise: Boolean(normalizeText(draft.staffName || '').length && normalizeText(draft.content || draft.title || '').length)
+        });
+      } else {
+        this.setData({
+          currentTab: 'complaint',
+          complaintType: draft.category || '投诉',
+          showComplaintModal: true,
+          complaintForm: {
+            location: draft.location || '',
+            content: draft.content || draft.title || ''
+          },
+          canSubmitComplaint: Boolean(normalizeText(draft.content || draft.title || '').length)
+        });
+      }
+      wx.removeStorageSync(STORAGE_FEEDBACK_DRAFT);
+      wx.showToast({ title: '已填入AI草稿', icon: 'none' });
+    } catch (error) {
+      // ignore draft apply errors
+    }
   },
 
   // 切换Tab

@@ -11,6 +11,7 @@
     "pages/visitor/visitor",
     "pages/decoration/decoration",
     "pages/feedback/feedback",
+    "pages/assistant/assistant",
     "pages/express/express",
     "pages/vegetable/vegetable"
   ],

@@ -177,6 +177,23 @@ function getAssistantSession(id) {
   return get(`/assistant/sessions/${id}`);
 }
 
+function getAssistantSettings(communityId) {
+  const path = communityId ? `/assistant/settings?communityId=${encodeURIComponent(communityId)}` : '/assistant/settings';
+  return get(path);
+}
+
+function saveAssistantSettings(payload) {
+  return put('/assistant/settings', payload);
+}
+
+function assistantMessage(payload) {
+  return post('/assistant/messages', payload);
+}
+
+function assistantHandoff(payload) {
+  return post('/assistant/handoff', payload);
+}
+
 function callbackOpenclaw(payload) {
   return post('/assistant/callback/openclaw', payload);
 }
@@ -225,6 +242,10 @@ module.exports = {
   createVegetableOrder,
   createAssistantSession,
   getAssistantSession,
+  getAssistantSettings,
+  saveAssistantSettings,
+  assistantMessage,
+  assistantHandoff,
   callbackOpenclaw,
   draftRepair,
   draftFeedback,

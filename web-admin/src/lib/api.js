@@ -411,3 +411,72 @@ export function saveVegetableOrder(apiBase, token, payload) {
 export function deleteVegetableOrder(apiBase, token, id) {
   return request(`/admin/vegetables/orders/${id}`, { method: 'DELETE', apiBase, token });
 }
+
+export function getAssistantSettings(apiBase, token, communityId) {
+  const path = communityId ? `/assistant/settings?communityId=${encodeURIComponent(communityId)}` : '/assistant/settings';
+  return request(path, { apiBase, token });
+}
+
+export function saveAssistantSettings(apiBase, token, payload) {
+  return request('/assistant/settings', {
+    method: 'PUT',
+    apiBase,
+    token,
+    body: payload || {}
+  });
+}
+
+export function createAssistantSession(apiBase, token, payload) {
+  return request('/assistant/sessions', {
+    method: 'POST',
+    apiBase,
+    token,
+    body: payload || {}
+  });
+}
+
+export function listAssistantSessions(apiBase, token, communityId) {
+  const path = communityId ? `/assistant/sessions?communityId=${encodeURIComponent(communityId)}` : '/assistant/sessions';
+  return request(path, { apiBase, token });
+}
+
+export function getAssistantSession(apiBase, token, id) {
+  return request(`/assistant/sessions/${id}`, { apiBase, token });
+}
+
+export function assistantMessage(apiBase, token, payload) {
+  return request('/assistant/messages', {
+    method: 'POST',
+    apiBase,
+    token,
+    body: payload || {}
+  });
+}
+
+export function assistantHandoff(apiBase, token, payload) {
+  return request('/assistant/handoff', {
+    method: 'POST',
+    apiBase,
+    token,
+    body: payload || {}
+  });
+}
+
+export function listAssistantFaqs(apiBase, token, communityId) {
+  const path = communityId ? `/assistant/faq?communityId=${encodeURIComponent(communityId)}` : '/assistant/faq';
+  return request(path, { apiBase, token });
+}
+
+export function saveAssistantFaq(apiBase, token, payload) {
+  const data = payload || {};
+  return request(data.id ? `/assistant/faq/${data.id}` : '/assistant/faq', {
+    method: data.id ? 'PUT' : 'POST',
+    apiBase,
+    token,
+    body: data
+  });
+}
+
+export function deleteAssistantFaq(apiBase, token, id) {
+  return request(`/assistant/faq/${id}`, { method: 'DELETE', apiBase, token });
+}

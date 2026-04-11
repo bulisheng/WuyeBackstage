@@ -2996,6 +2996,10 @@ export default function DashboardPage() {
             ) : (
               <button type="button" className="btn btn-primary" onClick={openModal}>新增{TABS[activeTab].label}</button>
             )}
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-config')}>AI 配置</button>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>FAQ</button>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-prompt')}>Prompt</button>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-sessions')}>会话日志</button>
             <button type="button" className="btn btn-ghost" onClick={logout}>退出登录</button>
             </div>
           </div>

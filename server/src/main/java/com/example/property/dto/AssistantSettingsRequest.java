@@ -3,28 +3,28 @@ package com.example.property.dto;
 import java.util.List;
 import java.util.Map;
 
-public class AssistantSessionRequest {
-  public String scene;
-  public String subjectId;
+public class AssistantSettingsRequest {
   public String communityId;
   public String community;
+  public Boolean enabled;
   public String assistantName;
-  public String prompt;
-  public String inputText;
-  public String houseId;
-  public String userId;
-  public String userName;
-  public String room;
-  public String phone;
-  public String promptVersion;
   public String openclawMode;
   public String openclawBaseUrl;
   public String openclawLocalBaseUrl;
   public String openclawRemoteBaseUrl;
+  public String openclawModel;
   public String openclawSessionPath;
   public String openclawMessagePath;
   public String openclawHandoffPath;
-  public String defaultSupervisor;
+  public String promptVersion;
+  public Integer analysisTimeoutMs;
+  public Boolean fallbackToHeuristic;
+  public Boolean autoCreateSession;
+  public Boolean autoSaveHistory;
+  public Boolean autoHandoff;
+  public String promptTemplate;
   public List<String> enabledScenes;
-  public Map<String, Object> context;
+  public List<String> handoffKeywords;
+  public String defaultSupervisor;
+  public Map<String, Object> extra;
 }

@@ -70,6 +70,7 @@ Page({
     const serviceEntries = [
       featureFlags.enableNotice ? { label: '小区公告', icon: 'icon-notice', className: 'bg-orange', url: '/pages/notice/notice' } : null,
       featureFlags.enableFeedback ? { label: '投诉表扬', icon: 'icon-feedback', className: 'bg-red', url: '/pages/feedback/feedback' } : null,
+      { label: 'AI客服', iconText: '🤖', className: 'bg-ai', url: '/pages/assistant/assistant' },
       { label: '联系物业', icon: 'icon-phone', className: 'bg-blue-dark', call: true },
       { label: '个人中心', icon: 'icon-person2', className: 'bg-gray', url: '/pages/mine/mine' }
     ].filter(Boolean);

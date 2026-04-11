@@ -22,6 +22,9 @@ App({
     const runtimeConfig = getRuntimeConfig();
     this.globalData.apiBaseUrl = runtimeConfig.apiBaseUrl;
     this.globalData.openclawBaseUrl = runtimeConfig.openclawBaseUrl;
+    this.globalData.openclawMode = runtimeConfig.openclawMode || 'local';
+    this.globalData.openclawLocalBaseUrl = runtimeConfig.openclawLocalBaseUrl || runtimeConfig.openclawBaseUrl;
+    this.globalData.openclawRemoteBaseUrl = runtimeConfig.openclawRemoteBaseUrl || '';
     this.globalData.runtimeEnv = runtimeConfig;
     this.globalData.mockBills = clone(mockBills);
     this.globalData.mockRepairs = clone(mockRepairs);
@@ -164,6 +167,26 @@ App({
 
       async createAssistantSession(payload) {
         const res = await api.createAssistantSession(payload);
+        return res.data;
+      },
+
+      async assistantMessage(payload) {
+        const res = await api.assistantMessage(payload);
+        return res.data;
+      },
+
+      async assistantHandoff(payload) {
+        const res = await api.assistantHandoff(payload);
+        return res.data;
+      },
+
+      async getAssistantSettings(communityId) {
+        const res = await api.getAssistantSettings(communityId);
+        return res.data;
+      },
+
+      async saveAssistantSettings(payload) {
+        const res = await api.saveAssistantSettings(payload);
         return res.data;
       },
 
@@ -376,6 +399,9 @@ App({
     merged.hasRemoteApi = remoteAvailable;
     merged.apiBaseUrl = this.globalData.apiBaseUrl;
     merged.openclawBaseUrl = this.globalData.openclawBaseUrl;
+    merged.openclawMode = this.globalData.openclawMode;
+    merged.openclawLocalBaseUrl = this.globalData.openclawLocalBaseUrl;
+    merged.openclawRemoteBaseUrl = this.globalData.openclawRemoteBaseUrl;
     merged.runtimeEnv = this.globalData.runtimeEnv;
     this.applyState(merged);
     this.flushPendingFeedbackQueue();

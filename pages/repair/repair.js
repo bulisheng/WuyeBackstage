@@ -1,5 +1,37 @@
 const app = getApp();
 
+const STORAGE_REPAIR_DRAFT = 'assistantPendingRepairDraft';
+
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function resolveRepairTypeValue(draft, repairTypes) {
+  const source = normalizeText(draft.category || draft.type || draft.categoryName || draft.title);
+  if (!source) {
+    return '';
+  }
+  const direct = repairTypes.find((item) => item.value === source);
+  if (direct) {
+    return direct.value;
+  }
+  const matched = repairTypes.find((item) => normalizeText(item.name).includes(source) || source.includes(normalizeText(item.name)));
+  return matched ? matched.value : '';
+}
+
+function resolveSlotValue(slotLabel, timeSlots) {
+  const source = normalizeText(slotLabel);
+  if (!source) {
+    return '';
+  }
+  const direct = timeSlots.find((item) => item.value === source);
+  if (direct) {
+    return direct.value;
+  }
+  const matched = timeSlots.find((item) => normalizeText(item.name).includes(source) || source.includes(normalizeText(item.name)));
+  return matched ? matched.value : '';
+}
+
 Page({
   data: {
     repairTypes: [
@@ -26,10 +58,12 @@ Page({
 
   onLoad() {
     this.initData();
+    this.applyAssistantDraft();
   },
 
   onShow() {
     this.loadRepairs();
+    this.applyAssistantDraft();
   },
 
   initData() {
@@ -41,6 +75,42 @@ Page({
 
     // 生成未来7天的可选日期
     this.generateDates();
+  },
+
+  applyAssistantDraft() {
+    try {
+      const draft = wx.getStorageSync(STORAGE_REPAIR_DRAFT);
+      if (!draft || typeof draft !== 'object') {
+        return;
+      }
+      const nextState = {};
+      const selectedType = resolveRepairTypeValue(draft, this.data.repairTypes || []);
+      if (selectedType) {
+        nextState.selectedType = selectedType;
+      }
+      if (draft.description) {
+        nextState.description = String(draft.description);
+      } else if (draft.title) {
+        nextState.description = String(draft.title);
+      }
+      if (draft.phone) {
+        nextState.phone = String(draft.phone);
+      }
+      if (draft.appointmentDate) {
+        nextState.selectedDate = String(draft.appointmentDate);
+      }
+      const slotValue = resolveSlotValue(draft.appointmentSlot, this.data.timeSlots || []);
+      if (slotValue) {
+        nextState.selectedSlot = slotValue;
+      }
+      this.setData(nextState, () => {
+        this.updateCanSubmit();
+      });
+      wx.removeStorageSync(STORAGE_REPAIR_DRAFT);
+      wx.showToast({ title: '已填入报修草稿', icon: 'none' });
+    } catch (error) {
+      // ignore draft apply errors
+    }
   },
 
   // 生成可选日期

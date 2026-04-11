@@ -1,6 +1,10 @@
 package com.example.property.controller;
 
 import com.example.property.common.ApiResponse;
+import com.example.property.common.BusinessException;
+import com.example.property.dto.AssistantConfigRequest;
+import com.example.property.dto.AssistantHandoffRequest;
+import com.example.property.dto.AssistantMessageRequest;
 import com.example.property.dto.AssistantSessionRequest;
 import com.example.property.dto.AuthLoginRequest;
 import com.example.property.dto.CreateDecorationRequest;
@@ -10,6 +14,7 @@ import com.example.property.dto.CreateVisitorRequest;
 import com.example.property.dto.PayBillRequest;
 import com.example.property.service.PropertyDataService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +32,9 @@ import java.util.Map;
 @RequestMapping("/api/v1")
 public class ApiController {
   private final PropertyDataService service;
+
+  @Value("${admin.api-key:dev-admin-123456}")
+  private String adminApiKey;
 
   public ApiController(PropertyDataService service) {
     this.service = service;
@@ -39,6 +48,26 @@ public class ApiController {
       return authorization.substring(7);
     }
     return authorization;
+  }
+
+  private void checkAdmin(String apiKey, String authorization) {
+    if (apiKey != null && !apiKey.isEmpty() && adminApiKey.equals(apiKey)) {
+      return;
+    }
+    if (authorization != null && !authorization.isEmpty()) {
+      service.adminMe(token(authorization));
+      return;
+    }
+    throw new BusinessException(401, "管理员密钥无效");
+  }
+
+  private Map<String, Object> withId(String id, Map<String, Object> payload) {
+    Map<String, Object> copy = new LinkedHashMap<>();
+    if (payload != null) {
+      copy.putAll(payload);
+    }
+    copy.put("id", id);
+    return copy;
   }
 
   @PostMapping("/auth/wechat/login")
@@ -250,6 +279,71 @@ public class ApiController {
   public ApiResponse<Map<String, Object>> assistantSession(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                            @PathVariable String id) {
     return ApiResponse.ok(service.getAssistantSession(token(authorization), id));
+  }
+
+  @GetMapping("/assistant/sessions")
+  public ApiResponse<Object> assistantSessions(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                               @RequestParam(value = "communityId", required = false) String communityId) {
+    checkAdmin(null, authorization);
+    return ApiResponse.ok(service.adminListAssistantSessions(communityId));
+  }
+
+  @GetMapping("/assistant/settings")
+  public ApiResponse<Map<String, Object>> assistantSettings(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                            @RequestParam(value = "communityId", required = false) String communityId) {
+    return ApiResponse.ok(service.getAssistantSettings(token(authorization), communityId));
+  }
+
+  @PutMapping("/assistant/settings")
+  public ApiResponse<Map<String, Object>> saveAssistantSettings(@RequestHeader(value = "X-Admin-Key", required = false) String apiKey,
+                                                                @RequestHeader(value = "Authorization", required = false) String authorization,
+                                                                @RequestBody AssistantConfigRequest request) {
+    checkAdmin(apiKey, authorization);
+    return ApiResponse.ok(service.saveAssistantSettings(token(authorization), request));
+  }
+
+  @GetMapping("/assistant/faq")
+  public ApiResponse<Object> assistantFaqs(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                           @RequestParam(value = "communityId", required = false) String communityId) {
+    checkAdmin(null, authorization);
+    return ApiResponse.ok(service.adminListAssistantFaqs(communityId));
+  }
+
+  @PostMapping("/assistant/faq")
+  public ApiResponse<Map<String, Object>> createAssistantFaq(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                             @RequestBody Map<String, Object> payload) {
+    checkAdmin(null, authorization);
+    return ApiResponse.ok(service.adminSaveAssistantFaq(payload));
+  }
+
+  @PutMapping("/assistant/faq/{id}")
+  public ApiResponse<Map<String, Object>> updateAssistantFaq(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                             @PathVariable String id,
+                                                             @RequestBody Map<String, Object> payload) {
+    checkAdmin(null, authorization);
+    return ApiResponse.ok(service.adminSaveAssistantFaq(withId(id, payload)));
+  }
+
+  @DeleteMapping("/assistant/faq/{id}")
+  public ApiResponse<Map<String, Object>> deleteAssistantFaq(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                             @PathVariable String id) {
+    checkAdmin(null, authorization);
+    service.adminDeleteAssistantFaq(id);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("success", true);
+    return ApiResponse.ok(result);
+  }
+
+  @PostMapping("/assistant/messages")
+  public ApiResponse<Map<String, Object>> assistantMessages(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                            @RequestBody AssistantMessageRequest request) {
+    return ApiResponse.ok(service.assistantMessage(token(authorization), request));
+  }
+
+  @PostMapping("/assistant/handoff")
+  public ApiResponse<Map<String, Object>> assistantHandoff(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                           @RequestBody AssistantHandoffRequest request) {
+    return ApiResponse.ok(service.assistantHandoff(token(authorization), request));
   }
 
   @PostMapping("/assistant/callback/openclaw")

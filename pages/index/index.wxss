@@ -231,6 +231,11 @@
   color: #fff;
 }
 
+.service-emoji {
+  font-size: 38rpx;
+  line-height: 1;
+}
+
 .service-icon.bg-orange {
   background: linear-gradient(135deg, #ff6b00 0%, #ffa940 100%);
 }
@@ -245,6 +250,10 @@
 
 .service-icon.bg-gray {
   background: linear-gradient(135deg, #666 0%, #999 100%);
+}
+
+.service-icon.bg-ai {
+  background: linear-gradient(135deg, #5c6cff 0%, #2dd4bf 100%);
 }
 
 .service-name {

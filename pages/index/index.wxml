@@ -58,7 +58,8 @@
         <block wx:for="{{serviceEntries}}" wx:key="label">
           <view class="service-item" wx:if="{{!item.call}}" bindtap="navigateByUrl" data-url="{{item.url}}">
             <view class="service-icon {{item.className}}">
-              <text class="iconfont {{item.icon}}"></text>
+              <text wx:if="{{item.iconText}}" class="service-emoji">{{item.iconText}}</text>
+              <text wx:else class="iconfont {{item.icon}}"></text>
             </view>
             <text class="service-name">{{item.label}}</text>
           </view>

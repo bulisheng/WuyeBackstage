@@ -1,6 +1,9 @@
 package com.example.property.service;
 
 import com.example.property.common.BusinessException;
+import com.example.property.dto.AssistantConfigRequest;
+import com.example.property.dto.AssistantHandoffRequest;
+import com.example.property.dto.AssistantMessageRequest;
 import com.example.property.dto.AssistantSessionRequest;
 import com.example.property.dto.AuthLoginRequest;
 import com.example.property.dto.CreateDecorationRequest;
@@ -54,6 +57,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   private final Map<String, Map<String, Object>> houses = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> staffs = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> assistantSessions = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Object>> assistantSettings = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Object>> assistantFaqs = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> adminSessions = new ConcurrentHashMap<>();
   private final List<Map<String, Object>> vegetableProducts = new CopyOnWriteArrayList<>();
   private final Map<String, Object> community = new ConcurrentHashMap<>();
@@ -78,12 +83,20 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   private static final String VEGETABLE_PRODUCTS_COLLECTION = "property_vegetable_products";
   private static final String VEGETABLE_ORDERS_COLLECTION = "property_vegetable_orders";
   private static final String ASSISTANT_COLLECTION = "property_assistant_sessions";
+  private static final String ASSISTANT_SETTINGS_COLLECTION = "property_assistant_settings";
+  private static final String ASSISTANT_FAQS_COLLECTION = "property_assistant_faqs";
   private static final String ADMIN_SESSIONS_COLLECTION = "property_admin_sessions";
   private static final String DEMO_OPENID = "demo-openid";
   private static final String DEMO_TOKEN = "demo-token";
 
-  @Value("${openclaw.base-url:https://openclaw.example.com}")
+  @Value("${openclaw.base-url:http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain}")
   private String openclawBaseUrl;
+
+  @Value("${openclaw.local-base-url:http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain}")
+  private String openclawLocalBaseUrl;
+
+  @Value("${openclaw.remote-base-url:https://openclaw.example.com}")
+  private String openclawRemoteBaseUrl;
 
   @Value("${openclaw.complaint-analysis-path:/api/v1/assistant/complaint/analyze}")
   private String openclawComplaintAnalysisPath;
@@ -131,10 +144,20 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if (count(ASSISTANT_COLLECTION) > 0) {
       loadMapCollection(ASSISTANT_COLLECTION, assistantSessions);
     }
+    if (count(ASSISTANT_SETTINGS_COLLECTION) > 0) {
+      loadMapCollection(ASSISTANT_SETTINGS_COLLECTION, assistantSettings);
+    }
+    if (count(ASSISTANT_FAQS_COLLECTION) > 0) {
+      loadMapCollection(ASSISTANT_FAQS_COLLECTION, assistantFaqs);
+    } else {
+      loadOrSeedAssistantFaqs();
+    }
     if (count(ADMIN_SESSIONS_COLLECTION) > 0) {
       loadMapCollection(ADMIN_SESSIONS_COLLECTION, adminSessions);
     }
     normalizeCommunityBindings();
+    normalizeAssistantSettingsModes();
+    normalizeAssistantFaqOwnership();
     persistAll();
   }
 
@@ -337,6 +360,82 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "createTime", now(),
         "updateTime", now()
     ));
+  }
+
+  private void loadOrSeedAssistantFaqs() {
+    if (!assistantFaqs.isEmpty()) {
+      return;
+    }
+    String communityId = currentCommunityId();
+    String communityName = currentCommunityName();
+    assistantFaqs.put("faq-1", mapOf(
+        "id", "faq-1",
+        "communityId", communityId,
+        "community", communityName,
+        "responsibleSupervisor", currentSupervisorName(),
+        "question", "如何查看本月物业费？",
+        "answer", "进入首页即可查看待缴账单，也可以在 AI 客服里直接说“查物业费”。",
+        "tags", Arrays.asList("账单", "物业费"),
+        "enabled", true,
+        "orderNo", 1,
+        "createTime", now(),
+        "updateTime", now()
+    ));
+    assistantFaqs.put("faq-2", mapOf(
+        "id", "faq-2",
+        "communityId", communityId,
+        "community", communityName,
+        "responsibleSupervisor", currentSupervisorName(),
+        "question", "怎么提交报修？",
+        "answer", "在报修页面选择类型、填写描述、选择日期和时段后提交即可，AI 客服也可以帮你生成报修草稿。",
+        "tags", Arrays.asList("报修", "维修"),
+        "enabled", true,
+        "orderNo", 2,
+        "createTime", now(),
+        "updateTime", now()
+    ));
+    assistantFaqs.put("faq-3", mapOf(
+        "id", "faq-3",
+        "communityId", communityId,
+        "community", communityName,
+        "responsibleSupervisor", currentSupervisorName(),
+        "question", "投诉后多久能看到处理？",
+        "answer", "投诉会先进入后台投诉队列，管理员会先分析并推送到飞书，后续可在后台查看进度。",
+        "tags", Arrays.asList("投诉", "飞书"),
+        "enabled", true,
+        "orderNo", 3,
+        "createTime", now(),
+        "updateTime", now()
+    ));
+  }
+
+  private void normalizeAssistantFaqOwnership() {
+    if (assistantFaqs.isEmpty()) {
+      return;
+    }
+    boolean changed = false;
+    for (Map<String, Object> item : assistantFaqs.values()) {
+      if (item == null) {
+        continue;
+      }
+      String communityId = textValue(item.get("communityId"));
+      Map<String, Object> communityRecord = communityRecordById(communityId);
+      String responsibleSupervisor = String.valueOf(firstNonEmpty(
+          item.get("responsibleSupervisor"),
+          item.get("supervisorName"),
+          communityRecord.getOrDefault("defaultSupervisor", currentSupervisorName())
+      ));
+      if (responsibleSupervisor.isEmpty()) {
+        responsibleSupervisor = currentSupervisorName();
+      }
+      if (!responsibleSupervisor.equals(String.valueOf(item.getOrDefault("responsibleSupervisor", "")))) {
+        item.put("responsibleSupervisor", responsibleSupervisor);
+        changed = true;
+      }
+    }
+    if (changed) {
+      persistAll();
+    }
   }
 
   private void loadOrSeedNotices() {
@@ -605,6 +704,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     persistMapCollection(STAFFS_COLLECTION, staffs);
     persistMapCollection(VEGETABLE_ORDERS_COLLECTION, vegetableOrders);
     persistMapCollection(ASSISTANT_COLLECTION, assistantSessions);
+    persistMapCollection(ASSISTANT_SETTINGS_COLLECTION, assistantSettings);
+    persistMapCollection(ASSISTANT_FAQS_COLLECTION, assistantFaqs);
     persistMapCollection(ADMIN_SESSIONS_COLLECTION, adminSessions);
     persistListCollection(VEGETABLE_PRODUCTS_COLLECTION, vegetableProducts);
   }
@@ -1510,6 +1611,598 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return normalized;
   }
 
+  private Map<String, Object> assistantSettingsSummary(Map<String, Object> settings) {
+    Map<String, Object> summary = new LinkedHashMap<>();
+    if (settings == null) {
+      return summary;
+    }
+    summary.put("communityId", settings.getOrDefault("communityId", ""));
+    summary.put("community", settings.getOrDefault("community", ""));
+    summary.put("enabled", settings.getOrDefault("enabled", true));
+    summary.put("assistantName", settings.getOrDefault("assistantName", "物业AI客服"));
+    summary.put("openclawMode", settings.getOrDefault("openclawMode", "local"));
+    summary.put("openclawBaseUrl", settings.getOrDefault("openclawBaseUrl", ""));
+    summary.put("openclawLocalBaseUrl", settings.getOrDefault("openclawLocalBaseUrl", ""));
+    summary.put("openclawRemoteBaseUrl", settings.getOrDefault("openclawRemoteBaseUrl", ""));
+    summary.put("openclawModel", settings.getOrDefault("openclawModel", ""));
+    summary.put("openclawSessionPath", settings.getOrDefault("openclawSessionPath", ""));
+    summary.put("openclawMessagePath", settings.getOrDefault("openclawMessagePath", ""));
+    summary.put("openclawHandoffPath", settings.getOrDefault("openclawHandoffPath", ""));
+    summary.put("promptVersion", settings.getOrDefault("promptVersion", ""));
+    summary.put("analysisTimeoutMs", settings.getOrDefault("analysisTimeoutMs", 5000));
+    summary.put("fallbackToHeuristic", settings.getOrDefault("fallbackToHeuristic", true));
+    summary.put("autoCreateSession", settings.getOrDefault("autoCreateSession", true));
+    summary.put("autoSaveHistory", settings.getOrDefault("autoSaveHistory", true));
+    summary.put("autoHandoff", settings.getOrDefault("autoHandoff", true));
+    summary.put("promptTemplate", settings.getOrDefault("promptTemplate", ""));
+    summary.put("enabledScenes", normalizeStringList(settings.get("enabledScenes")));
+    summary.put("handoffKeywords", normalizeStringList(settings.get("handoffKeywords")));
+    summary.put("defaultSupervisor", settings.getOrDefault("defaultSupervisor", currentSupervisorName()));
+    summary.put("supervisors", normalizeStringList(settings.get("supervisors")));
+    return summary;
+  }
+
+  private Map<String, Object> assistantMessageContext(String token, AssistantMessageRequest request, Map<String, Object> session, Map<String, Object> settings) {
+    Map<String, Object> context = new LinkedHashMap<>();
+    if (request != null && request.context != null) {
+      context.putAll(request.context);
+    }
+    Map<String, Object> current = currentUser(token);
+    Map<String, Object> communityRecord = communityRecordById(String.valueOf(firstNonEmpty(request == null ? null : request.communityId, session == null ? null : session.get("communityId"), currentCommunityId())));
+    context.putIfAbsent("communityId", communityRecord.getOrDefault("id", ""));
+    context.putIfAbsent("community", communityRecord.getOrDefault("projectName", communityRecord.getOrDefault("name", currentCommunityName())));
+    context.putIfAbsent("defaultSupervisor", settings == null ? currentSupervisorName() : settings.getOrDefault("defaultSupervisor", currentSupervisorName()));
+    context.putIfAbsent("assistantName", settings == null ? "物业AI客服" : settings.getOrDefault("assistantName", "物业AI客服"));
+    context.putIfAbsent("enabledScenes", settings == null ? Arrays.asList("query_bill", "query_repair", "create_repair", "create_feedback", "query_notice", "handoff") : normalizeStringList(settings.get("enabledScenes")));
+    context.putIfAbsent("userName", firstNonEmpty(request == null ? null : request.userName, current == null ? null : current.get("name"), ""));
+    context.putIfAbsent("userId", firstNonEmpty(request == null ? null : request.userId, current == null ? null : current.get("id"), ""));
+    context.putIfAbsent("houseId", firstNonEmpty(request == null ? null : request.houseId, current == null ? null : current.get("houseId"), ""));
+    context.putIfAbsent("room", firstNonEmpty(request == null ? null : request.room, current == null ? null : current.get("room"), ""));
+    context.putIfAbsent("phone", firstNonEmpty(request == null ? null : request.phone, current == null ? null : current.get("phone"), ""));
+    context.putIfAbsent("houseNo", firstNonEmpty(current == null ? null : current.get("houseNo"), ""));
+    context.putIfAbsent("billSummary", summarizeBillsForAssistant(token));
+    context.putIfAbsent("repairSummary", summarizeRepairsForAssistant(token));
+    context.putIfAbsent("noticeSummary", summarizeNoticesForAssistant());
+    context.putIfAbsent("feedbackSummary", summarizeFeedbacksForAssistant(token));
+    context.putIfAbsent("featureOverview", normalizeStringList(communityRecord.get("supervisors")));
+    return context;
+  }
+
+  private String summarizeBillsForAssistant(String token) {
+    List<Map<String, Object>> billsList = listBills(token, null);
+    long unpaid = billsList.stream().filter(item -> "unpaid".equals(String.valueOf(item.get("status")))).count();
+    if (billsList.isEmpty()) {
+      return "当前暂无账单";
+    }
+    return "共" + billsList.size() + "条，其中待缴" + unpaid + "条";
+  }
+
+  private String summarizeRepairsForAssistant(String token) {
+    List<Map<String, Object>> repairList = listRepairs(token, null);
+    long pending = repairList.stream().filter(item -> "pending".equals(String.valueOf(item.get("status"))) || "processing".equals(String.valueOf(item.get("status")))).count();
+    if (repairList.isEmpty()) {
+      return "当前暂无报修";
+    }
+    return "共" + repairList.size() + "条，其中待处理/处理中" + pending + "条";
+  }
+
+  private String summarizeNoticesForAssistant() {
+    List<Map<String, Object>> noticeList = listNotices();
+    if (noticeList.isEmpty()) {
+      return "当前暂无公告";
+    }
+    return "最新" + noticeList.size() + "条公告";
+  }
+
+  private String summarizeFeedbacksForAssistant(String token) {
+    List<Map<String, Object>> feedbackList = listFeedbacks(token, null);
+    long complaints = feedbackList.stream().filter(item -> "投诉".equals(String.valueOf(item.get("type")))).count();
+    long praises = feedbackList.stream().filter(item -> "表扬".equals(String.valueOf(item.get("type")))).count();
+    if (feedbackList.isEmpty()) {
+      return "当前暂无反馈";
+    }
+    return "共" + feedbackList.size() + "条，其中投诉" + complaints + "条、表扬" + praises + "条";
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> assistantSessionMessages(Map<String, Object> session) {
+    Object raw = session == null ? null : session.get("messages");
+    if (raw instanceof List) {
+      return (List<Map<String, Object>>) raw;
+    }
+    List<Map<String, Object>> list = new ArrayList<>();
+    if (session != null) {
+      session.put("messages", list);
+    }
+    return list;
+  }
+
+  private void appendAssistantSessionMessage(Map<String, Object> session, String role, String content, Map<String, Object> extra) {
+    if (session == null) {
+      return;
+    }
+    List<Map<String, Object>> messages = assistantSessionMessages(session);
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("id", newId());
+    item.put("role", role);
+    item.put("content", content == null ? "" : content);
+    item.put("createTime", now());
+    if (extra != null) {
+      item.putAll(extra);
+    }
+    messages.add(item);
+    session.put("messageCount", messages.size());
+    session.put("lastMessageAt", now());
+  }
+
+  private Map<String, Object> resolveAssistantSession(AssistantMessageRequest request) {
+    String sessionId = request == null ? "" : textValue(request.sessionId);
+    if (!sessionId.isEmpty() && assistantSessions.containsKey(sessionId)) {
+      return assistantSessions.get(sessionId);
+    }
+    AssistantSessionRequest sessionRequest = new AssistantSessionRequest();
+    if (request != null) {
+      sessionRequest.scene = request.scene;
+      sessionRequest.communityId = request.communityId;
+      sessionRequest.houseId = request.houseId;
+      sessionRequest.userId = request.userId;
+      sessionRequest.userName = request.userName;
+      sessionRequest.room = request.room;
+      sessionRequest.phone = request.phone;
+      sessionRequest.inputText = request.content;
+      sessionRequest.context = request.context;
+      sessionRequest.subjectId = request.userId;
+    }
+    return createAssistantSession(null, sessionRequest);
+  }
+
+  private Map<String, Object> resolveAssistantSession(String sessionId, String communityId, String houseId, String userId, String userName, String phone) {
+    String target = textValue(sessionId);
+    if (!target.isEmpty() && assistantSessions.containsKey(target)) {
+      return assistantSessions.get(target);
+    }
+    AssistantSessionRequest request = new AssistantSessionRequest();
+    request.communityId = communityId;
+    request.houseId = houseId;
+    request.userId = userId;
+    request.userName = userName;
+    request.phone = phone;
+    request.subjectId = userId;
+    return createAssistantSession(null, request);
+  }
+
+  private String assistantSessionUrl(Map<String, Object> settings, String sessionId, String sessionToken) {
+    String base = effectiveOpenclawBaseUrl(settings);
+    String path = textValue(settings == null ? null : settings.get("openclawSessionPath"));
+    if (base.isEmpty() || base.contains("openclaw.example.com")) {
+      return "";
+    }
+    if (isInlineOpenclawUrl(base)) {
+      String endpoint = appendQuery(base, "token", sessionToken);
+      return endpoint;
+    }
+    if (path.isEmpty()) {
+      path = "/session/{sessionId}";
+    }
+    String endpoint = buildEndpoint(base, path.replace("{sessionId}", sessionId).replace("{id}", sessionId));
+    if (!endpoint.contains("token=") && sessionToken != null && !sessionToken.isEmpty()) {
+      endpoint = endpoint + (endpoint.contains("?") ? "&" : "?") + "token=" + sessionToken;
+    }
+    return endpoint;
+  }
+
+  private String assistantEndpoint(Map<String, Object> settings, String pathKey) {
+    String base = effectiveOpenclawBaseUrl(settings);
+    String path = textValue(settings == null ? null : settings.get(pathKey));
+    if (base.isEmpty() || base.contains("openclaw.example.com") || path.isEmpty()) {
+      if (base.isEmpty() || base.contains("openclaw.example.com")) {
+        return "";
+      }
+      if (isInlineOpenclawUrl(base)) {
+        return base;
+      }
+      if (path.isEmpty()) {
+        return base;
+      }
+    }
+    if (isInlineOpenclawUrl(base)) {
+      return base;
+    }
+    return buildEndpoint(base, path);
+  }
+
+  private String defaultOpenclawLocalBaseUrl() {
+    String value = textValue(openclawLocalBaseUrl);
+    if (!value.isEmpty()) {
+      return value;
+    }
+    value = textValue(openclawBaseUrl);
+    return value.isEmpty() ? "http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain" : value;
+  }
+
+  private String defaultOpenclawRemoteBaseUrl() {
+    String value = textValue(openclawRemoteBaseUrl);
+    return value.isEmpty() ? "https://openclaw.example.com" : value;
+  }
+
+  private boolean looksLikeLocalOpenclawUrl(String value) {
+    String normalized = textValue(value).toLowerCase();
+    return normalized.contains("127.0.0.1") || normalized.contains("localhost") || normalized.contains(":18789");
+  }
+
+  private String normalizeOpenclawMode(Object modeValue, Object baseValue) {
+    String mode = textValue(modeValue).toLowerCase();
+    if ("local".equals(mode) || "本地".equals(mode)) {
+      return "local";
+    }
+    if ("remote".equals(mode) || "远程".equals(mode)) {
+      return "remote";
+    }
+    String base = textValue(baseValue);
+    if (looksLikeLocalOpenclawUrl(base)) {
+      return "local";
+    }
+    if (!base.isEmpty()) {
+      return "remote";
+    }
+    return "local";
+  }
+
+  private String resolveOpenclawBaseUrl(String mode, String localBaseUrl, String remoteBaseUrl, String fallbackBaseUrl) {
+    String normalizedMode = normalizeOpenclawMode(mode, fallbackBaseUrl);
+    if ("remote".equals(normalizedMode)) {
+      return String.valueOf(firstNonEmpty(remoteBaseUrl, fallbackBaseUrl, defaultOpenclawRemoteBaseUrl()));
+    }
+    return String.valueOf(firstNonEmpty(localBaseUrl, fallbackBaseUrl, defaultOpenclawLocalBaseUrl()));
+  }
+
+  private String effectiveOpenclawBaseUrl(Map<String, Object> settings) {
+    if (settings == null) {
+      return defaultOpenclawLocalBaseUrl();
+    }
+    String mode = textValue(settings.get("openclawMode"));
+    String localBase = textValue(settings.get("openclawLocalBaseUrl"));
+    String remoteBase = textValue(settings.get("openclawRemoteBaseUrl"));
+    String base = textValue(settings.get("openclawBaseUrl"));
+    return resolveOpenclawBaseUrl(mode, localBase, remoteBase, base);
+  }
+
+  private void normalizeAssistantSettingsModes() {
+    if (assistantSettings.isEmpty()) {
+      return;
+    }
+    boolean changed = false;
+    for (Map<String, Object> item : assistantSettings.values()) {
+      if (item == null) {
+        continue;
+      }
+      String localBase = String.valueOf(firstNonEmpty(item.get("openclawLocalBaseUrl"), defaultOpenclawLocalBaseUrl()));
+      String remoteBase = String.valueOf(firstNonEmpty(item.get("openclawRemoteBaseUrl"), defaultOpenclawRemoteBaseUrl()));
+      String base = String.valueOf(firstNonEmpty(item.get("openclawBaseUrl"), localBase));
+      String mode = normalizeOpenclawMode(item.get("openclawMode"), base);
+      String resolved = resolveOpenclawBaseUrl(mode, localBase, remoteBase, base);
+      if (!mode.equals(String.valueOf(item.getOrDefault("openclawMode", "")))) {
+        item.put("openclawMode", mode);
+        changed = true;
+      }
+      if (!localBase.equals(String.valueOf(item.getOrDefault("openclawLocalBaseUrl", "")))) {
+        item.put("openclawLocalBaseUrl", localBase);
+        changed = true;
+      }
+      if (!remoteBase.equals(String.valueOf(item.getOrDefault("openclawRemoteBaseUrl", "")))) {
+        item.put("openclawRemoteBaseUrl", remoteBase);
+        changed = true;
+      }
+      if (!resolved.equals(String.valueOf(item.getOrDefault("openclawBaseUrl", "")))) {
+        item.put("openclawBaseUrl", resolved);
+        changed = true;
+      }
+    }
+    if (changed) {
+      persistAll();
+    }
+  }
+
+  private boolean isInlineOpenclawUrl(String base) {
+    String normalized = textValue(base);
+    return normalized.contains("session=") || normalized.contains("/chat");
+  }
+
+  private String appendQuery(String url, String key, String value) {
+    if (url == null || url.isEmpty() || value == null || value.isEmpty()) {
+      return url == null ? "" : url;
+    }
+    if (url.contains(key + "=")) {
+      return url;
+    }
+    return url + (url.contains("?") ? "&" : "?") + key + "=" + value;
+  }
+
+  private Map<String, Object> invokeOpenclawAssistant(Map<String, Object> settings, Map<String, Object> requestBody) {
+    String endpoint = assistantEndpoint(settings, "openclawMessagePath");
+    if (endpoint.isEmpty()) {
+      return null;
+    }
+    try {
+      String responseBody = postJson(endpoint, requestBody);
+      Map<String, Object> response = parseJsonObject(responseBody);
+      Map<String, Object> raw = flattenOpenclawEnvelope(response);
+      return normalizeOpenclawAssistantResponse(raw);
+    } catch (Exception error) {
+      return null;
+    }
+  }
+
+  private Map<String, Object> flattenOpenclawEnvelope(Map<String, Object> response) {
+    Map<String, Object> raw = new LinkedHashMap<>();
+    if (response == null) {
+      return raw;
+    }
+    raw.putAll(cloneMap(response));
+    for (String key : Arrays.asList("data", "result", "payload", "output", "assistant", "response")) {
+      Object value = response.get(key);
+      if (value instanceof Map) {
+        raw.putAll(cloneMap((Map<String, Object>) value));
+      }
+    }
+    return raw;
+  }
+
+  private Map<String, Object> normalizeOpenclawAssistantResponse(Map<String, Object> raw) {
+    Map<String, Object> normalized = new LinkedHashMap<>();
+    if (raw == null) {
+      return normalized;
+    }
+    Object replyText = firstNonEmpty(
+        raw.get("replyText"),
+        raw.get("reply"),
+        raw.get("answer"),
+        raw.get("content"),
+        raw.get("message"),
+        raw.get("text"),
+        findDeepValue(raw, "replyText", "reply", "answer", "content", "message", "text")
+    );
+    Object intent = firstNonEmpty(
+        raw.get("intent"),
+        raw.get("scene"),
+        raw.get("type"),
+        findDeepValue(raw, "intent", "scene", "type")
+    );
+    Object confidence = firstNonEmpty(
+        raw.get("confidence"),
+        raw.get("score"),
+        raw.get("probability"),
+        findDeepValue(raw, "confidence", "score", "probability")
+    );
+    Object needConfirm = firstNonEmpty(
+        raw.get("needConfirm"),
+        raw.get("confirm"),
+        raw.get("requiresConfirm"),
+        findDeepValue(raw, "needConfirm", "confirm", "requiresConfirm")
+    );
+    Object handoff = firstNonEmpty(
+        raw.get("handoff"),
+        raw.get("transferToHuman"),
+        raw.get("needHandoff"),
+        findDeepValue(raw, "handoff", "transferToHuman", "needHandoff")
+    );
+    Object action = firstNonEmpty(raw.get("action"), findDeepValue(raw, "action"));
+    Object slots = firstNonEmpty(raw.get("slots"), findDeepValue(raw, "slots"));
+    Object quickReplies = firstNonEmpty(
+        raw.get("quickReplies"),
+        raw.get("suggestions"),
+        raw.get("replies"),
+        findDeepValue(raw, "quickReplies", "suggestions", "replies")
+    );
+    Object reason = firstNonEmpty(
+        raw.get("reason"),
+        raw.get("explanation"),
+        raw.get("summary"),
+        findDeepValue(raw, "reason", "explanation", "summary")
+    );
+    if (replyText != null) {
+      normalized.put("replyText", String.valueOf(replyText));
+    }
+    if (intent != null) {
+      normalized.put("intent", String.valueOf(intent));
+    }
+    if (confidence != null) {
+      try {
+        normalized.put("confidence", Double.parseDouble(String.valueOf(confidence)));
+      } catch (Exception ignored) {
+        normalized.put("confidence", 0.85);
+      }
+    }
+    normalized.put("needConfirm", truthy(needConfirm));
+    normalized.put("handoff", truthy(handoff));
+    if (action instanceof Map) {
+      normalized.put("action", cloneMap((Map<String, Object>) action));
+    } else {
+      Object actionType = firstNonEmpty(raw.get("actionType"), findDeepValue(raw, "actionType"));
+      Object actionParams = firstNonEmpty(raw.get("actionParams"), findDeepValue(raw, "actionParams"));
+      if (actionType != null || actionParams != null) {
+      normalized.put("action", mapOf(
+          "type", String.valueOf(firstNonEmpty(actionType, "none")),
+          "params", actionParams instanceof Map ? cloneMap((Map<String, Object>) actionParams) : new LinkedHashMap<>()
+      ));
+      }
+    }
+    if (slots instanceof Map) {
+      normalized.put("slots", cloneMap((Map<String, Object>) slots));
+    } else {
+      Map<String, Object> slotMap = new LinkedHashMap<>();
+      for (String key : Arrays.asList("communityId", "community", "houseId", "room", "building", "unit", "category", "title", "content", "phone")) {
+        if (raw.get(key) != null) {
+          slotMap.put(key, raw.get(key));
+        }
+      }
+      normalized.put("slots", slotMap);
+    }
+    if (quickReplies instanceof List) {
+      normalized.put("quickReplies", normalizeStringList(quickReplies));
+    }
+    if (reason != null) {
+      normalized.put("reason", String.valueOf(reason));
+    }
+    normalized.put("raw", raw);
+    return normalized;
+  }
+
+  private Object findDeepValue(Object source, String... keys) {
+    if (source == null || keys == null || keys.length == 0) {
+      return null;
+    }
+    List<String> targetKeys = Arrays.asList(keys);
+    return findDeepValueRecursive(source, targetKeys, 0, 6);
+  }
+
+  private Object findDeepValueRecursive(Object source, List<String> keys, int depth, int maxDepth) {
+    if (source == null || depth > maxDepth) {
+      return null;
+    }
+    if (source instanceof Map) {
+      Map<?, ?> map = (Map<?, ?>) source;
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        String key = String.valueOf(entry.getKey());
+        Object value = entry.getValue();
+        if (keys.contains(key) && value != null && String.valueOf(value).trim().length() > 0) {
+          return value;
+        }
+      }
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        Object value = entry.getValue();
+        Object found = findDeepValueRecursive(value, keys, depth + 1, maxDepth);
+        if (found != null && String.valueOf(found).trim().length() > 0) {
+          return found;
+        }
+      }
+    } else if (source instanceof List) {
+      for (Object item : (List<?>) source) {
+        Object found = findDeepValueRecursive(item, keys, depth + 1, maxDepth);
+        if (found != null && String.valueOf(found).trim().length() > 0) {
+          return found;
+        }
+      }
+    }
+    return null;
+  }
+
+  private Map<String, Object> buildHeuristicAssistantResponse(String token, AssistantMessageRequest request, Map<String, Object> session, Map<String, Object> settings, Map<String, Object> context) {
+    String input = String.valueOf(firstNonEmpty(request == null ? null : request.content, ""));
+    String intent = classifyIntentName(input);
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("intent", intent);
+    response.put("confidence", 0.86);
+    response.put("needConfirm", false);
+    response.put("handoff", false);
+    response.put("slots", new LinkedHashMap<>());
+    response.put("action", mapOf("type", "none", "params", new LinkedHashMap<>()));
+    response.put("quickReplies", Arrays.asList("查物业费", "查报修", "提交报修", "提交投诉", "转人工"));
+    response.put("reason", "本地规则回退");
+    if ("query_bill".equals(intent) || input.contains("物业费") || input.contains("缴费")) {
+      List<Map<String, Object>> billsList = listBills(token, null);
+      List<Map<String, Object>> unpaid = billsList.stream()
+          .filter(item -> "unpaid".equals(String.valueOf(item.get("status"))))
+          .collect(Collectors.toList());
+      response.put("replyText", unpaid.isEmpty()
+          ? "当前没有找到待缴账单。"
+          : "你当前有 " + unpaid.size() + " 条待缴账单。");
+      response.put("action", mapOf("type", "query_bill", "params", mapOf(
+          "communityId", context.getOrDefault("communityId", ""),
+          "houseId", context.getOrDefault("houseId", "")
+      )));
+      response.put("quickReplies", Arrays.asList("查看账单", "去缴费", "查报修", "提交报修", "转人工"));
+      response.put("reason", "账单查询");
+      return response;
+    }
+    if ("query_repair".equals(intent) || input.contains("报修")) {
+      List<Map<String, Object>> repairList = listRepairs(token, null);
+      List<Map<String, Object>> active = repairList.stream()
+          .filter(item -> "processing".equals(String.valueOf(item.get("status"))) || "pending".equals(String.valueOf(item.get("status"))))
+          .collect(Collectors.toList());
+      response.put("replyText", active.isEmpty()
+          ? "当前没有处理中报修。"
+          : "你当前有 " + active.size() + " 条处理中或待处理报修。");
+      response.put("action", mapOf("type", "query_repair", "params", mapOf(
+          "communityId", context.getOrDefault("communityId", ""),
+          "houseId", context.getOrDefault("houseId", "")
+      )));
+      response.put("quickReplies", Arrays.asList("提交报修", "查看报修详情", "查物业费", "转人工"));
+      response.put("reason", "报修查询");
+      return response;
+    }
+    if ("create_repair".equals(intent) || input.contains("漏") || input.contains("坏") || input.contains("报修")) {
+      Map<String, Object> draft = draftRepair(token, mapOf("inputText", input));
+      response.put("replyText", String.valueOf(draft.getOrDefault("suggestion", "建议补充地点、是否可上门和联系人电话。")));
+      response.put("needConfirm", true);
+      response.put("action", mapOf("type", "create_repair", "params", mapOf(
+          "title", draft.getOrDefault("title", input.isEmpty() ? "报修内容" : input),
+          "category", draft.getOrDefault("category", "other"),
+          "suggestion", draft.getOrDefault("suggestion", ""),
+          "communityId", context.getOrDefault("communityId", ""),
+          "houseId", context.getOrDefault("houseId", ""),
+          "room", context.getOrDefault("room", ""),
+          "phone", context.getOrDefault("phone", "")
+      )));
+      response.put("quickReplies", Arrays.asList("确认提交报修", "再补充一下", "查报修", "转人工"));
+      response.put("reason", "报修草稿");
+      return response;
+    }
+    if ("create_feedback".equals(intent) || input.contains("投诉") || input.contains("表扬") || input.contains("反馈")) {
+      Map<String, Object> draft = draftFeedback(token, mapOf("inputText", input));
+      response.put("replyText", String.valueOf(draft.getOrDefault("suggestion", "建议补充楼栋、时间和具体影响。")));
+      response.put("needConfirm", true);
+      response.put("action", mapOf("type", "create_feedback", "params", mapOf(
+          "title", draft.getOrDefault("title", input.isEmpty() ? "反馈内容" : input),
+          "category", draft.getOrDefault("category", "其他"),
+          "suggestion", draft.getOrDefault("suggestion", ""),
+          "communityId", context.getOrDefault("communityId", ""),
+          "houseId", context.getOrDefault("houseId", ""),
+          "room", context.getOrDefault("room", ""),
+          "phone", context.getOrDefault("phone", "")
+      )));
+      response.put("quickReplies", Arrays.asList("确认提交投诉", "再补充一下", "查公告", "转人工"));
+      response.put("reason", "投诉/表扬草稿");
+      return response;
+    }
+    if ("handoff".equals(intent) || input.contains("人工") || input.contains("客服") || input.contains("找主管")) {
+      response.put("replyText", "已为你转人工，稍后会有工作人员跟进。");
+      response.put("handoff", true);
+      response.put("needConfirm", false);
+      response.put("action", mapOf("type", "handoff", "params", mapOf(
+          "communityId", context.getOrDefault("communityId", ""),
+          "houseId", context.getOrDefault("houseId", "")
+      )));
+      response.put("quickReplies", Arrays.asList("继续问物业费", "继续查报修", "提交投诉", "提交报修"));
+      response.put("reason", "用户请求转人工");
+      return response;
+    }
+    if ("query_notice".equals(intent) || input.contains("公告")) {
+      List<Map<String, Object>> noticesList = listNotices();
+      String title = noticesList.isEmpty() ? "暂无公告" : String.valueOf(noticesList.get(0).getOrDefault("title", "最新公告"));
+      response.put("replyText", noticesList.isEmpty() ? "当前没有最新公告。" : "我查到最新公告：" + title);
+      response.put("action", mapOf("type", "query_notice", "params", mapOf("communityId", context.getOrDefault("communityId", ""))));
+      response.put("quickReplies", Arrays.asList("查看公告", "查物业费", "提交报修", "转人工"));
+      response.put("reason", "公告查询");
+      return response;
+    }
+    response.put("replyText", "我已经看懂你的问题了，可以继续说详细一点，或者直接点下方快捷入口。");
+    response.put("quickReplies", Arrays.asList("查物业费", "查报修", "提交报修", "提交投诉", "转人工"));
+    response.put("reason", "通用回复");
+    return response;
+  }
+
+  private boolean truthy(Object value) {
+    if (value == null) {
+      return false;
+    }
+    if (value instanceof Boolean) {
+      return (Boolean) value;
+    }
+    String text = String.valueOf(value).trim().toLowerCase();
+    return "true".equals(text) || "1".equals(text) || "yes".equals(text) || "y".equals(text) || "是".equals(text);
+  }
+
   private String normalizeSeverityValue(String value) {
     String text = value == null ? "" : value.trim().toLowerCase();
     if ("high".equals(text) || "高".equals(text) || "urgent".equals(text)) {
@@ -2045,6 +2738,168 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return name.isEmpty() ? currentCommunityName() : name;
   }
 
+  private Map<String, Object> communityRecordById(String id) {
+    String target = textValue(id);
+    if (target.isEmpty()) {
+      return activeCommunityRecord();
+    }
+    Map<String, Object> record = communities.get(target);
+    if (record == null) {
+      return activeCommunityRecord();
+    }
+    Map<String, Object> item = cloneMap(record);
+    normalizeCommunityFeatureFlags(item);
+    item.putIfAbsent("defaultSupervisor", defaultSupervisor);
+    item.putIfAbsent("supervisors", Arrays.asList(String.valueOf(item.getOrDefault("defaultSupervisor", defaultSupervisor))));
+    return item;
+  }
+
+  private Map<String, Object> defaultAssistantSettings(String communityId) {
+    Map<String, Object> communityRecord = communityRecordById(communityId);
+    String normalizedCommunityId = textValue(communityRecord.get("id"));
+    if (normalizedCommunityId.isEmpty()) {
+      normalizedCommunityId = currentCommunityId();
+    }
+    String normalizedCommunityName = String.valueOf(communityRecord.getOrDefault("projectName", communityRecord.getOrDefault("name", currentCommunityName())));
+    String supervisor = String.valueOf(communityRecord.getOrDefault("defaultSupervisor", currentSupervisorName()));
+    List<String> supervisors = normalizeStringList(communityRecord.get("supervisors"));
+    if (supervisors.isEmpty() && !supervisor.isEmpty()) {
+      supervisors = Arrays.asList(supervisor);
+    }
+    String localBaseUrl = defaultOpenclawLocalBaseUrl();
+    String remoteBaseUrl = defaultOpenclawRemoteBaseUrl();
+    Map<String, Object> settings = mapOf(
+        "id", normalizedCommunityId,
+        "communityId", normalizedCommunityId,
+        "community", normalizedCommunityName,
+        "enabled", true,
+        "assistantName", "物业AI客服",
+        "openclawMode", "local",
+        "openclawBaseUrl", localBaseUrl,
+        "openclawLocalBaseUrl", localBaseUrl,
+        "openclawRemoteBaseUrl", remoteBaseUrl,
+        "openclawModel", "openclaw-assistant",
+        "openclawSessionPath", "/session/{sessionId}",
+        "openclawMessagePath", "/api/v1/assistant/messages",
+        "openclawHandoffPath", "/api/v1/assistant/handoff",
+        "promptVersion", "v1",
+        "analysisTimeoutMs", Math.max(1000L, openclawAnalysisTimeoutMs),
+        "fallbackToHeuristic", true,
+        "autoCreateSession", true,
+        "autoSaveHistory", true,
+        "autoHandoff", true,
+        "promptTemplate", "你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON。",
+        "enabledScenes", Arrays.asList("query_bill", "query_repair", "create_repair", "create_feedback", "query_notice", "handoff"),
+        "handoffKeywords", Arrays.asList("人工", "客服", "投诉升级", "找主管"),
+        "defaultSupervisor", supervisor,
+        "supervisors", supervisors,
+        "createTime", now(),
+        "updateTime", now()
+    );
+    return settings;
+  }
+
+  private Map<String, Object> assistantSettingsRecord(String communityId) {
+    String target = textValue(communityId);
+    if (target.isEmpty()) {
+      target = currentCommunityId();
+    }
+    Map<String, Object> record = assistantSettings.get(target);
+    if (record != null) {
+      Map<String, Object> item = cloneMap(record);
+      Map<String, Object> communityRecord = communityRecordById(target);
+      item.putIfAbsent("communityId", target);
+      item.putIfAbsent("community", communityNameById(target));
+      item.putIfAbsent("enabled", true);
+      item.putIfAbsent("assistantName", "物业AI客服");
+      item.put("openclawMode", normalizeOpenclawMode(item.get("openclawMode"), item.get("openclawBaseUrl")));
+      item.putIfAbsent("openclawLocalBaseUrl", defaultOpenclawLocalBaseUrl());
+      item.putIfAbsent("openclawRemoteBaseUrl", defaultOpenclawRemoteBaseUrl());
+      item.put("openclawBaseUrl", resolveOpenclawBaseUrl(
+          String.valueOf(item.getOrDefault("openclawMode", "local")),
+          String.valueOf(item.getOrDefault("openclawLocalBaseUrl", defaultOpenclawLocalBaseUrl())),
+          String.valueOf(item.getOrDefault("openclawRemoteBaseUrl", defaultOpenclawRemoteBaseUrl())),
+          String.valueOf(item.getOrDefault("openclawBaseUrl", openclawBaseUrl))
+      ));
+      item.putIfAbsent("openclawModel", "openclaw-assistant");
+      item.putIfAbsent("openclawSessionPath", "/session/{sessionId}");
+      item.putIfAbsent("openclawMessagePath", "/api/v1/assistant/messages");
+      item.putIfAbsent("openclawHandoffPath", "/api/v1/assistant/handoff");
+      item.putIfAbsent("promptVersion", "v1");
+      item.putIfAbsent("analysisTimeoutMs", Math.max(1000L, openclawAnalysisTimeoutMs));
+      item.putIfAbsent("fallbackToHeuristic", true);
+      item.putIfAbsent("autoCreateSession", true);
+      item.putIfAbsent("autoSaveHistory", true);
+      item.putIfAbsent("autoHandoff", true);
+      item.putIfAbsent("promptTemplate", "你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON。");
+      item.putIfAbsent("enabledScenes", Arrays.asList("query_bill", "query_repair", "create_repair", "create_feedback", "query_notice", "handoff"));
+      item.putIfAbsent("handoffKeywords", Arrays.asList("人工", "客服", "投诉升级", "找主管"));
+      item.putIfAbsent("defaultSupervisor", currentSupervisorName());
+      item.putIfAbsent("supervisors", normalizeStringList(communityRecord.get("supervisors")));
+      item.putIfAbsent("createTime", now());
+      item.put("updateTime", now());
+      item.put("supervisors", normalizeStringList(item.get("supervisors")));
+      return item;
+    }
+    return defaultAssistantSettings(target);
+  }
+
+  private Map<String, Object> upsertAssistantSettings(Map<String, Object> payload) {
+    String communityId = textValue(payload.get("communityId"));
+    if (communityId.isEmpty()) {
+      communityId = currentCommunityId();
+    }
+    Map<String, Object> communityRecord = communityRecordById(communityId);
+    String communityName = String.valueOf(payload.getOrDefault("community", communityRecord.getOrDefault("projectName", communityRecord.getOrDefault("name", currentCommunityName()))));
+    Map<String, Object> previous = assistantSettings.getOrDefault(communityId, defaultAssistantSettings(communityId));
+    Map<String, Object> record = new LinkedHashMap<>(previous);
+    record.put("id", communityId);
+    record.put("communityId", communityId);
+    record.put("community", communityName);
+    String mode = normalizeOpenclawMode(firstNonEmpty(payload.get("openclawMode"), previous.get("openclawMode")), previous.get("openclawBaseUrl"));
+    String localBaseUrl = String.valueOf(firstNonEmpty(payload.get("openclawLocalBaseUrl"), previous.get("openclawLocalBaseUrl"), defaultOpenclawLocalBaseUrl()));
+    String remoteBaseUrl = String.valueOf(firstNonEmpty(payload.get("openclawRemoteBaseUrl"), previous.get("openclawRemoteBaseUrl"), defaultOpenclawRemoteBaseUrl()));
+    record.put("enabled", payload.getOrDefault("enabled", record.getOrDefault("enabled", true)));
+    record.put("assistantName", String.valueOf(payload.getOrDefault("assistantName", record.getOrDefault("assistantName", "物业AI客服"))));
+    record.put("openclawMode", mode);
+    record.put("openclawLocalBaseUrl", localBaseUrl);
+    record.put("openclawRemoteBaseUrl", remoteBaseUrl);
+    record.put("openclawBaseUrl", resolveOpenclawBaseUrl(
+        mode,
+        localBaseUrl,
+        remoteBaseUrl,
+        String.valueOf(firstNonEmpty(payload.get("openclawBaseUrl"), record.getOrDefault("openclawBaseUrl", openclawBaseUrl)))
+    ));
+    record.put("openclawModel", String.valueOf(payload.getOrDefault("openclawModel", record.getOrDefault("openclawModel", "openclaw-assistant"))));
+    record.put("openclawSessionPath", String.valueOf(payload.getOrDefault("openclawSessionPath", record.getOrDefault("openclawSessionPath", "/session/{sessionId}"))));
+    record.put("openclawMessagePath", String.valueOf(payload.getOrDefault("openclawMessagePath", record.getOrDefault("openclawMessagePath", "/api/v1/assistant/messages"))));
+    record.put("openclawHandoffPath", String.valueOf(payload.getOrDefault("openclawHandoffPath", record.getOrDefault("openclawHandoffPath", "/api/v1/assistant/handoff"))));
+    record.put("promptVersion", String.valueOf(payload.getOrDefault("promptVersion", record.getOrDefault("promptVersion", "v1"))));
+    Object timeoutValue = payload.getOrDefault("analysisTimeoutMs", record.getOrDefault("analysisTimeoutMs", Math.max(1000L, openclawAnalysisTimeoutMs)));
+    record.put("analysisTimeoutMs", timeoutValue == null ? Math.max(1000L, openclawAnalysisTimeoutMs) : Long.parseLong(String.valueOf(timeoutValue)));
+    record.put("fallbackToHeuristic", payload.getOrDefault("fallbackToHeuristic", record.getOrDefault("fallbackToHeuristic", true)));
+    record.put("autoCreateSession", payload.getOrDefault("autoCreateSession", record.getOrDefault("autoCreateSession", true)));
+    record.put("autoSaveHistory", payload.getOrDefault("autoSaveHistory", record.getOrDefault("autoSaveHistory", true)));
+    record.put("autoHandoff", payload.getOrDefault("autoHandoff", record.getOrDefault("autoHandoff", true)));
+    record.put("promptTemplate", String.valueOf(payload.getOrDefault("promptTemplate", record.getOrDefault("promptTemplate", "你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON."))));
+    record.put("enabledScenes", normalizeStringList(payload.get("enabledScenes")).isEmpty()
+        ? normalizeStringList(record.get("enabledScenes"))
+        : normalizeStringList(payload.get("enabledScenes")));
+    record.put("handoffKeywords", normalizeStringList(payload.get("handoffKeywords")).isEmpty()
+        ? normalizeStringList(record.get("handoffKeywords"))
+        : normalizeStringList(payload.get("handoffKeywords")));
+    record.put("defaultSupervisor", String.valueOf(payload.getOrDefault("defaultSupervisor", record.getOrDefault("defaultSupervisor", currentSupervisorName()))));
+    record.put("supervisors", normalizeStringList(payload.get("supervisors")).isEmpty()
+        ? normalizeStringList(communityRecord.get("supervisors"))
+        : normalizeStringList(payload.get("supervisors")));
+    record.put("extra", payload.getOrDefault("extra", record.getOrDefault("extra", new LinkedHashMap<>())));
+    record.put("createTime", previous.getOrDefault("createTime", now()));
+    record.put("updateTime", now());
+    assistantSettings.put(communityId, record);
+    persistAll();
+    return cloneMap(record);
+  }
+
   private void bindCommunityFields(Map<String, Object> record) {
     if (record == null) {
       return;
@@ -2069,6 +2924,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     feedbacks.values().forEach(this::bindCommunityFields);
     complaintQueue.values().forEach(this::bindCommunityFields);
     complaintRules.values().forEach(this::bindCommunityFields);
+    assistantFaqs.values().forEach(this::bindCommunityFields);
+    assistantSessions.values().forEach(this::bindCommunityFields);
     express.values().forEach(this::bindCommunityFields);
     vegetableOrders.values().forEach(this::bindCommunityFields);
     houses.values().forEach(this::bindCommunityFields);
@@ -3194,17 +4051,44 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   @Override
   public Map<String, Object> createAssistantSession(String token, AssistantSessionRequest request) {
+    AssistantSessionRequest safeRequest = request == null ? new AssistantSessionRequest() : request;
+    Map<String, Object> settings = assistantSettingsRecord(safeRequest.communityId);
+    String communityId = textValue(firstNonEmpty(safeRequest.communityId, settings.get("communityId"), currentCommunityId()));
+    String communityName = String.valueOf(firstNonEmpty(safeRequest.community, settings.get("community"), communityNameById(communityId)));
     String id = newId();
     String sessionToken = "session-" + id;
+    Map<String, Object> context = safeRequest.context == null ? new LinkedHashMap<>() : new LinkedHashMap<>(safeRequest.context);
+    context.putIfAbsent("communityId", communityId);
+    context.putIfAbsent("community", communityName);
+    context.putIfAbsent("assistantName", String.valueOf(settings.getOrDefault("assistantName", "物业AI客服")));
+    context.putIfAbsent("defaultSupervisor", String.valueOf(settings.getOrDefault("defaultSupervisor", currentSupervisorName())));
+    context.putIfAbsent("enabledScenes", normalizeStringList(settings.get("enabledScenes")));
     Map<String, Object> session = mapOf(
         "id", id,
-        "scene", request.scene == null ? "general" : request.scene,
-        "subjectId", request.subjectId == null ? "" : request.subjectId,
-        "prompt", request.prompt == null ? "" : request.prompt,
-        "inputText", request.inputText == null ? "" : request.inputText,
+        "scene", safeRequest.scene == null ? "general" : safeRequest.scene,
+        "subjectId", safeRequest.subjectId == null ? "" : safeRequest.subjectId,
+        "communityId", communityId,
+        "community", communityName,
+        "houseId", safeRequest.houseId == null ? "" : safeRequest.houseId,
+        "userId", safeRequest.userId == null ? "" : safeRequest.userId,
+        "userName", safeRequest.userName == null ? "" : safeRequest.userName,
+        "room", safeRequest.room == null ? "" : safeRequest.room,
+        "phone", safeRequest.phone == null ? "" : safeRequest.phone,
+        "assistantName", String.valueOf(settings.getOrDefault("assistantName", "物业AI客服")),
+        "promptVersion", safeRequest.promptVersion == null ? String.valueOf(settings.getOrDefault("promptVersion", "v1")) : safeRequest.promptVersion,
+        "prompt", safeRequest.prompt == null ? String.valueOf(settings.getOrDefault("promptTemplate", "")) : safeRequest.prompt,
+        "inputText", safeRequest.inputText == null ? "" : safeRequest.inputText,
+        "enabledScenes", normalizeStringList(settings.get("enabledScenes")),
+        "defaultSupervisor", String.valueOf(settings.getOrDefault("defaultSupervisor", currentSupervisorName())),
+        "openclawBaseUrl", String.valueOf(settings.getOrDefault("openclawBaseUrl", openclawBaseUrl)),
+        "openclawSessionPath", String.valueOf(settings.getOrDefault("openclawSessionPath", "/session/{sessionId}")),
+        "openclawMessagePath", String.valueOf(settings.getOrDefault("openclawMessagePath", "/api/v1/assistant/messages")),
+        "openclawHandoffPath", String.valueOf(settings.getOrDefault("openclawHandoffPath", "/api/v1/assistant/handoff")),
+        "context", context,
+        "messages", new ArrayList<Map<String, Object>>(),
         "sessionToken", sessionToken,
         "status", "created",
-        "openclawUrl", openclawBaseUrl + "/session/" + id + "?token=" + sessionToken,
+        "openclawUrl", assistantSessionUrl(settings, id, sessionToken),
         "createTime", now()
     );
     assistantSessions.put(id, session);
@@ -3215,6 +4099,229 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   @Override
   public Map<String, Object> getAssistantSession(String token, String id) {
     return findById(assistantSessions, id, "会话");
+  }
+
+  @Override
+  public Map<String, Object> getAssistantSettings(String token, String communityId) {
+    return cloneMap(assistantSettingsRecord(communityId));
+  }
+
+  @Override
+  public Map<String, Object> saveAssistantSettings(String token, AssistantConfigRequest request) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    if (request != null) {
+      payload.put("communityId", request.communityId);
+      payload.put("community", request.community);
+      payload.put("enabled", request.enabled);
+      payload.put("assistantName", request.assistantName);
+      payload.put("openclawBaseUrl", request.openclawBaseUrl);
+      payload.put("openclawModel", request.openclawModel);
+      payload.put("openclawSessionPath", request.openclawSessionPath);
+      payload.put("openclawMessagePath", request.openclawMessagePath);
+      payload.put("openclawHandoffPath", request.openclawHandoffPath);
+      payload.put("promptVersion", request.promptVersion);
+      payload.put("analysisTimeoutMs", request.analysisTimeoutMs);
+      payload.put("fallbackToHeuristic", request.fallbackToHeuristic);
+      payload.put("autoCreateSession", request.autoCreateSession);
+      payload.put("autoSaveHistory", request.autoSaveHistory);
+      payload.put("autoHandoff", request.autoHandoff);
+      payload.put("promptTemplate", request.promptTemplate);
+      payload.put("enabledScenes", request.enabledScenes);
+      payload.put("handoffKeywords", request.handoffKeywords);
+      payload.put("defaultSupervisor", request.defaultSupervisor);
+      payload.put("extra", request.extra);
+    }
+    return upsertAssistantSettings(payload);
+  }
+
+  @Override
+  public List<Map<String, Object>> adminListAssistantFaqs(String communityId) {
+    String target = textValue(communityId);
+    return assistantFaqs.values().stream()
+        .map(this::cloneMap)
+        .filter(item -> target.isEmpty() || target.equals(String.valueOf(item.getOrDefault("communityId", ""))))
+        .sorted(Comparator.comparing((Map<String, Object> item) -> String.valueOf(item.getOrDefault("orderNo", 0)))
+            .thenComparing(item -> String.valueOf(item.getOrDefault("createTime", "")), Comparator.reverseOrder()))
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Map<String, Object> adminGetAssistantFaq(String id) {
+    Map<String, Object> item = assistantFaqs.get(textValue(id));
+    if (item == null) {
+      throw new BusinessException(404, "FAQ 不存在");
+    }
+    return cloneMap(item);
+  }
+
+  @Override
+  public Map<String, Object> adminSaveAssistantFaq(Map<String, Object> payload) {
+    Map<String, Object> source = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
+    String id = textValue(source.get("id"));
+    if (id.isEmpty()) {
+      id = "faq-" + newId();
+    }
+    String communityId = textValue(source.get("communityId"));
+    if (communityId.isEmpty()) {
+      communityId = currentCommunityId();
+    }
+    Map<String, Object> communityRecord = communityRecordById(communityId);
+    String communityName = String.valueOf(firstNonEmpty(source.get("community"), communityRecord.getOrDefault("projectName", communityRecord.getOrDefault("name", currentCommunityName()))));
+    Map<String, Object> previous = assistantFaqs.getOrDefault(id, new LinkedHashMap<>());
+    Map<String, Object> record = new LinkedHashMap<>(previous);
+    record.put("id", id);
+    record.put("communityId", communityId);
+    record.put("community", communityName);
+    record.put("responsibleSupervisor", String.valueOf(firstNonEmpty(
+        source.get("responsibleSupervisor"),
+        previous.get("responsibleSupervisor"),
+        communityRecord.getOrDefault("defaultSupervisor", currentSupervisorName())
+    )));
+    record.put("question", String.valueOf(source.getOrDefault("question", record.getOrDefault("question", ""))));
+    record.put("answer", String.valueOf(source.getOrDefault("answer", record.getOrDefault("answer", ""))));
+    record.put("tags", normalizeStringList(source.get("tags")).isEmpty()
+        ? normalizeStringList(record.get("tags"))
+        : normalizeStringList(source.get("tags")));
+    record.put("enabled", truthy(source.getOrDefault("enabled", record.getOrDefault("enabled", true))));
+    Object orderNoValue = firstNonEmpty(source.get("orderNo"), record.get("orderNo"), 0);
+    try {
+      record.put("orderNo", Integer.parseInt(String.valueOf(orderNoValue)));
+    } catch (Exception error) {
+      record.put("orderNo", 0);
+    }
+    record.put("createTime", previous.getOrDefault("createTime", now()));
+    record.put("updateTime", now());
+    assistantFaqs.put(id, record);
+    persistAll();
+    return cloneMap(record);
+  }
+
+  @Override
+  public void adminDeleteAssistantFaq(String id) {
+    if (assistantFaqs.remove(textValue(id)) == null) {
+      throw new BusinessException(404, "FAQ 不存在");
+    }
+    persistAll();
+  }
+
+  @Override
+  public List<Map<String, Object>> adminListAssistantSessions(String communityId) {
+    String target = textValue(communityId);
+    return assistantSessions.values().stream()
+        .map(this::cloneMap)
+        .filter(item -> target.isEmpty() || target.equals(String.valueOf(item.getOrDefault("communityId", ""))))
+        .sorted(Comparator.comparing((Map<String, Object> item) -> String.valueOf(item.getOrDefault("updateTime", item.getOrDefault("createTime", ""))), Comparator.reverseOrder()))
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Map<String, Object> assistantMessage(String token, AssistantMessageRequest request) {
+    AssistantMessageRequest safeRequest = request == null ? new AssistantMessageRequest() : request;
+    Map<String, Object> session = resolveAssistantSession(safeRequest);
+    Map<String, Object> settings = assistantSettingsRecord(String.valueOf(firstNonEmpty(safeRequest.communityId, session.get("communityId"), currentCommunityId())));
+    String sessionId = String.valueOf(session.getOrDefault("id", ""));
+    String content = String.valueOf(firstNonEmpty(safeRequest.content, ""));
+    String role = String.valueOf(firstNonEmpty(safeRequest.role, "user"));
+    Map<String, Object> context = assistantMessageContext(token, safeRequest, session, settings);
+    List<Map<String, Object>> history = new ArrayList<>(assistantSessionMessages(session));
+    Map<String, Object> requestBody = mapOf(
+        "sessionId", sessionId,
+        "sessionToken", session.getOrDefault("sessionToken", ""),
+        "scene", String.valueOf(firstNonEmpty(safeRequest.scene, session.get("scene"), "general")),
+        "role", role,
+        "contentType", String.valueOf(firstNonEmpty(safeRequest.contentType, "text")),
+        "content", content,
+        "communityId", String.valueOf(firstNonEmpty(safeRequest.communityId, session.get("communityId"), currentCommunityId())),
+        "community", String.valueOf(firstNonEmpty(session.get("community"), communityNameById(String.valueOf(session.getOrDefault("communityId", currentCommunityId()))))),
+        "houseId", String.valueOf(firstNonEmpty(safeRequest.houseId, session.get("houseId"), "")),
+        "userId", String.valueOf(firstNonEmpty(safeRequest.userId, session.get("userId"), "")),
+        "userName", String.valueOf(firstNonEmpty(safeRequest.userName, session.get("userName"), "")),
+        "room", String.valueOf(firstNonEmpty(safeRequest.room, session.get("room"), "")),
+        "phone", String.valueOf(firstNonEmpty(safeRequest.phone, session.get("phone"), "")),
+        "enabledScenes", normalizeStringList(settings.get("enabledScenes")),
+        "history", history,
+        "settings", assistantSettingsSummary(settings),
+        "context", context,
+        "promptVersion", String.valueOf(firstNonEmpty(safeRequest.promptVersion, session.get("promptVersion"), settings.get("promptVersion"), "v1")),
+        "prompt", String.valueOf(firstNonEmpty(safeRequest.prompt, session.get("prompt"), settings.get("promptTemplate"), "")),
+        "inputText", content
+    );
+    Map<String, Object> normalized = invokeOpenclawAssistant(settings, requestBody);
+    if (normalized == null || normalized.isEmpty()) {
+      normalized = buildHeuristicAssistantResponse(token, safeRequest, session, settings, context);
+    }
+    normalized.putIfAbsent("replyText", "我已收到你的问题。");
+    normalized.putIfAbsent("intent", "general");
+    normalized.putIfAbsent("confidence", 0.85);
+    normalized.putIfAbsent("needConfirm", false);
+    normalized.putIfAbsent("handoff", false);
+    normalized.putIfAbsent("quickReplies", Arrays.asList("查物业费", "查报修", "提交报修", "提交投诉", "转人工"));
+    normalized.putIfAbsent("slots", new LinkedHashMap<>());
+    normalized.putIfAbsent("action", mapOf("type", "none", "params", new LinkedHashMap<>()));
+    normalized.put("sessionId", sessionId);
+    normalized.put("communityId", session.getOrDefault("communityId", ""));
+    normalized.put("community", session.getOrDefault("community", ""));
+    normalized.put("openclawUrl", session.getOrDefault("openclawUrl", ""));
+    normalized.put("updateTime", now());
+    appendAssistantSessionMessage(session, "user", content, mapOf("contentType", String.valueOf(firstNonEmpty(safeRequest.contentType, "text")), "scene", requestBody.get("scene")));
+    appendAssistantSessionMessage(session, "assistant", String.valueOf(normalized.getOrDefault("replyText", "")), normalized);
+    session.put("status", Boolean.TRUE.equals(normalized.get("handoff")) ? "handoff" : "active");
+    session.put("lastMessageAt", now());
+    session.put("messageCount", assistantSessionMessages(session).size());
+    session.put("updateTime", now());
+    assistantSessions.put(sessionId, session);
+    persistAll();
+    return cloneMap(normalized);
+  }
+
+  @Override
+  public Map<String, Object> assistantHandoff(String token, AssistantHandoffRequest request) {
+    AssistantHandoffRequest safeRequest = request == null ? new AssistantHandoffRequest() : request;
+    Map<String, Object> session = resolveAssistantSession(safeRequest.sessionId, safeRequest.communityId, safeRequest.houseId, safeRequest.userId, safeRequest.userName, safeRequest.phone);
+    Map<String, Object> settings = assistantSettingsRecord(String.valueOf(firstNonEmpty(safeRequest.communityId, session.get("communityId"), currentCommunityId())));
+    String sessionId = String.valueOf(session.getOrDefault("id", ""));
+    String ticketId = "hf-" + newId();
+    Map<String, Object> result = mapOf(
+        "sessionId", sessionId,
+        "ticketId", ticketId,
+        "handoff", true,
+        "status", "queued",
+        "reason", String.valueOf(firstNonEmpty(safeRequest.reason, "用户请求转人工")),
+        "communityId", session.getOrDefault("communityId", ""),
+        "community", session.getOrDefault("community", ""),
+        "openclawUrl", session.getOrDefault("openclawUrl", "")
+    );
+    String endpoint = assistantEndpoint(settings, "openclawHandoffPath");
+    if (!endpoint.isEmpty()) {
+      try {
+        Map<String, Object> response = parseJsonObject(postJson(endpoint, mapOf(
+            "sessionId", sessionId,
+            "ticketId", ticketId,
+            "reason", result.get("reason"),
+            "communityId", session.getOrDefault("communityId", ""),
+            "community", session.getOrDefault("community", ""),
+            "houseId", session.getOrDefault("houseId", ""),
+            "userId", session.getOrDefault("userId", ""),
+            "userName", session.getOrDefault("userName", ""),
+            "phone", session.getOrDefault("phone", ""),
+            "context", session.getOrDefault("context", new LinkedHashMap<>()),
+            "settings", assistantSettingsSummary(settings)
+        )));
+        Map<String, Object> payload = flattenOpenclawEnvelope(response);
+        result.putAll(payload);
+        result.put("status", String.valueOf(firstNonEmpty(payload.get("status"), result.get("status"), "queued")));
+      } catch (Exception ignored) {
+        result.put("status", "queued");
+      }
+    }
+    session.put("status", "handoff");
+    session.put("handoffTicketId", ticketId);
+    session.put("handoffReason", result.get("reason"));
+    session.put("updateTime", now());
+    appendAssistantSessionMessage(session, "system", "转人工：" + String.valueOf(result.get("reason")), result);
+    assistantSessions.put(sessionId, session);
+    persistAll();
+    return cloneMap(result);
   }
 
   @Override

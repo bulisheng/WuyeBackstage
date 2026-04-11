@@ -1,6 +1,9 @@
 package com.example.property.service;
 
 import com.example.property.dto.AssistantSessionRequest;
+import com.example.property.dto.AssistantConfigRequest;
+import com.example.property.dto.AssistantHandoffRequest;
+import com.example.property.dto.AssistantMessageRequest;
 import com.example.property.dto.AuthLoginRequest;
 import com.example.property.dto.CreateDecorationRequest;
 import com.example.property.dto.CreateFeedbackRequest;
@@ -221,6 +224,24 @@ public interface PropertyDataService {
   Map<String, Object> getAssistantSession(String token, String id);
 
   Map<String, Object> callbackOpenclaw(String token, Map<String, Object> payload);
+
+  Map<String, Object> assistantMessage(String token, AssistantMessageRequest request);
+
+  Map<String, Object> assistantHandoff(String token, AssistantHandoffRequest request);
+
+  Map<String, Object> getAssistantSettings(String token, String communityId);
+
+  Map<String, Object> saveAssistantSettings(String token, AssistantConfigRequest request);
+
+  List<Map<String, Object>> adminListAssistantFaqs(String communityId);
+
+  Map<String, Object> adminGetAssistantFaq(String id);
+
+  Map<String, Object> adminSaveAssistantFaq(Map<String, Object> payload);
+
+  void adminDeleteAssistantFaq(String id);
+
+  List<Map<String, Object>> adminListAssistantSessions(String communityId);
 
   Map<String, Object> draftRepair(String token, Map<String, Object> payload);
 

@@ -52,6 +52,31 @@ npm run dev
 
 - 用微信开发者工具导入项目根目录
 - 真机联调时把 `devApiBaseUrl` 改成电脑局域网 IP
+- `pages/assistant/assistant` 是 AI 客服页，报修/投诉草稿会先缓存到本地再跳转到对应业务页
+- `web-admin/src/pages/AssistantSessionsPage.jsx` 里可以切换 `格式化 / 原始` JSON。
+- `web-admin/src/pages/AssistantPromptPage.jsx` 支持 `恢复上一次保存`。
+- `web-admin/src/pages/AssistantFaqPage.jsx` 支持按项目、标签、启用状态和当前负责人筛选 FAQ；FAQ 记录里建议保留 `responsibleSupervisor` 字段。
+
+### AI 客服联调
+
+AI 客服现在已经可以测，最小联调顺序是：
+
+1. 启动 MongoDB。
+2. 启动后端 `server`。
+3. 启动 Web 管理台 `web-admin`。
+4. 启动本地 openclaw，本地默认入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`。
+5. 在 Web 管理台 `AI 配置` 页面里确认 `openclawMode` 是 `本地`，或把 `openclawBaseUrl` 切到你的远程地址。
+6. 打开小程序首页，点击 `AI客服`。
+7. 先测这几个场景：
+   - `查本月物业费`
+   - `帮我提报修，水管漏水`
+   - `帮我生成一条投诉，楼上太吵`
+   - `转人工`
+8. 如果要看链路是否真的走了 openclaw，去 `web-admin` 的 `会话日志` 页面看原始 JSON。
+
+补充说明：
+- 如果 openclaw 没启动，AI 客服页仍然能打开，但会回退到本地规则或草稿模式。
+- 要测真正的 openclaw 返回，至少要确认后端能访问本地 openclaw 地址。
 
 ## 关键配置文件
 
@@ -73,9 +98,15 @@ npm run dev
 - 投诉规则表里的 `mentionTargets`
 
 ### 改 openclaw
+- 默认本地入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`
+- 远程入口默认占位是 `https://openclaw.example.com`
+- Web 管理台会优先保存 `openclawMode`、`openclawLocalBaseUrl`、`openclawRemoteBaseUrl`
 - `OPENCLAW_BASE_URL`
+- `OPENCLAW_LOCAL_BASE_URL`
+- `OPENCLAW_REMOTE_BASE_URL`
 - `OPENCLAW_COMPLAINT_ANALYSIS_PATH`
 - `OPENCLAW_ANALYSIS_TIMEOUT_MS`
+- 未来如果要部署成“云后端 + Mac mini 上 openclaw”，优先在 Web 管理台里切换 `本地 / 远程`，不要只改一个 baseUrl。
 
 ### 改默认主管
 - 后端 `complaint.default-supervisor`
@@ -106,6 +137,13 @@ npm run dev
 - `GET /api/v1/bills`
 - `POST /api/v1/repairs`
 - `POST /api/v1/feedbacks`
+- `POST /api/v1/assistant/messages`
+- `POST /api/v1/assistant/handoff`
+- `GET /api/v1/assistant/settings`
+- `PUT /api/v1/assistant/settings`
+- `GET /api/v1/assistant/faq`
+- `POST /api/v1/assistant/faq`
+- `GET /api/v1/assistant/sessions`
 - `GET /api/v1/admin/complaint-queue`
 - `POST /api/v1/admin/complaint-queue/{id}/analyze`
 - `POST /api/v1/admin/complaint-queue/{id}/push-feishu`
@@ -117,6 +155,19 @@ npm run dev
 3. 确保后端监听 `0.0.0.0:8080`。
 4. 关闭微信开发者工具里的域名校验，或改用正式 HTTPS 域名。
 5. 登录后如果房屋绑定正确，首页账单只会看得到当前房屋对应的账单。
+
+## AI 客服测试清单
+
+1. 打开小程序首页 `AI客服`。
+2. 输入 `查本月物业费`，确认返回当前房屋账单摘要。
+3. 输入 `帮我提报修，水管漏水`，确认是否出现报修草稿卡。
+4. 输入 `帮我生成一条投诉，楼上太吵`，确认是否出现投诉草稿卡。
+5. 输入 `转人工`，确认是否进入人工接管流程。
+6. 打开后台 `会话日志`，确认原始 JSON、格式化 JSON 和回退逻辑都正常。
+7. 如果 openclaw 未命中，检查：
+   - `openclawMode`
+   - `openclawBaseUrl`
+   - 本地 openclaw 进程是否已启动
 
 ## 修改建议
 
