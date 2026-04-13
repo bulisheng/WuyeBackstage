@@ -77,6 +77,8 @@ function normalizeMessage(message) {
   const item = Object.assign({}, message || {});
   item.roleLabel = roleLabel(item.role);
   item.messageClass = item.role === 'user' ? 'message user' : item.role === 'assistant' ? 'message assistant' : 'message system';
+  item.avatarText = item.role === 'user' ? '我' : item.role === 'assistant' ? '智' : '系';
+  item.avatarClass = item.role === 'user' ? 'user' : item.role === 'assistant' ? 'assistant' : 'system';
   item.showUser = item.role === 'user';
   item.showAssistant = item.role === 'assistant';
   item.showSystem = !item.showUser && !item.showAssistant;
@@ -194,7 +196,7 @@ Page({
       const session = await app.services.createAssistantSession({
         scene: 'general',
         subjectId: user.openid || user.id || '',
-        prompt: '你是物业智能助手。只回答当前小区和当前房屋的问题。先判断意图，尽量短答，不闲聊，不重复上下文，必要时输出结构化 JSON。',
+        prompt: '你是物业智能助手。你要像真实客服一样简洁、自然、直接。只回答当前小区和当前房屋的问题；先给结论，再补必要说明；不要说“我已经看懂你的问题了”这类空话；信息不全时直接指出缺什么；需要办事时先给草稿或下一步；尽量只输出结构化 JSON。',
         inputText: '',
         communityId: community.id || '',
         houseId: user.houseId || '',
@@ -367,6 +369,7 @@ Page({
         userName: user.name || '',
         room: user.room || '',
         phone: user.phone || '',
+        prompt: '你是物业智能助手。像真实客服一样简洁、自然地回答问题。只回答当前小区和当前房屋的问题；先给结论，再补必要说明；不要使用空泛兜底句；信息不全时直接指出缺什么；需要办事时先给草稿或下一步；尽量只输出结构化 JSON。',
         context: {
           communityName: community.name || community.projectName || '',
           communityAddress: community.address || '',

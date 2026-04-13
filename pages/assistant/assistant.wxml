@@ -7,6 +7,9 @@
   <scroll-view class="chat-panel card" scroll-y>
     <block wx:for="{{messages}}" wx:key="time">
       <view class="message {{item.messageClass}}">
+        <view class="message-avatar {{item.avatarClass}}" wx:if="{{item.showUser || item.showAssistant}}">
+          <text class="message-avatar-text">{{item.avatarText}}</text>
+        </view>
         <view class="message-bubble">
           <view class="message-meta">
             <text class="message-role">{{item.roleLabel}}</text>

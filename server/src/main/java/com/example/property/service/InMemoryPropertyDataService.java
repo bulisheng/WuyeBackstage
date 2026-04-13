@@ -2569,10 +2569,10 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       response.put("reason", "公告查询");
       return response;
     }
-    response.put("replyText", "我已经看懂你的问题了，可以继续说详细一点，或者直接点下方快捷入口。");
-    response.put("quickReplies", Arrays.asList("查物业费", "查报修", "提交报修", "提交投诉", "转人工"));
-    response.put("reason", "通用回复");
-    return response;
+      response.put("replyText", "我先帮你看着，你可以继续补充更具体的信息，或者直接点下方快捷入口，我来接着办。");
+      response.put("quickReplies", Arrays.asList("查物业费", "查报修", "提交报修", "提交投诉", "转人工"));
+      response.put("reason", "通用回复");
+      return response;
   }
 
   private boolean truthy(Object value) {
