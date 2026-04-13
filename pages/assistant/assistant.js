@@ -11,6 +11,89 @@ function nowText() {
   return new Date().toLocaleString('zh-CN', { hour12: false });
 }
 
+function stripMarkdownFence(text) {
+  const value = String(text || '').trim();
+  if (!value.startsWith('```')) {
+    return value;
+  }
+  return value
+    .split(/\r?\n/)
+    .filter((line, index) => index === 0 ? !line.trim().startsWith('```') : !line.trim().startsWith('```'))
+    .join('\n')
+    .trim();
+}
+
+function extractJsonCandidate(text) {
+  const value = String(text || '').trim();
+  const start = value.indexOf('{');
+  const end = value.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    return value.slice(start, end + 1).trim();
+  }
+  const arrayStart = value.indexOf('[');
+  const arrayEnd = value.lastIndexOf(']');
+  if (arrayStart >= 0 && arrayEnd > arrayStart) {
+    return value.slice(arrayStart, arrayEnd + 1).trim();
+  }
+  return '';
+}
+
+function normalizeAssistantReply(response) {
+  const rawText = String((response && (response.replyText || response.answer || response.content || response.message || response.text)) || '').trim();
+  const stripped = stripMarkdownFence(rawText);
+  const candidate = extractJsonCandidate(stripped);
+  if (!candidate) {
+    return {
+      text: stripped || '我已经收到你的问题。',
+      parsed: null
+    };
+  }
+  try {
+    const parsed = JSON.parse(candidate);
+    const text = String(parsed.replyText || parsed.reply || parsed.answer || parsed.content || parsed.message || parsed.text || '').trim();
+    return {
+      text: text || stripped || '我已经收到你的问题。',
+      parsed
+    };
+  } catch (error) {
+    return {
+      text: stripped || '我已经收到你的问题。',
+      parsed: null
+    };
+  }
+}
+
+function roleLabel(role) {
+  if (role === 'user') {
+    return '我';
+  }
+  if (role === 'assistant') {
+    return '智能助手';
+  }
+  return '系统';
+}
+
+function normalizeMessage(message) {
+  const item = Object.assign({}, message || {});
+  item.roleLabel = roleLabel(item.role);
+  item.messageClass = item.role === 'user' ? 'message user' : item.role === 'assistant' ? 'message assistant' : 'message system';
+  item.showUser = item.role === 'user';
+  item.showAssistant = item.role === 'assistant';
+  item.showSystem = !item.showUser && !item.showAssistant;
+  item.showCard = Boolean(item.card);
+  item.showMeta = Boolean(item.meta);
+  item.showAmount = Boolean(item.card && item.card.amount);
+  item.showPeriod = Boolean(item.card && item.card.period);
+  item.showStatus = Boolean(item.card && item.card.status);
+  item.showStatusName = Boolean(item.card && item.card.statusName);
+  item.showHandler = Boolean(item.card && item.card.handler);
+  item.showSuggestion = Boolean(item.card && item.card.suggestion);
+  item.intentText = item.meta && item.meta.intent ? String(item.meta.intent) : '';
+  item.confidenceText = item.meta && item.meta.confidence !== undefined ? String(item.meta.confidence) : '';
+  item.buttonText = item.buttonText || '确认并跳转';
+  return item;
+}
+
 Page({
   data: {
     loading: false,
@@ -23,7 +106,7 @@ Page({
     contextCard: {},
     contextTags: [],
     openclawUrl: '',
-    sceneSummary: '问答 + 办事 + 转人工',
+    sceneSummary: '问答、办事、转人工',
     canSend: false
   },
 
@@ -45,7 +128,7 @@ Page({
             role: 'system',
             type: 'system',
             time: nowText(),
-            text: '你好，我是物业AI客服。你可以查物业费、查报修、提交报修、提交投诉，或者直接让我转人工。'
+            text: '你好，我是智能助手。你可以查物业费、查报修、提交报修、提交投诉，或者直接让我转人工。'
           }
         ]
       });
@@ -61,16 +144,6 @@ Page({
     const notices = safeArray(app.globalData.notices);
     const activeBills = bills.filter((bill) => bill.status === 'unpaid').slice(0, 3);
     const activeRepairs = repairs.filter((repair) => repair.status === 'processing' || repair.status === 'pending').slice(0, 3);
-    const previewTags = [
-      community.name ? `小区：${community.name}` : '',
-      user.name ? `住户：${user.name}` : '',
-      user.houseNo ? `房屋：${user.houseNo}` : '',
-      activeBills.length ? `待缴：${activeBills.length}` : '',
-      activeRepairs.length ? `报修：${activeRepairs.length}` : '',
-      complaints.length ? `反馈：${complaints.length}` : '',
-      notices.length ? `公告：${notices.length}` : ''
-    ].filter(Boolean);
-
     this.setData({
       serviceCards: this.buildServiceCards(community),
       contextCard: {
@@ -81,7 +154,7 @@ Page({
         billCount: activeBills.length,
         repairCount: activeRepairs.length
       },
-      contextTags: previewTags
+      contextTags: []
     });
   },
 
@@ -95,7 +168,7 @@ Page({
     };
     return [
       enabled.bill && { id: 'bill', title: '查物业费', subtitle: '查看待缴账单和缴费入口', text: '查物业费', tone: 'blue' },
-      enabled.repair && { id: 'repair', title: '查报修', subtitle: '查看工单进度和负责人', text: '查报修', tone: 'cyan' },
+      enabled.repair && { id: 'repair', title: '查报修', subtitle: '查看工单进度和处理人', text: '查报修', tone: 'cyan' },
       enabled.repair && { id: 'create_repair', title: '提交报修', subtitle: '快速生成报修草稿', text: '提交报修', tone: 'green' },
       enabled.feedback && { id: 'feedback', title: '提交投诉', subtitle: '快速生成投诉草稿', text: '提交投诉', tone: 'orange' },
       enabled.visitor && { id: 'visitor', title: '访客通行', subtitle: '访客记录和通行码查询', text: '访客通行', tone: 'violet' },
@@ -114,7 +187,7 @@ Page({
       const session = await app.services.createAssistantSession({
         scene: 'general',
         subjectId: user.openid || user.id || '',
-        prompt: '物业AI客服，优先回答当前小区和当前房屋的问题。',
+        prompt: '你是物业智能助手。只回答当前小区和当前房屋的问题。先判断意图，尽量短答，不闲聊，不重复上下文，必要时输出结构化 JSON。',
         inputText: '',
         communityId: community.id || '',
         houseId: user.houseId || '',
@@ -133,10 +206,10 @@ Page({
   },
 
   pushMessage(message) {
-    const messages = this.data.messages.concat({
+    const messages = this.data.messages.concat(normalizeMessage({
       time: nowText(),
       ...message
-    });
+    }));
     this.setData({ messages });
   },
 
@@ -226,14 +299,16 @@ Page({
         }
       });
 
-      const intentName = String(response.intent || response.action?.type || 'general');
-      const confidence = Number(response.confidence || 0);
-      const summary = String(response.reason || text);
-      const quickReplies = safeArray(response.quickReplies).length ? response.quickReplies : ['查物业费', '查报修', '提交报修', '提交投诉', '转人工'];
-      const assistantText = response.replyText || response.answer || '我已经收到你的问题。';
+      const normalizedReply = normalizeAssistantReply(response);
+      const payload = Object.assign({}, response, normalizedReply.parsed || {});
+      const intentName = String(payload.intent || payload.action?.type || 'general');
+      const confidence = Number(payload.confidence || 0);
+      const summary = String(payload.reason || text);
+      const quickReplies = safeArray(payload.quickReplies).length ? payload.quickReplies : ['查物业费', '查报修', '提交报修', '提交投诉', '转人工'];
+      const assistantText = normalizedReply.text || payload.replyText || payload.answer || '我已经收到你的问题。';
       const message = {
         role: 'assistant',
-        type: response.needConfirm || response.handoff ? 'card' : 'text',
+        type: payload.needConfirm || payload.handoff ? 'card' : 'text',
         text: assistantText,
         meta: {
           intent: intentName,
@@ -242,11 +317,11 @@ Page({
         }
       };
 
-      if (response.action) {
-        message.action = response.action;
+      if (payload.action) {
+        message.action = payload.action;
       }
 
-      if (response.action && response.action.type === 'query_bill') {
+      if (payload.action && payload.action.type === 'query_bill') {
         const unpaid = bills.filter((bill) => bill.status === 'unpaid');
         const firstBill = unpaid[0] || bills[0] || null;
         message.title = '账单查询结果';
@@ -259,7 +334,7 @@ Page({
         } : null;
       }
 
-      if (response.action && response.action.type === 'query_repair') {
+      if (payload.action && payload.action.type === 'query_repair') {
         const active = repairs.filter((repair) => repair.status === 'processing' || repair.status === 'pending').slice(0, 3);
         message.title = '报修进度';
         message.card = active[0] ? {
@@ -270,14 +345,14 @@ Page({
         } : null;
       }
 
-      if (response.needConfirm && response.action && (response.action.type === 'create_repair' || response.action.type === 'create_feedback')) {
-        const params = response.action.params || {};
-        const actionType = response.action.type;
+      if (payload.needConfirm && payload.action && (payload.action.type === 'create_repair' || payload.action.type === 'create_feedback')) {
+        const params = payload.action.params || {};
+        const actionType = payload.action.type;
         this.setData({
           draftCard: {
             title: params.title || assistantText || text,
             category: params.category || 'other',
-            suggestion: params.suggestion || response.replyText || '请补充更多信息后再确认。',
+            suggestion: params.suggestion || payload.replyText || '请补充更多信息后再确认。',
             actionType,
             payload: params,
             buttonText: actionType === 'create_repair' ? '确认并去报修' : '确认并去投诉',
@@ -289,11 +364,11 @@ Page({
         message.card = {
           title: params.title || assistantText || text,
           category: params.category || '',
-          suggestion: params.suggestion || response.replyText || ''
+          suggestion: params.suggestion || payload.replyText || ''
         };
       }
 
-      if (response.handoff) {
+      if (payload.handoff) {
         message.type = 'card';
         message.title = '转人工中';
         message.text = assistantText || '已记录你的问题，稍后会由人工客服继续跟进。';
@@ -301,11 +376,11 @@ Page({
 
       this.pushMessage(message);
 
-      if (response.handoff) {
+      if (payload.handoff) {
         try {
           const handoff = await app.services.assistantHandoff({
-            sessionId: this.data.session?.id || response.sessionId || '',
-            reason: response.reason || text,
+            sessionId: this.data.session?.id || payload.sessionId || '',
+            reason: payload.reason || text,
             communityId: community.id || '',
             houseId: user.houseId || '',
             userId: user.openid || user.id || '',
@@ -318,8 +393,8 @@ Page({
         }
       }
 
-      if (response.openclawUrl && response.openclawUrl !== this.data.openclawUrl) {
-        this.setData({ openclawUrl: response.openclawUrl });
+      if (payload.openclawUrl && payload.openclawUrl !== this.data.openclawUrl) {
+        this.setData({ openclawUrl: payload.openclawUrl });
       }
       this.setData({
         loading: false,
@@ -329,7 +404,7 @@ Page({
       this.pushMessage({
         role: 'assistant',
         type: 'text',
-        text: error.message || 'AI 客服暂时不可用，你可以先使用快捷入口。',
+        text: error.message || '智能助手暂时不可用，你可以先使用快捷入口。',
         meta: { intent: 'general', confidence: 0 }
       });
       this.setData({

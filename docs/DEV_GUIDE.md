@@ -13,6 +13,8 @@
 
 ## 本机启动顺序
 
+如果你想一键启动，直接运行根目录的 `start-all.bat`，它会先拉起本地智能引擎，再启动 MongoDB、后端和 Web 管理台。`start-all.bat` 只是入口，真正的启动逻辑放在 `start-all.ps1`，这样更稳。
+
 ### 1. 启动数据库
 
 默认 MongoDB 连接串：
@@ -55,7 +57,7 @@ npm run dev
 - `pages/assistant/assistant` 是 AI 客服页，报修/投诉草稿会先缓存到本地再跳转到对应业务页
 - `web-admin/src/pages/AssistantSessionsPage.jsx` 里可以切换 `格式化 / 原始` JSON。
 - `web-admin/src/pages/AssistantPromptPage.jsx` 支持 `恢复上一次保存`。
-- `web-admin/src/pages/AssistantFaqPage.jsx` 支持按项目、标签、启用状态和当前负责人筛选 FAQ；FAQ 记录里建议保留 `responsibleSupervisor` 字段。
+- `web-admin/src/pages/AssistantFaqPage.jsx` 支持按项目、标签、启用状态和当前主负责人筛选 FAQ；FAQ 记录里建议保留 `responsibleSupervisor` 字段。
 
 ### AI 客服联调
 
@@ -65,14 +67,14 @@ AI 客服现在已经可以测，最小联调顺序是：
 2. 启动后端 `server`。
 3. 启动 Web 管理台 `web-admin`。
 4. 启动本地 openclaw，本地默认入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`。
-5. 在 Web 管理台 `AI 配置` 页面里确认 `openclawMode` 是 `本地`，或把 `openclawBaseUrl` 切到你的远程地址。
-6. 打开小程序首页，点击 `AI客服`。
+5. 在 Web 管理台 `AI 配置` 页面里确认 `智能引擎类型` 是 `智能路由`，再把 `连接模式` 切到 `本地` 或 `远程`。
+6. 打开小程序首页，点击 `智能助手`。
 7. 先测这几个场景：
    - `查本月物业费`
    - `帮我提报修，水管漏水`
    - `帮我生成一条投诉，楼上太吵`
    - `转人工`
-8. 如果要看链路是否真的走了 openclaw，去 `web-admin` 的 `会话日志` 页面看原始 JSON。
+8. 如果要看链路是否真的走了智能引擎，去 `web-admin` 的 `会话日志` 页面看原始 JSON。
 
 补充说明：
 - 如果 openclaw 没启动，AI 客服页仍然能打开，但会回退到本地规则或草稿模式。
@@ -85,7 +87,7 @@ AI 客服现在已经可以测，最小联调顺序是：
 - Web 开发环境配置：[web-admin/.env.development](../web-admin/.env.development)
 - Web 环境模板：[web-admin/.env.example](../web-admin/.env.example)
 - 小程序本地配置：[utils/config.js](../utils/config.js)
-- 小区功能、项目名称、默认负责人都在 Web 管理台的 `小区管理` 里配置。
+- 小区功能、项目名称、默认主负责人都在 Web 管理台的 `小区管理` 里配置。
 
 ## 需要改哪里
 
@@ -93,9 +95,13 @@ AI 客服现在已经可以测，最小联调顺序是：
 - 后端 Mongo URI 在 `application.yml` 或环境变量 `MONGODB_URI`
 
 ### 改飞书
-- `FEISHU_WEBHOOK_URL`
+- `FEISHU_CUSTOMER_WEBHOOK_URL`
+- `FEISHU_REPAIR_WEBHOOK_URL`
+- `FEISHU_LIFE_WEBHOOK_URL`
 - `complaint.default-supervisor`
 - 投诉规则表里的 `mentionTargets`
+- `web-admin` 的 `智能配置` 页面里，通知路由会显示 `绑定机器人 / 推送事项 / 主负责人 / 备选负责人`，这是后续排查飞书路由最先看的地方。
+- 原来的单一 `FEISHU_WEBHOOK_URL` 已经删掉，后续只保留这三路机器人配置。
 
 ### 改 openclaw
 - 默认本地入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`
@@ -107,6 +113,7 @@ AI 客服现在已经可以测，最小联调顺序是：
 - `OPENCLAW_COMPLAINT_ANALYSIS_PATH`
 - `OPENCLAW_ANALYSIS_TIMEOUT_MS`
 - 未来如果要部署成“云后端 + Mac mini 上 openclaw”，优先在 Web 管理台里切换 `本地 / 远程`，不要只改一个 baseUrl。
+- 现在默认智能引擎已经回到 `openclaw`，本地模型不是主路径。
 
 ### 改默认主管
 - 后端 `complaint.default-supervisor`
@@ -168,20 +175,3 @@ AI 客服现在已经可以测，最小联调顺序是：
    - `openclawMode`
    - `openclawBaseUrl`
    - 本地 openclaw 进程是否已启动
-
-## 修改建议
-
-- 前端页面优先改 `pages/`
-- Web 管理台优先改 `web-admin/src/pages/`
-- 后端业务逻辑优先改 `server/src/main/java/com/example/property/service/`
-- API 入口优先改 `server/src/main/java/com/example/property/controller/`
-
-## 注意
-
-- `application.example.yml` 只是模板，不会被 Spring Boot 自动读取。
-- 运行时真正生效的是 `application.yml`。
-- 改完配置后一般要重启后端。
-- 投诉和表扬已经统一进 `feedbacks`，后台反馈页会一起展示。
-- 投诉规则里的 `负责人` 是规则所有者，`飞书通知人` 才是实际通知对象。
-- 真正能 `@` 到人的前提是物业人员已经绑定了 `feishuUserId`。
-- 新项目如果要看起来是空的，记得先切到对应小区，再确认对应记录是否带了 `communityId`。

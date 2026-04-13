@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   deleteDecoration,
   deleteExpress,
@@ -720,8 +720,8 @@ function fieldLabel(field) {
     pushError: '推送错误',
     ruleId: '规则ID',
     ruleName: '规则名称',
-    supervisorName: '负责人',
-    mentionTargets: '飞书通知人',
+    supervisorName: '主负责人',
+    mentionTargets: '通知对象',
     onlyCurrentCommunityStaff: '只看当前小区人员',
     suggestedAction: '建议动作',
     autoPush: '自动推送',
@@ -1029,8 +1029,8 @@ function rowsFor(type, item) {
       ['推送状态', complaintPushLabel(item.pushStatus)],
       ['推送时间', item.pushTime],
       ['规则', item.ruleName],
-      ['负责人', item.supervisorName],
-      ['飞书通知人', Array.isArray(item.mentionTargets) ? item.mentionTargets.join('、') : item.mentionTargets],
+      ['主负责人', item.supervisorName],
+      ['通知对象', Array.isArray(item.mentionTargets) ? item.mentionTargets.join('、') : item.mentionTargets],
       ['建议动作', item.suggestedAction],
       ['摘要', item.summary],
       ['推送错误', item.pushError]
@@ -1046,8 +1046,8 @@ function rowsFor(type, item) {
       ['关键词', Array.isArray(item.matchKeywords) ? item.matchKeywords.join('、') : item.matchKeywords],
       ['分类', Array.isArray(item.matchCategories) ? item.matchCategories.join('、') : item.matchCategories],
       ['楼栋', Array.isArray(item.matchBuildings) ? item.matchBuildings.join('、') : item.matchBuildings],
-      ['负责人', item.supervisorName],
-      ['飞书通知人', Array.isArray(item.mentionTargets) ? item.mentionTargets.join('、') : item.mentionTargets],
+      ['主负责人', item.supervisorName],
+      ['通知对象', Array.isArray(item.mentionTargets) ? item.mentionTargets.join('、') : item.mentionTargets],
       ['自动分析', item.autoAnalyze ? '是' : '否'],
       ['自动推送', item.autoPush ? '是' : '否'],
       ['备注', item.remark]
@@ -1538,7 +1538,7 @@ function FormFields({
     return (
       <div className="form-grid two">
         <div className="form-field form-field-span">
-          <span className="field-label">当前默认负责人</span>
+          <span className="field-label">当前默认主负责人</span>
           <div className="hint">{currentDefaultSupervisor || '未配置'}</div>
         </div>
         <div className="form-field form-field-span">
@@ -1547,7 +1547,7 @@ function FormFields({
         </div>
         <div className="form-field form-field-span">
           <span className="field-label">推送说明</span>
-          <div className="hint">“负责人”是这条规则的负责人，“飞书通知人”才是实际会收到飞书推送的人。</div>
+          <div className="hint">“主负责人”是这条规则的负责人，“通知对象”才是实际会收到飞书推送的人。</div>
         </div>
         {renderField(item, 'name', 'text', onChange, onToggle)}
         {renderField(item, 'enabled', 'switch', onChange, onToggle)}
@@ -1589,7 +1589,7 @@ function FormFields({
           value={item.supervisorName || ''}
           options={staffSupervisorOptions}
           onChange={onChange('supervisorName')}
-          placeholder="输入姓名搜索，留空则跟随默认主管"
+          placeholder="输入姓名搜索，留空则跟随默认主负责人"
         />
         <MultiSelectField
           label={fieldLabel('mentionTargets')}
@@ -1601,7 +1601,7 @@ function FormFields({
           onToggleValue={(name) => onComplaintRuleMentionsChange(name)}
         />
         <div className="button-row form-field-span">
-          <button type="button" className="btn btn-ghost tiny" onClick={onComplaintRuleFillDefault}>填充当前主管</button>
+          <button type="button" className="btn btn-ghost tiny" onClick={onComplaintRuleFillDefault}>填充当前主负责人</button>
           <button type="button" className="btn btn-ghost tiny" onClick={onComplaintRuleFillCommunity}>填充当前小区人员</button>
         </div>
         {renderField(item, 'matchKeywords', 'textarea', onChange, onToggle)}
@@ -1697,6 +1697,7 @@ function FormFields({
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { apiBase, token, logout, profile } = useAuth();
 
   const [activeTab, setActiveTab] = useState('notice');
@@ -1734,6 +1735,7 @@ export default function DashboardPage() {
   const [feishuBindModal, setFeishuBindModal] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({ core: false, communityConfig: false, asset: false, organization: false, service: false, mall: false });
   const [projectsCollapsed, setProjectsCollapsed] = useState(true);
+  const [focusStaffId, setFocusStaffId] = useState('');
 
   const currentList =
     activeTab === 'bill' ? bills :
@@ -2071,6 +2073,30 @@ export default function DashboardPage() {
       setTab(visibleTabs[0]);
     }
   }, [activeTab, setTab, visibleTabs]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const nextTab = String(location.state?.tab || params.get('tab') || '').trim();
+    const nextFocusStaffId = String(location.state?.focusStaffId || params.get('focusStaffId') || '').trim();
+    if (nextTab && TABS[nextTab] && nextTab !== activeTab) {
+      setTab(nextTab);
+    }
+    if (nextFocusStaffId) {
+      setFocusStaffId(nextFocusStaffId);
+    }
+  }, [activeTab, location.search, location.state, setTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'staff' || !focusStaffId) {
+      return;
+    }
+    const target = staffs.find((staff) => String(staff.id || '') === String(focusStaffId || ''));
+    if (target) {
+      setSelectedIds([target.id]);
+      openDrawer(target, 'view');
+      setFocusStaffId('');
+    }
+  }, [activeTab, focusStaffId, staffs]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -2942,7 +2968,7 @@ export default function DashboardPage() {
             {activeTab === 'complaintRule' ? (
               <div className="topbar-note">
                 <span className="badge">当前小区：{communityDisplayName(activeCommunity) || '未选择'}</span>
-                <span className="badge">当前默认负责人：{defaultSupervisorName}</span>
+                <span className="badge">当前默认主负责人：{defaultSupervisorName}</span>
               </div>
             ) : null}
             <div className="topbar-summary">
@@ -2996,9 +3022,9 @@ export default function DashboardPage() {
             ) : (
               <button type="button" className="btn btn-primary" onClick={openModal}>新增{TABS[activeTab].label}</button>
             )}
-            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-config')}>AI 配置</button>
-            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>FAQ</button>
-            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-prompt')}>Prompt</button>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-config')}>智能配置</button>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>常见问题</button>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-prompt')}>提示词</button>
             <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-sessions')}>会话日志</button>
             <button type="button" className="btn btn-ghost" onClick={logout}>退出登录</button>
             </div>

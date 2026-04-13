@@ -135,11 +135,11 @@ export default function AssistantSessionsPage() {
         <div>
           <div className="eyebrow">AI 中台</div>
           <h1>会话日志</h1>
-          <p>这里可以查看每次 AI 客服会话、上下文和原始消息记录。</p>
+          <p>这里可以查看每次智能助手会话、上下文和原始消息记录。</p>
         </div>
         <div className="assistant-center-actions">
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/assistant-prompt')}>Prompt</button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>FAQ</button>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/assistant-prompt')}>提示词</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>常见问题</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-config')}>AI 配置</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/')}>返回控制台</button>
         </div>
@@ -208,8 +208,8 @@ export default function AssistantSessionsPage() {
               <div className="drawer-line">会话链接：{selected.openclawUrl || '-'}</div>
               <div className="section-header">
                 <div>
-                  <div className="section-title">openclaw 原始 JSON</div>
-                  <div className="hint">优先展示 AI / openclaw 返回的原始结构，方便排查和调 prompt。</div>
+                  <div className="section-title">智能引擎原始 JSON</div>
+                  <div className="hint">优先展示智能引擎返回的原始结构，方便排查和调提示词。</div>
                 </div>
                 <div className="assistant-center-actions">
                   <button

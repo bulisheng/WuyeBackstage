@@ -76,6 +76,10 @@ function normalizeOpenclawMode(mode, baseUrl) {
   return 'local';
 }
 
+function normalizeAssistantProvider(provider, baseUrl) {
+  return 'openclaw';
+}
+
 function resolveOpenclawPresetUrl(mode, localBaseUrl, remoteBaseUrl, baseUrl) {
   const normalizedMode = normalizeOpenclawMode(mode, baseUrl);
   if (normalizedMode === 'remote') {
@@ -84,12 +88,114 @@ function resolveOpenclawPresetUrl(mode, localBaseUrl, remoteBaseUrl, baseUrl) {
   return localBaseUrl || baseUrl || DEFAULT_OPENCLAW_LOCAL_BASE_URL;
 }
 
+function staffDisplayName(staff) {
+  if (!staff) return '';
+  return String(staff.feishuDisplayName || staff.name || staff.realName || staff.displayName || '').trim();
+}
+
+function staffSearchText(staff) {
+  return [
+    staff?.name,
+    staff?.feishuDisplayName,
+    staff?.role,
+    staff?.position,
+    staff?.skill,
+    staff?.department,
+    staff?.community
+  ]
+    .map((item) => String(item || '').trim().toLowerCase())
+    .filter(Boolean)
+    .join(' ');
+}
+
+function findStaffByName(staffs, names) {
+  const targetNames = Array.isArray(names) ? names : [names];
+  const normalizedTargets = targetNames.map((name) => String(name || '').trim()).filter(Boolean);
+  if (!normalizedTargets.length) return null;
+  return staffs.find((staff) => {
+    const displayName = staffDisplayName(staff);
+    return normalizedTargets.some((name) => name === displayName || name === String(staff?.name || '').trim() || name === String(staff?.feishuDisplayName || '').trim());
+  }) || null;
+}
+
+function findStaffByKeywords(staffs, keywords, excludeNames = []) {
+  const normalizedKeywords = normalizeList(keywords).map((item) => String(item || '').trim().toLowerCase()).filter(Boolean);
+  const excluded = new Set(normalizeList(excludeNames).map((item) => String(item || '').trim()));
+  if (!normalizedKeywords.length) return null;
+  return staffs.find((staff) => {
+    const displayName = staffDisplayName(staff);
+    if (!displayName || excluded.has(displayName)) {
+      return false;
+    }
+    const text = staffSearchText(staff);
+    return normalizedKeywords.some((keyword) => text.includes(keyword));
+  }) || null;
+}
+
+function pickBackupStaff(staffs, primaryName, keywords = []) {
+  const normalizedPrimary = String(primaryName || '').trim();
+  const keywordMatch = findStaffByKeywords(staffs, keywords, normalizedPrimary ? [normalizedPrimary] : []);
+  if (keywordMatch && staffDisplayName(keywordMatch) !== normalizedPrimary) {
+    return keywordMatch;
+  }
+  return staffs.find((staff) => {
+    const displayName = staffDisplayName(staff);
+    return displayName && displayName !== normalizedPrimary;
+  }) || null;
+}
+
+function buildNotificationRoutes(staffs, settings) {
+  const defaultSupervisorName = String(settings?.defaultSupervisor || '卜立胜').trim() || '卜立胜';
+  const routes = [
+    {
+      key: 'customer',
+      title: '客服通知机器人',
+      robotLabel: '当前绑定飞书机器人：客服通知机器人',
+      events: ['投诉', '客诉', '智能助手转人工'],
+      keywords: ['客服', '前台', '物业服务', '客服前台']
+    },
+    {
+      key: 'repair',
+      title: '维修通知机器人',
+      robotLabel: '当前绑定飞书机器人：维修通知机器人',
+      events: ['报修', '报修派单', '报修处理'],
+      keywords: ['维修', '工程', '水电', '维修工', '师傅']
+    },
+    {
+      key: 'life',
+      title: '生活服务机器人',
+      robotLabel: '当前绑定飞书机器人：生活服务机器人',
+      events: ['快递代寄', '蔬菜代买', '生活服务'],
+      keywords: ['客服', '前台', '生活服务', '管家', '物业服务']
+    }
+  ];
+  return routes.map((route) => {
+    const preferredNames = route.key === 'customer' ? [defaultSupervisorName] : [];
+    const primary = findStaffByName(staffs, preferredNames)
+      || findStaffByKeywords(staffs, route.keywords)
+      || findStaffByName(staffs, defaultSupervisorName)
+      || staffs[0]
+      || null;
+    const primaryName = staffDisplayName(primary) || defaultSupervisorName;
+    const backup = pickBackupStaff(staffs, primaryName, route.keywords);
+    const backupName = staffDisplayName(backup);
+    return {
+      ...route,
+      primaryStaffId: primary?.id || '',
+      backupStaffId: backup?.id || '',
+      primaryName,
+      backupName: backupName && backupName !== primaryName ? backupName : '暂无'
+    };
+  });
+}
+
 function buildDefaultSettings(community) {
   const localBaseUrl = DEFAULT_OPENCLAW_LOCAL_BASE_URL;
   const remoteBaseUrl = DEFAULT_OPENCLAW_REMOTE_BASE_URL;
   return {
     enabled: true,
-    assistantName: '物业AI客服',
+    assistantName: '物业智能助手',
+    assistantProvider: 'openclaw',
     openclawMode: 'local',
     openclawBaseUrl: localBaseUrl,
     openclawLocalBaseUrl: localBaseUrl,
@@ -104,7 +210,7 @@ function buildDefaultSettings(community) {
     autoCreateSession: true,
     autoSaveHistory: true,
     autoHandoff: true,
-    promptTemplate: '你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON。',
+    promptTemplate: '你是物业智能助手，只回答当前小区和当前房屋的问题。先判断意图，再输出最短可用回复或结构化 JSON。不要闲聊，不要重复上下文。',
     enabledScenes: DEFAULT_SCENES,
     handoffKeywords: ['人工', '客服', '投诉升级', '找主管'],
     defaultSupervisor: community?.defaultSupervisor || '卜立胜',
@@ -168,9 +274,22 @@ export default function AssistantConfigPage() {
     });
   }, [activeCommunity, staffs]);
 
+  const notificationRoutes = useMemo(() => buildNotificationRoutes(currentStaffOptions, settings), [currentStaffOptions, settings]);
+
+  const routeCopyText = useMemo(() => {
+    return notificationRoutes.map((route) => [
+      route.title,
+      `绑定机器人：${route.title}`,
+      `推送事项：${route.events.join('、')}`,
+      `主负责人：${route.primaryName}`,
+      `备选负责人：${route.backupName}`
+    ].join('\n')).join('\n\n');
+  }, [notificationRoutes]);
+
   const previewJson = useMemo(() => JSON.stringify({
     enabled: settings.enabled,
     assistantName: settings.assistantName,
+    assistantProvider: settings.assistantProvider,
     openclawMode: settings.openclawMode,
     openclawBaseUrl: settings.openclawBaseUrl,
     openclawLocalBaseUrl: settings.openclawLocalBaseUrl,
@@ -189,14 +308,19 @@ export default function AssistantConfigPage() {
   }, null, 2), [settings, activeCommunity]);
 
   const promptPreview = useMemo(() => [
-    `你是 ${settings.assistantName || '物业AI客服'}。`,
+    `你是 ${settings.assistantName || '物业智能助手'}。`,
     `当前项目：${displayCommunity(activeCommunity)}`,
-    `默认负责人：${settings.defaultSupervisor || '卜立胜'}`,
+    `默认主负责人：${settings.defaultSupervisor || '卜立胜'}`,
+    `智能引擎：智能路由`,
     `连接模式：${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地'}`,
     `可用场景：${normalizeList(settings.enabledScenes).join('、') || '未配置'}`,
     `转人工关键词：${normalizeList(settings.handoffKeywords).join('、') || '无'}`,
-    '请严格输出 JSON，不要输出多余解释。'
+    '先判断意图，再给最短可用回复。总字数尽量不超过 120 字。'
   ].join('\n'), [settings, activeCommunity]);
+
+  const assistantProvider = normalizeAssistantProvider(settings.assistantProvider, settings.openclawBaseUrl);
+  const activeProviderLabel = '智能路由';
+  const activeProviderMode = normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
 
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -235,6 +359,16 @@ export default function AssistantConfigPage() {
     });
   };
 
+  const switchAssistantProvider = (provider) => {
+    setSettings((prev) => {
+      return {
+        ...prev,
+        assistantProvider: 'openclaw',
+        openclawBaseUrl: resolveOpenclawPresetUrl(prev.openclawMode, prev.openclawLocalBaseUrl, prev.openclawRemoteBaseUrl, prev.openclawBaseUrl)
+      };
+    });
+  };
+
   const toggleScene = (scene) => {
     setSettings((prev) => {
       const current = new Set(prev.enabledScenes || []);
@@ -252,6 +386,7 @@ export default function AssistantConfigPage() {
       ...settings,
       communityId: activeCommunity?.id || settings.communityId || '',
       community: displayCommunity(activeCommunity),
+      assistantProvider: 'openclaw',
       openclawMode: normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl),
       openclawBaseUrl: resolveOpenclawPresetUrl(
         settings.openclawMode,
@@ -292,6 +427,22 @@ export default function AssistantConfigPage() {
     }
   };
 
+  const copyRouteSummary = async () => {
+    try {
+      await navigator.clipboard.writeText(routeCopyText);
+      window.alert('已复制当前路由配置');
+    } catch (error) {
+      window.alert('复制失败');
+    }
+  };
+
+  const openStaffDetail = (staffId) => {
+    if (!staffId) {
+      return;
+    }
+    navigate(`/?tab=staff&focusStaffId=${encodeURIComponent(staffId)}`);
+  };
+
   const switchCommunity = async (id) => {
     setActiveCommunityId(id);
     if (!id) {
@@ -313,17 +464,66 @@ export default function AssistantConfigPage() {
     <div className="assistant-config-page">
       <header className="assistant-config-hero card">
         <div className="assistant-config-hero-main">
-          <div className="eyebrow">AI 中台配置</div>
-          <h1>物业 AI 客服配置页</h1>
-          <p>这里先做成原型，后续可以直接对接 openclaw、FAQ、转人工和业务动作。</p>
+          <div className="eyebrow">智能中台配置</div>
+          <h1>物业智能助手配置页</h1>
+          <p>这里先做成原型，后续可以直接对接智能引擎、FAQ、转人工和业务动作。</p>
         </div>
         <div className="assistant-config-hero-side">
           <div className="hero-chip">当前项目：{displayCommunity(activeCommunity)}</div>
-          <div className="hero-chip">当前负责人：{settings.defaultSupervisor || '卜立胜'}</div>
-          <div className="hero-chip">连接模式：{normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地'}</div>
+          <div className="hero-chip">当前主负责人：{settings.defaultSupervisor || '卜立胜'}</div>
+          <div className="hero-chip">智能引擎：{activeProviderLabel}</div>
+          <div className="hero-chip">连接模式：{activeProviderMode === 'remote' ? '远程' : '本地'}</div>
           <div className="hero-chip">可选人员：{currentStaffOptions.length} 人</div>
         </div>
       </header>
+
+      <section className="card assistant-config-routing">
+        <div className="section-header">
+          <div>
+            <div className="section-title">通知路由</div>
+            <div className="hint">这里直接看：绑定机器人、推送事项、主负责人、备选负责人。</div>
+          </div>
+          <div className="routing-status">
+            <span className="hero-chip subtle">当前小区生效中</span>
+            <span className="hero-chip subtle">当前主负责人：{settings.defaultSupervisor || '卜立胜'}</span>
+            <button type="button" className="btn btn-ghost tiny" onClick={copyRouteSummary}>复制当前路由配置</button>
+          </div>
+        </div>
+        <div className="routing-grid">
+          {notificationRoutes.map((route) => (
+            <article key={route.key} className="routing-card">
+              <div className="routing-card-head">
+                <div className="routing-title">{route.title}</div>
+                <div className="routing-pill">{route.robotLabel}</div>
+              </div>
+              <div className="routing-row">
+                <span className="routing-label">主负责人</span>
+                {route.primaryStaffId ? (
+                  <button type="button" className="routing-link" onClick={() => openStaffDetail(route.primaryStaffId)}>
+                    {route.primaryName}
+                  </button>
+                ) : (
+                  <strong>{route.primaryName}</strong>
+                )}
+              </div>
+              <div className="routing-row">
+                <span className="routing-label">推送事项</span>
+                <span>{route.events.join('、')}</span>
+              </div>
+              <div className="routing-row">
+                <span className="routing-label">备选负责人</span>
+                {route.backupStaffId ? (
+                  <button type="button" className="routing-link muted" onClick={() => openStaffDetail(route.backupStaffId)}>
+                    {route.backupName}
+                  </button>
+                ) : (
+                  <span>{route.backupName}</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="assistant-config-toolbar card">
         <div className="toolbar-group">
@@ -365,24 +565,36 @@ export default function AssistantConfigPage() {
 
           <div className="form-grid">
             <label className="field-group">
-              <span className="field-label">启用 AI 客服</span>
+              <span className="field-label">启用智能助手</span>
               <button type="button" className={`chip ${settings.enabled ? 'active' : ''}`} onClick={() => updateSetting('enabled', !settings.enabled)}>
                 {settings.enabled ? '已启用' : '已关闭'}
               </button>
+            </label>
+            <label className="field-group">
+              <span className="field-label">智能引擎类型</span>
+              <div className="chip-row compact">
+                <button
+                  type="button"
+                  className={`chip ${assistantProvider === 'openclaw' ? 'active' : ''}`}
+                  onClick={() => switchAssistantProvider('openclaw')}
+                >
+                  智能路由
+                </button>
+              </div>
             </label>
             <label className="field-group">
               <span className="field-label">连接模式</span>
               <div className="chip-row compact">
                 <button
                   type="button"
-                  className={`chip ${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'local' ? 'active' : ''}`}
+                  className={`chip ${activeProviderMode === 'local' ? 'active' : ''}`}
                   onClick={() => switchOpenclawMode('local')}
                 >
                   本地
                 </button>
                 <button
                   type="button"
-                  className={`chip ${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? 'active' : ''}`}
+                  className={`chip ${activeProviderMode === 'remote' ? 'active' : ''}`}
                   onClick={() => switchOpenclawMode('remote')}
                 >
                   远程
@@ -390,17 +602,21 @@ export default function AssistantConfigPage() {
               </div>
             </label>
             <label className="field-group">
-              <span className="field-label">客服名称</span>
+              <span className="field-label">助手名称</span>
               <input className="field" value={settings.assistantName} onChange={(e) => updateSetting('assistantName', e.target.value)} />
             </label>
             <label className="field-group">
-              <span className="field-label">openclaw 地址</span>
+              <span className="field-label">智能引擎地址</span>
               <input className="field" value={settings.openclawBaseUrl} onChange={(e) => updateOpenclawBaseUrl(e.target.value)} />
-              <div className="hint">当前模式：{normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程（Mac mini / 云端）' : '本地（127.0.0.1）'}</div>
+              <div className="hint">当前模式：{activeProviderMode === 'remote' ? '远程（云端）' : '本地（开发机）'}</div>
             </label>
             <label className="field-group">
-              <span className="field-label">模型名称</span>
-              <input className="field" value={settings.openclawModel} onChange={(e) => updateSetting('openclawModel', e.target.value)} />
+              <span className="field-label">智能引擎模型</span>
+              <input
+                className="field"
+                value={settings.openclawModel}
+                onChange={(e) => updateSetting('openclawModel', e.target.value)}
+              />
             </label>
             <label className="field-group">
               <span className="field-label">会话路径</span>
@@ -474,7 +690,7 @@ export default function AssistantConfigPage() {
           </div>
 
           <div className="section-block">
-            <div className="section-title">Prompt 模板</div>
+            <div className="section-title">提示词模板</div>
             <textarea className="field textarea prompt" rows={10} value={settings.promptTemplate} onChange={(e) => updateSetting('promptTemplate', e.target.value)} />
           </div>
 
@@ -488,8 +704,8 @@ export default function AssistantConfigPage() {
           <section className="card preview-card">
             <div className="section-header">
               <div>
-                <div className="section-title">Prompt 预览</div>
-                <div className="hint">把这段直接喂给 openclaw 就能先跑原型。</div>
+            <div className="section-title">提示词预览</div>
+                <div className="hint">把这段直接交给智能引擎就能先跑原型。</div>
               </div>
               <button type="button" className="btn btn-ghost tiny" onClick={copyPreview}>复制 JSON</button>
             </div>
@@ -500,7 +716,7 @@ export default function AssistantConfigPage() {
             <div className="section-header">
               <div>
                 <div className="section-title">响应结构</div>
-                <div className="hint">建议 openclaw 直接返回这类 JSON。</div>
+                <div className="hint">建议智能引擎直接返回这类 JSON。</div>
               </div>
             </div>
             <pre className="json-preview small">{JSON.stringify({
@@ -520,15 +736,15 @@ export default function AssistantConfigPage() {
             <div className="section-header">
               <div>
                 <div className="section-title">当前可选物业人员</div>
-                <div className="hint">这些人会用于“通知人 / 负责人”配置。</div>
+                <div className="hint">这些人会用于“主负责人 / 通知对象”配置。</div>
               </div>
             </div>
             <div className="staff-list">
               {currentStaffOptions.length ? currentStaffOptions.map((staff) => (
-                <div key={staff.id} className="staff-chip">
+                <button key={staff.id} type="button" className="staff-chip" onClick={() => openStaffDetail(staff.id)}>
                   <div className="staff-name">{staff.name}</div>
                   <div className="staff-meta">{staff.role || '物业人员'} / {staff.position || '未填写岗位'}</div>
-                </div>
+                </button>
               )) : <div className="hint">当前小区暂未配置物业人员。</div>}
             </div>
           </section>

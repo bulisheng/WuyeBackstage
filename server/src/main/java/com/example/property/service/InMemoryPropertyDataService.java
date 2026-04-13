@@ -104,14 +104,41 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   @Value("${openclaw.analysis-timeout-ms:5000}")
   private long openclawAnalysisTimeoutMs;
 
+  @Value("${assistant.provider:openclaw}")
+  private String assistantProvider;
+
+  @Value("${gemma.local-base-url:http://127.0.0.1:11434}")
+  private String gemmaLocalBaseUrl;
+
+  @Value("${gemma.remote-base-url:https://gemma.example.com}")
+  private String gemmaRemoteBaseUrl;
+
+  @Value("${gemma.chat-path:/api/chat}")
+  private String gemmaChatPath;
+
+  @Value("${gemma.model:gemma4:e4b}")
+  private String gemmaModel;
+
+  @Value("${gemma.temperature:0.2}")
+  private double gemmaTemperature;
+
+  @Value("${gemma.max-tokens:512}")
+  private int gemmaMaxTokens;
+
   @Value("${admin.api-key:dev-admin-123456}")
   private String adminApiKey;
 
   @Value("${admin.session-ttl-minutes:720}")
   private long adminSessionTtlMinutes;
 
-  @Value("${feishu.webhook-url:}")
-  private String feishuWebhookUrl;
+  @Value("${feishu.customer-webhook-url:}")
+  private String feishuCustomerWebhookUrl;
+
+  @Value("${feishu.repair-webhook-url:}")
+  private String feishuRepairWebhookUrl;
+
+  @Value("${feishu.life-webhook-url:}")
+  private String feishuLifeWebhookUrl;
 
   @Value("${complaint.default-supervisor:物业主管}")
   private String defaultSupervisor;
@@ -1321,6 +1348,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     repairs.put(id, repair);
     persistAll();
+    try {
+      notifyRepairFeishu(repair, "新报修");
+    } catch (Exception ignored) {
+      // 通知失败不影响报修入库
+    }
     return cloneMap(repair);
   }
 
@@ -1395,6 +1427,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    boolean isNew = !repairs.containsKey(id);
     String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", currentCommunityName())));
     String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> repair = mapOf(
@@ -1429,6 +1462,13 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     repairs.put(id, repair);
     persistAll();
+    if (isNew) {
+      try {
+        notifyRepairFeishu(repair, "维修通知");
+      } catch (Exception ignored) {
+        // 通知失败不影响维修记录保存
+      }
+    }
     return cloneMap(repair);
   }
 
@@ -1620,6 +1660,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     summary.put("community", settings.getOrDefault("community", ""));
     summary.put("enabled", settings.getOrDefault("enabled", true));
     summary.put("assistantName", settings.getOrDefault("assistantName", "物业AI客服"));
+    summary.put("assistantProvider", settings.getOrDefault("assistantProvider", "openclaw"));
     summary.put("openclawMode", settings.getOrDefault("openclawMode", "local"));
     summary.put("openclawBaseUrl", settings.getOrDefault("openclawBaseUrl", ""));
     summary.put("openclawLocalBaseUrl", settings.getOrDefault("openclawLocalBaseUrl", ""));
@@ -1628,6 +1669,14 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     summary.put("openclawSessionPath", settings.getOrDefault("openclawSessionPath", ""));
     summary.put("openclawMessagePath", settings.getOrDefault("openclawMessagePath", ""));
     summary.put("openclawHandoffPath", settings.getOrDefault("openclawHandoffPath", ""));
+    summary.put("gemmaMode", settings.getOrDefault("gemmaMode", "local"));
+    summary.put("gemmaBaseUrl", settings.getOrDefault("gemmaBaseUrl", ""));
+    summary.put("gemmaLocalBaseUrl", settings.getOrDefault("gemmaLocalBaseUrl", ""));
+    summary.put("gemmaRemoteBaseUrl", settings.getOrDefault("gemmaRemoteBaseUrl", ""));
+    summary.put("gemmaChatPath", settings.getOrDefault("gemmaChatPath", ""));
+    summary.put("gemmaModel", settings.getOrDefault("gemmaModel", ""));
+    summary.put("gemmaTemperature", settings.getOrDefault("gemmaTemperature", 0.2));
+    summary.put("gemmaMaxTokens", settings.getOrDefault("gemmaMaxTokens", 512));
     summary.put("promptVersion", settings.getOrDefault("promptVersion", ""));
     summary.put("analysisTimeoutMs", settings.getOrDefault("analysisTimeoutMs", 5000));
     summary.put("fallbackToHeuristic", settings.getOrDefault("fallbackToHeuristic", true));
@@ -1651,6 +1700,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     Map<String, Object> communityRecord = communityRecordById(String.valueOf(firstNonEmpty(request == null ? null : request.communityId, session == null ? null : session.get("communityId"), currentCommunityId())));
     context.putIfAbsent("communityId", communityRecord.getOrDefault("id", ""));
     context.putIfAbsent("community", communityRecord.getOrDefault("projectName", communityRecord.getOrDefault("name", currentCommunityName())));
+    context.putIfAbsent("assistantProvider", settings == null ? normalizeAssistantProvider(assistantProvider, openclawBaseUrl) : settings.getOrDefault("assistantProvider", "openclaw"));
     context.putIfAbsent("defaultSupervisor", settings == null ? currentSupervisorName() : settings.getOrDefault("defaultSupervisor", currentSupervisorName()));
     context.putIfAbsent("assistantName", settings == null ? "物业AI客服" : settings.getOrDefault("assistantName", "物业AI客服"));
     context.putIfAbsent("enabledScenes", settings == null ? Arrays.asList("query_bill", "query_repair", "create_repair", "create_feedback", "query_notice", "handoff") : normalizeStringList(settings.get("enabledScenes")));
@@ -1811,6 +1861,21 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return buildEndpoint(base, path);
   }
 
+  private String assistantEndpointForProvider(Map<String, Object> settings, String provider, String pathKey) {
+    if ("gemma".equals(provider)) {
+      String base = effectiveGemmaBaseUrl(settings);
+      String path = textValue(settings == null ? null : settings.get(pathKey));
+      if (base.isEmpty()) {
+        return "";
+      }
+      if (path.isEmpty()) {
+        path = "/api/chat";
+      }
+      return buildEndpoint(base, path);
+    }
+    return assistantEndpoint(settings, pathKey);
+  }
+
   private String defaultOpenclawLocalBaseUrl() {
     String value = textValue(openclawLocalBaseUrl);
     if (!value.isEmpty()) {
@@ -1823,6 +1888,16 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   private String defaultOpenclawRemoteBaseUrl() {
     String value = textValue(openclawRemoteBaseUrl);
     return value.isEmpty() ? "https://openclaw.example.com" : value;
+  }
+
+  private String defaultGemmaLocalBaseUrl() {
+    String value = textValue(gemmaLocalBaseUrl);
+    return value.isEmpty() ? "http://127.0.0.1:11434" : value;
+  }
+
+  private String defaultGemmaRemoteBaseUrl() {
+    String value = textValue(gemmaRemoteBaseUrl);
+    return value.isEmpty() ? "https://gemma.example.com" : value;
   }
 
   private boolean looksLikeLocalOpenclawUrl(String value) {
@@ -1856,6 +1931,51 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return String.valueOf(firstNonEmpty(localBaseUrl, fallbackBaseUrl, defaultOpenclawLocalBaseUrl()));
   }
 
+  private String normalizeAssistantProvider(Object value, Object baseValue) {
+    String provider = textValue(value).toLowerCase();
+    if (provider.contains("gemma") || provider.contains("本地大模型") || provider.contains("本地")) {
+      return "gemma";
+    }
+    if (provider.contains("openclaw") || provider.contains("智能引擎") || provider.contains("路由")) {
+      return "openclaw";
+    }
+    String base = textValue(baseValue).toLowerCase();
+    if (base.contains("11434") || base.contains("gemma")) {
+      return "gemma";
+    }
+    return "openclaw";
+  }
+
+  private String resolveGemmaBaseUrl(String mode, String localBaseUrl, String remoteBaseUrl, String fallbackBaseUrl) {
+    String normalizedMode = normalizeOpenclawMode(mode, fallbackBaseUrl);
+    if ("remote".equals(normalizedMode)) {
+      return String.valueOf(firstNonEmpty(remoteBaseUrl, fallbackBaseUrl, defaultGemmaRemoteBaseUrl()));
+    }
+    return String.valueOf(firstNonEmpty(localBaseUrl, fallbackBaseUrl, defaultGemmaLocalBaseUrl()));
+  }
+
+  private String effectiveAssistantProvider(Map<String, Object> settings) {
+    if (settings == null) {
+      return normalizeAssistantProvider(assistantProvider, openclawBaseUrl);
+    }
+    String provider = normalizeAssistantProvider(settings.get("assistantProvider"), firstNonEmpty(settings.get("gemmaBaseUrl"), settings.get("openclawBaseUrl")));
+    if ("gemma".equals(provider)) {
+      return "gemma";
+    }
+    return "openclaw";
+  }
+
+  private String effectiveGemmaBaseUrl(Map<String, Object> settings) {
+    if (settings == null) {
+      return defaultGemmaLocalBaseUrl();
+    }
+    String mode = textValue(settings.get("gemmaMode"));
+    String localBase = textValue(settings.get("gemmaLocalBaseUrl"));
+    String remoteBase = textValue(settings.get("gemmaRemoteBaseUrl"));
+    String base = textValue(settings.get("gemmaBaseUrl"));
+    return resolveGemmaBaseUrl(mode, localBase, remoteBase, base);
+  }
+
   private String effectiveOpenclawBaseUrl(Map<String, Object> settings) {
     if (settings == null) {
       return defaultOpenclawLocalBaseUrl();
@@ -1881,6 +2001,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       String base = String.valueOf(firstNonEmpty(item.get("openclawBaseUrl"), localBase));
       String mode = normalizeOpenclawMode(item.get("openclawMode"), base);
       String resolved = resolveOpenclawBaseUrl(mode, localBase, remoteBase, base);
+      String provider = normalizeAssistantProvider(item.get("assistantProvider"), firstNonEmpty(item.get("gemmaBaseUrl"), item.get("openclawBaseUrl")));
+      String gemmaLocal = String.valueOf(firstNonEmpty(item.get("gemmaLocalBaseUrl"), defaultGemmaLocalBaseUrl()));
+      String gemmaRemote = String.valueOf(firstNonEmpty(item.get("gemmaRemoteBaseUrl"), defaultGemmaRemoteBaseUrl()));
+      String gemmaBase = String.valueOf(firstNonEmpty(item.get("gemmaBaseUrl"), gemmaLocal));
+      String gemmaMode = normalizeOpenclawMode(item.get("gemmaMode"), gemmaBase);
+      String gemmaResolved = resolveGemmaBaseUrl(gemmaMode, gemmaLocal, gemmaRemote, gemmaBase);
       if (!mode.equals(String.valueOf(item.getOrDefault("openclawMode", "")))) {
         item.put("openclawMode", mode);
         changed = true;
@@ -1897,6 +2023,30 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         item.put("openclawBaseUrl", resolved);
         changed = true;
       }
+      if (!provider.equals(String.valueOf(item.getOrDefault("assistantProvider", "")))) {
+        item.put("assistantProvider", provider);
+        changed = true;
+      }
+      if (!gemmaMode.equals(String.valueOf(item.getOrDefault("gemmaMode", "")))) {
+        item.put("gemmaMode", gemmaMode);
+        changed = true;
+      }
+      if (!gemmaLocal.equals(String.valueOf(item.getOrDefault("gemmaLocalBaseUrl", "")))) {
+        item.put("gemmaLocalBaseUrl", gemmaLocal);
+        changed = true;
+      }
+      if (!gemmaRemote.equals(String.valueOf(item.getOrDefault("gemmaRemoteBaseUrl", "")))) {
+        item.put("gemmaRemoteBaseUrl", gemmaRemote);
+        changed = true;
+      }
+      if (!gemmaResolved.equals(String.valueOf(item.getOrDefault("gemmaBaseUrl", "")))) {
+        item.put("gemmaBaseUrl", gemmaResolved);
+        changed = true;
+      }
+      item.putIfAbsent("gemmaChatPath", "/api/chat");
+      item.putIfAbsent("gemmaModel", gemmaModel);
+      item.putIfAbsent("gemmaTemperature", gemmaTemperature);
+      item.putIfAbsent("gemmaMaxTokens", gemmaMaxTokens);
     }
     if (changed) {
       persistAll();
@@ -1933,6 +2083,160 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
   }
 
+  private Map<String, Object> invokeAssistantEngine(String token, Map<String, Object> settings, Map<String, Object> requestBody) {
+    String provider = effectiveAssistantProvider(settings);
+    Map<String, Object> normalized = "gemma".equals(provider)
+        ? invokeGemmaAssistant(settings, requestBody)
+        : invokeOpenclawAssistant(settings, requestBody);
+    if (normalized != null && !normalized.isEmpty()) {
+      return normalized;
+    }
+    if (truthy(settings == null ? null : settings.get("fallbackToHeuristic"))) {
+      Map<String, Object> safeRequestBody = requestBody == null ? new LinkedHashMap<>() : requestBody;
+      return buildHeuristicAssistantResponse(
+          String.valueOf(firstNonEmpty(token, safeRequestBody.get("sessionToken"), safeRequestBody.get("sessionId"), "")),
+          toAssistantMessageRequest(safeRequestBody),
+          mapOf("id", safeRequestBody.getOrDefault("sessionId", ""), "communityId", safeRequestBody.getOrDefault("communityId", ""), "community", safeRequestBody.getOrDefault("community", "")),
+          settings,
+          new LinkedHashMap<>(safeRequestBody)
+      );
+    }
+    return null;
+  }
+
+  private AssistantMessageRequest toAssistantMessageRequest(Map<String, Object> requestBody) {
+    AssistantMessageRequest request = new AssistantMessageRequest();
+    if (requestBody == null) {
+      return request;
+    }
+    request.content = String.valueOf(firstNonEmpty(requestBody.get("content"), ""));
+    request.scene = String.valueOf(firstNonEmpty(requestBody.get("scene"), "general"));
+    request.communityId = String.valueOf(firstNonEmpty(requestBody.get("communityId"), ""));
+    request.community = String.valueOf(firstNonEmpty(requestBody.get("community"), ""));
+    request.houseId = String.valueOf(firstNonEmpty(requestBody.get("houseId"), ""));
+    request.userId = String.valueOf(firstNonEmpty(requestBody.get("userId"), ""));
+    request.userName = String.valueOf(firstNonEmpty(requestBody.get("userName"), ""));
+    request.room = String.valueOf(firstNonEmpty(requestBody.get("room"), ""));
+    request.phone = String.valueOf(firstNonEmpty(requestBody.get("phone"), ""));
+    request.promptVersion = String.valueOf(firstNonEmpty(requestBody.get("promptVersion"), "v1"));
+    request.prompt = String.valueOf(firstNonEmpty(requestBody.get("prompt"), ""));
+    request.contentType = String.valueOf(firstNonEmpty(requestBody.get("contentType"), "text"));
+    request.context = requestBody.containsKey("context") && requestBody.get("context") instanceof Map
+        ? (Map<String, Object>) requestBody.get("context")
+        : new LinkedHashMap<>();
+    return request;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> invokeGemmaAssistant(Map<String, Object> settings, Map<String, Object> requestBody) {
+    String endpoint = assistantEndpointForProvider(settings, "gemma", "gemmaChatPath");
+    if (endpoint.isEmpty()) {
+      return null;
+    }
+    try {
+      List<Map<String, Object>> messages = new ArrayList<>();
+      String prompt = String.valueOf(firstNonEmpty(requestBody.get("prompt"), "你是物业智能助手，只回答当前小区和当前房屋的问题。"));
+      messages.add(mapOf("role", "system", "content", prompt + "\n只返回纯 JSON 对象，不要 markdown 代码块，不要额外解释。字段包括 replyText、intent、confidence、needConfirm、handoff、action、slots、quickReplies、reason。"));
+      Object history = requestBody.get("history");
+      if (history instanceof List) {
+        List<Map<String, Object>> historyList = (List<Map<String, Object>>) history;
+        int start = Math.max(0, historyList.size() - 6);
+        for (int i = start; i < historyList.size(); i++) {
+          Map<String, Object> item = historyList.get(i);
+          if (item == null) {
+            continue;
+          }
+          String role = String.valueOf(firstNonEmpty(item.get("role"), "user"));
+          String content = String.valueOf(firstNonEmpty(item.get("content"), item.get("text"), ""));
+          if (!content.trim().isEmpty()) {
+            messages.add(mapOf("role", role, "content", content));
+          }
+        }
+      }
+      String inputText = String.valueOf(firstNonEmpty(requestBody.get("inputText"), requestBody.get("content"), ""));
+      messages.add(mapOf("role", "user", "content", inputText));
+      Map<String, Object> payload = mapOf(
+          "model", String.valueOf(firstNonEmpty(settings == null ? null : settings.get("gemmaModel"), gemmaModel, "gemma4:e4b")),
+          "messages", messages,
+          "stream", false,
+          "format", "json",
+          "temperature", Double.parseDouble(String.valueOf(firstNonEmpty(settings == null ? null : settings.get("gemmaTemperature"), gemmaTemperature, 0.2))),
+          "max_tokens", Integer.parseInt(String.valueOf(firstNonEmpty(settings == null ? null : settings.get("gemmaMaxTokens"), gemmaMaxTokens, 512)))
+      );
+      String responseBody = postJson(endpoint, payload);
+      Map<String, Object> response = parseJsonObject(responseBody);
+      Map<String, Object> raw = flattenGemmaEnvelope(response);
+      return normalizeOpenclawAssistantResponse(raw);
+    } catch (Exception error) {
+      return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> flattenGemmaEnvelope(Map<String, Object> response) {
+    Map<String, Object> raw = new LinkedHashMap<>();
+    if (response == null) {
+      return raw;
+    }
+    raw.putAll(cloneMap(response));
+    for (String key : Arrays.asList("data", "result", "payload", "output", "assistant", "response", "message")) {
+      Object value = response.get(key);
+      if (value instanceof Map) {
+        raw.putAll(cloneMap((Map<String, Object>) value));
+      }
+    }
+    Object choices = response.get("choices");
+    if (choices instanceof List && !((List<?>) choices).isEmpty()) {
+      Object firstChoice = ((List<?>) choices).get(0);
+      if (firstChoice instanceof Map) {
+        Map<String, Object> choiceMap = cloneMap((Map<String, Object>) firstChoice);
+        raw.putAll(choiceMap);
+        Object message = choiceMap.get("message");
+        if (message instanceof Map) {
+          raw.putAll(cloneMap((Map<String, Object>) message));
+        }
+      }
+    }
+    Object content = firstNonEmpty(
+        raw.get("replyText"),
+        raw.get("content"),
+        raw.get("message"),
+        findDeepValue(raw, "replyText", "content", "message", "text")
+    );
+    if (content instanceof String) {
+      String text = String.valueOf(content);
+      String cleanText = normalizeAssistantJsonText(text);
+      if (!cleanText.isEmpty()) {
+        raw.put("replyText", cleanText);
+        raw.put("content", cleanText);
+      }
+      String jsonCandidate = extractJsonCandidate(stripMarkdownFence(text));
+      if (!jsonCandidate.isEmpty()) {
+        try {
+          Map<String, Object> parsed = parseJsonObject(jsonCandidate);
+          if (!parsed.isEmpty()) {
+            raw.putAll(parsed);
+            Object parsedReply = firstNonEmpty(
+                parsed.get("replyText"),
+                parsed.get("reply"),
+                parsed.get("answer"),
+                parsed.get("content"),
+                parsed.get("message"),
+                parsed.get("text")
+            );
+            if (parsedReply != null && !String.valueOf(parsedReply).trim().isEmpty()) {
+              raw.put("replyText", String.valueOf(parsedReply).trim());
+            }
+            raw.put("rawText", text.trim());
+          }
+        } catch (Exception ignored) {
+          // keep cleaned text
+        }
+      }
+    }
+    return raw;
+  }
+
   private Map<String, Object> flattenOpenclawEnvelope(Map<String, Object> response) {
     Map<String, Object> raw = new LinkedHashMap<>();
     if (response == null) {
@@ -1962,6 +2266,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         raw.get("text"),
         findDeepValue(raw, "replyText", "reply", "answer", "content", "message", "text")
     );
+    if (replyText != null) {
+      String cleaned = normalizeAssistantJsonText(String.valueOf(replyText));
+      if (!cleaned.isEmpty()) {
+        replyText = cleaned;
+      }
+    }
     Object intent = firstNonEmpty(
         raw.get("intent"),
         raw.get("scene"),
@@ -2046,6 +2356,79 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
     normalized.put("raw", raw);
     return normalized;
+  }
+
+  private String stripMarkdownFence(String text) {
+    if (text == null) {
+      return "";
+    }
+    String trimmed = text.trim();
+    if (trimmed.startsWith("```")) {
+      String[] lines = trimmed.split("\\R");
+      StringBuilder builder = new StringBuilder();
+      for (int i = 0; i < lines.length; i++) {
+        String line = lines[i].trim();
+        if (i == 0 && line.startsWith("```")) {
+          continue;
+        }
+        if (line.startsWith("```")) {
+          continue;
+        }
+        builder.append(lines[i]);
+        if (i < lines.length - 1) {
+          builder.append("\n");
+        }
+      }
+      return builder.toString().trim();
+    }
+    return trimmed;
+  }
+
+  private String extractJsonCandidate(String text) {
+    if (text == null) {
+      return "";
+    }
+    String trimmed = text.trim();
+    if (trimmed.isEmpty()) {
+      return "";
+    }
+    int objectStart = trimmed.indexOf('{');
+    int objectEnd = trimmed.lastIndexOf('}');
+    if (objectStart >= 0 && objectEnd > objectStart) {
+      return trimmed.substring(objectStart, objectEnd + 1).trim();
+    }
+    int arrayStart = trimmed.indexOf('[');
+    int arrayEnd = trimmed.lastIndexOf(']');
+    if (arrayStart >= 0 && arrayEnd > arrayStart) {
+      return trimmed.substring(arrayStart, arrayEnd + 1).trim();
+    }
+    return "";
+  }
+
+  private String normalizeAssistantJsonText(String text) {
+    if (text == null) {
+      return "";
+    }
+    String stripped = stripMarkdownFence(text);
+    String candidate = extractJsonCandidate(stripped);
+    if (!candidate.isEmpty()) {
+      Map<String, Object> parsed = parseJsonObject(candidate);
+      if (!parsed.isEmpty()) {
+        Object reply = firstNonEmpty(
+            parsed.get("replyText"),
+            parsed.get("reply"),
+            parsed.get("answer"),
+            parsed.get("content"),
+            parsed.get("message"),
+            parsed.get("text")
+        );
+        if (reply != null && !String.valueOf(reply).trim().isEmpty()) {
+          return String.valueOf(reply).trim();
+        }
+        return candidate;
+      }
+    }
+    return stripped;
   }
 
   private Object findDeepValue(Object source, String... keys) {
@@ -2237,7 +2620,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   private Map<String, Object> parseJsonObject(String json) {
     try {
-      return objectMapper.readValue(json, Map.class);
+      String candidate = extractJsonCandidate(stripMarkdownFence(json));
+      if (candidate.isEmpty()) {
+        candidate = json == null ? "" : json.trim();
+      }
+      return objectMapper.readValue(candidate, Map.class);
     } catch (Exception error) {
       return new LinkedHashMap<>();
     }
@@ -2250,7 +2637,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       queueItem = adminAnalyzeComplaintQueue(id, payload == null ? new LinkedHashMap<>() : payload);
     }
     String message = buildFeishuComplaintMessage(queueItem, payload);
-    String webhook = feishuWebhookUrl == null ? "" : feishuWebhookUrl.trim();
+    String webhook = resolveFeishuWebhook("customer");
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("message", message);
     result.put("webhookEnabled", !webhook.isEmpty());
@@ -2291,6 +2678,57 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       result.put("pushError", error.getMessage());
       return result;
     }
+  }
+
+  private String resolveFeishuWebhook(String channel) {
+    String normalized = String.valueOf(channel == null ? "" : channel).trim().toLowerCase();
+    if ("repair".equals(normalized)) {
+      return feishuRepairWebhookUrl == null ? "" : feishuRepairWebhookUrl.trim();
+    }
+    if ("life".equals(normalized)) {
+      return feishuLifeWebhookUrl == null ? "" : feishuLifeWebhookUrl.trim();
+    }
+    return feishuCustomerWebhookUrl == null ? "" : feishuCustomerWebhookUrl.trim();
+  }
+
+  private void notifyRepairFeishu(Map<String, Object> repair, String title) throws Exception {
+    String webhook = resolveFeishuWebhook("repair");
+    if (webhook.isEmpty()) {
+      return;
+    }
+    StringBuilder builder = new StringBuilder();
+    builder.append("【").append(title == null || title.isEmpty() ? "报修通知" : title).append("】\n");
+    builder.append("小区: ").append(repair.getOrDefault("community", "-")).append("\n");
+    builder.append("房屋: ").append(firstNonEmpty(repair.get("houseNo"), repair.get("room"), repair.get("building"), "-")).append("\n");
+    builder.append("标题: ").append(repair.getOrDefault("title", "-")).append("\n");
+    builder.append("分类: ").append(repair.getOrDefault("categoryName", repair.getOrDefault("category", "-"))).append("\n");
+    builder.append("状态: ").append(repair.getOrDefault("statusName", repair.getOrDefault("status", "-"))).append("\n");
+    builder.append("描述: ").append(repair.getOrDefault("description", "-")).append("\n");
+    builder.append("处理人: ").append(firstNonEmpty(repair.get("handler"), repair.get("handlerName"), "未分派"));
+    postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
+  }
+
+  private void notifyLifeServiceFeishu(String title, Map<String, Object> payload, String scene) throws Exception {
+    String webhook = resolveFeishuWebhook("life");
+    if (webhook.isEmpty()) {
+      return;
+    }
+    StringBuilder builder = new StringBuilder();
+    builder.append("【").append(title == null || title.isEmpty() ? "生活服务通知" : title).append("】\n");
+    builder.append("小区: ").append(payload.getOrDefault("community", "-")).append("\n");
+    builder.append("场景: ").append(scene == null || scene.isEmpty() ? "-" : scene).append("\n");
+    if (payload.containsKey("company")) {
+      builder.append("公司: ").append(payload.getOrDefault("company", "-")).append("\n");
+    }
+    if (payload.containsKey("orderNo")) {
+      builder.append("订单号: ").append(payload.getOrDefault("orderNo", "-")).append("\n");
+      builder.append("金额: ").append(payload.getOrDefault("totalAmount", "-")).append("\n");
+    }
+    if (payload.containsKey("code")) {
+      builder.append("取件码: ").append(payload.getOrDefault("code", "-")).append("\n");
+      builder.append("状态: ").append(payload.getOrDefault("statusText", payload.getOrDefault("status", "-"))).append("\n");
+    }
+    postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
   }
 
   @Override
@@ -2774,6 +3212,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "community", normalizedCommunityName,
         "enabled", true,
         "assistantName", "物业AI客服",
+        "assistantProvider", normalizeAssistantProvider(assistantProvider, openclawBaseUrl),
         "openclawMode", "local",
         "openclawBaseUrl", localBaseUrl,
         "openclawLocalBaseUrl", localBaseUrl,
@@ -2782,6 +3221,14 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "openclawSessionPath", "/session/{sessionId}",
         "openclawMessagePath", "/api/v1/assistant/messages",
         "openclawHandoffPath", "/api/v1/assistant/handoff",
+        "gemmaMode", "local",
+        "gemmaBaseUrl", defaultGemmaLocalBaseUrl(),
+        "gemmaLocalBaseUrl", defaultGemmaLocalBaseUrl(),
+        "gemmaRemoteBaseUrl", defaultGemmaRemoteBaseUrl(),
+        "gemmaChatPath", "/api/chat",
+        "gemmaModel", gemmaModel,
+        "gemmaTemperature", gemmaTemperature,
+        "gemmaMaxTokens", gemmaMaxTokens,
         "promptVersion", "v1",
         "analysisTimeoutMs", Math.max(1000L, openclawAnalysisTimeoutMs),
         "fallbackToHeuristic", true,
@@ -2812,6 +3259,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       item.putIfAbsent("community", communityNameById(target));
       item.putIfAbsent("enabled", true);
       item.putIfAbsent("assistantName", "物业AI客服");
+      item.put("assistantProvider", normalizeAssistantProvider(item.get("assistantProvider"), firstNonEmpty(item.get("gemmaBaseUrl"), item.get("openclawBaseUrl"))));
       item.put("openclawMode", normalizeOpenclawMode(item.get("openclawMode"), item.get("openclawBaseUrl")));
       item.putIfAbsent("openclawLocalBaseUrl", defaultOpenclawLocalBaseUrl());
       item.putIfAbsent("openclawRemoteBaseUrl", defaultOpenclawRemoteBaseUrl());
@@ -2825,6 +3273,19 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       item.putIfAbsent("openclawSessionPath", "/session/{sessionId}");
       item.putIfAbsent("openclawMessagePath", "/api/v1/assistant/messages");
       item.putIfAbsent("openclawHandoffPath", "/api/v1/assistant/handoff");
+      item.put("gemmaMode", normalizeOpenclawMode(item.get("gemmaMode"), item.get("gemmaBaseUrl")));
+      item.putIfAbsent("gemmaLocalBaseUrl", defaultGemmaLocalBaseUrl());
+      item.putIfAbsent("gemmaRemoteBaseUrl", defaultGemmaRemoteBaseUrl());
+      item.put("gemmaBaseUrl", resolveGemmaBaseUrl(
+          String.valueOf(item.getOrDefault("gemmaMode", "local")),
+          String.valueOf(item.getOrDefault("gemmaLocalBaseUrl", defaultGemmaLocalBaseUrl())),
+          String.valueOf(item.getOrDefault("gemmaRemoteBaseUrl", defaultGemmaRemoteBaseUrl())),
+          String.valueOf(item.getOrDefault("gemmaBaseUrl", defaultGemmaLocalBaseUrl()))
+      ));
+      item.putIfAbsent("gemmaChatPath", "/api/chat");
+      item.putIfAbsent("gemmaModel", gemmaModel);
+      item.putIfAbsent("gemmaTemperature", gemmaTemperature);
+      item.putIfAbsent("gemmaMaxTokens", gemmaMaxTokens);
       item.putIfAbsent("promptVersion", "v1");
       item.putIfAbsent("analysisTimeoutMs", Math.max(1000L, openclawAnalysisTimeoutMs));
       item.putIfAbsent("fallbackToHeuristic", true);
@@ -2856,6 +3317,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     record.put("id", communityId);
     record.put("communityId", communityId);
     record.put("community", communityName);
+    String provider = normalizeAssistantProvider(firstNonEmpty(payload.get("assistantProvider"), previous.get("assistantProvider"), assistantProvider), firstNonEmpty(payload.get("gemmaBaseUrl"), previous.get("gemmaBaseUrl"), payload.get("openclawBaseUrl"), previous.get("openclawBaseUrl"), openclawBaseUrl));
+    record.put("assistantProvider", provider);
     String mode = normalizeOpenclawMode(firstNonEmpty(payload.get("openclawMode"), previous.get("openclawMode")), previous.get("openclawBaseUrl"));
     String localBaseUrl = String.valueOf(firstNonEmpty(payload.get("openclawLocalBaseUrl"), previous.get("openclawLocalBaseUrl"), defaultOpenclawLocalBaseUrl()));
     String remoteBaseUrl = String.valueOf(firstNonEmpty(payload.get("openclawRemoteBaseUrl"), previous.get("openclawRemoteBaseUrl"), defaultOpenclawRemoteBaseUrl()));
@@ -2874,6 +3337,32 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     record.put("openclawSessionPath", String.valueOf(payload.getOrDefault("openclawSessionPath", record.getOrDefault("openclawSessionPath", "/session/{sessionId}"))));
     record.put("openclawMessagePath", String.valueOf(payload.getOrDefault("openclawMessagePath", record.getOrDefault("openclawMessagePath", "/api/v1/assistant/messages"))));
     record.put("openclawHandoffPath", String.valueOf(payload.getOrDefault("openclawHandoffPath", record.getOrDefault("openclawHandoffPath", "/api/v1/assistant/handoff"))));
+    String gemmaMode = normalizeOpenclawMode(firstNonEmpty(payload.get("gemmaMode"), previous.get("gemmaMode")), previous.get("gemmaBaseUrl"));
+    String gemmaLocalBaseUrl = String.valueOf(firstNonEmpty(payload.get("gemmaLocalBaseUrl"), previous.get("gemmaLocalBaseUrl"), defaultGemmaLocalBaseUrl()));
+    String gemmaRemoteBaseUrl = String.valueOf(firstNonEmpty(payload.get("gemmaRemoteBaseUrl"), previous.get("gemmaRemoteBaseUrl"), defaultGemmaRemoteBaseUrl()));
+    record.put("gemmaMode", gemmaMode);
+    record.put("gemmaLocalBaseUrl", gemmaLocalBaseUrl);
+    record.put("gemmaRemoteBaseUrl", gemmaRemoteBaseUrl);
+    record.put("gemmaBaseUrl", resolveGemmaBaseUrl(
+        gemmaMode,
+        gemmaLocalBaseUrl,
+        gemmaRemoteBaseUrl,
+        String.valueOf(firstNonEmpty(payload.get("gemmaBaseUrl"), record.getOrDefault("gemmaBaseUrl", defaultGemmaLocalBaseUrl())))
+    ));
+    record.put("gemmaChatPath", String.valueOf(payload.getOrDefault("gemmaChatPath", record.getOrDefault("gemmaChatPath", "/api/chat"))));
+    record.put("gemmaModel", String.valueOf(payload.getOrDefault("gemmaModel", record.getOrDefault("gemmaModel", gemmaModel))));
+    Object gemmaTemperatureValue = firstNonEmpty(payload.get("gemmaTemperature"), record.get("gemmaTemperature"), gemmaTemperature);
+    try {
+      record.put("gemmaTemperature", Double.parseDouble(String.valueOf(gemmaTemperatureValue)));
+    } catch (Exception error) {
+      record.put("gemmaTemperature", gemmaTemperature);
+    }
+    Object gemmaMaxTokensValue = firstNonEmpty(payload.get("gemmaMaxTokens"), record.get("gemmaMaxTokens"), gemmaMaxTokens);
+    try {
+      record.put("gemmaMaxTokens", Integer.parseInt(String.valueOf(gemmaMaxTokensValue)));
+    } catch (Exception error) {
+      record.put("gemmaMaxTokens", gemmaMaxTokens);
+    }
     record.put("promptVersion", String.valueOf(payload.getOrDefault("promptVersion", record.getOrDefault("promptVersion", "v1"))));
     Object timeoutValue = payload.getOrDefault("analysisTimeoutMs", record.getOrDefault("analysisTimeoutMs", Math.max(1000L, openclawAnalysisTimeoutMs)));
     record.put("analysisTimeoutMs", timeoutValue == null ? Math.max(1000L, openclawAnalysisTimeoutMs) : Long.parseLong(String.valueOf(timeoutValue)));
@@ -3684,6 +4173,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    boolean isNew = !express.containsKey(id);
     String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
     String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> item = mapOf(
@@ -3702,6 +4192,13 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     express.put(id, item);
     persistAll();
+    if (isNew) {
+      try {
+        notifyLifeServiceFeishu("快递通知", item, "admin_save_express");
+      } catch (Exception ignored) {
+        // 通知失败不影响快递记录保存
+      }
+    }
     return cloneMap(item);
   }
 
@@ -3793,6 +4290,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    boolean isNew = !vegetableOrders.containsKey(id);
     String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
     String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     List<Map<String, Object>> items = new ArrayList<>();
@@ -3825,6 +4323,13 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     vegetableOrders.put(id, order);
     persistAll();
+    if (isNew) {
+      try {
+        notifyLifeServiceFeishu("蔬菜订单通知", order, "admin_save_vegetable_order");
+      } catch (Exception ignored) {
+        // 通知失败不影响订单保存
+      }
+    }
     return cloneMap(order);
   }
 
@@ -4005,6 +4510,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     item.put("statusText", "已取件");
     item.put("pickupTime", now());
     persistAll();
+    try {
+      notifyLifeServiceFeishu("快递已取件", item, "pickup_express");
+    } catch (Exception ignored) {
+      // 通知失败不影响取件状态更新
+    }
     return cloneMap(item);
   }
 
@@ -4046,6 +4556,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     vegetableOrders.put(String.valueOf(order.get("id")), order);
     persistAll();
+    try {
+      notifyLifeServiceFeishu("蔬菜代买新订单", order, "create_vegetable_order");
+    } catch (Exception ignored) {
+      // 通知失败不影响订单入库
+    }
     return cloneMap(order);
   }
 
@@ -4114,11 +4629,20 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       payload.put("community", request.community);
       payload.put("enabled", request.enabled);
       payload.put("assistantName", request.assistantName);
+      payload.put("assistantProvider", request.assistantProvider);
       payload.put("openclawBaseUrl", request.openclawBaseUrl);
       payload.put("openclawModel", request.openclawModel);
       payload.put("openclawSessionPath", request.openclawSessionPath);
       payload.put("openclawMessagePath", request.openclawMessagePath);
       payload.put("openclawHandoffPath", request.openclawHandoffPath);
+      payload.put("gemmaMode", request.gemmaMode);
+      payload.put("gemmaBaseUrl", request.gemmaBaseUrl);
+      payload.put("gemmaLocalBaseUrl", request.gemmaLocalBaseUrl);
+      payload.put("gemmaRemoteBaseUrl", request.gemmaRemoteBaseUrl);
+      payload.put("gemmaChatPath", request.gemmaChatPath);
+      payload.put("gemmaModel", request.gemmaModel);
+      payload.put("gemmaTemperature", request.gemmaTemperature);
+      payload.put("gemmaMaxTokens", request.gemmaMaxTokens);
       payload.put("promptVersion", request.promptVersion);
       payload.put("analysisTimeoutMs", request.analysisTimeoutMs);
       payload.put("fallbackToHeuristic", request.fallbackToHeuristic);
@@ -4223,10 +4747,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String content = String.valueOf(firstNonEmpty(safeRequest.content, ""));
     String role = String.valueOf(firstNonEmpty(safeRequest.role, "user"));
     Map<String, Object> context = assistantMessageContext(token, safeRequest, session, settings);
+    String assistantProvider = effectiveAssistantProvider(settings);
     List<Map<String, Object>> history = new ArrayList<>(assistantSessionMessages(session));
     Map<String, Object> requestBody = mapOf(
         "sessionId", sessionId,
         "sessionToken", session.getOrDefault("sessionToken", ""),
+        "assistantProvider", assistantProvider,
         "scene", String.valueOf(firstNonEmpty(safeRequest.scene, session.get("scene"), "general")),
         "role", role,
         "contentType", String.valueOf(firstNonEmpty(safeRequest.contentType, "text")),
@@ -4246,7 +4772,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "prompt", String.valueOf(firstNonEmpty(safeRequest.prompt, session.get("prompt"), settings.get("promptTemplate"), "")),
         "inputText", content
     );
-    Map<String, Object> normalized = invokeOpenclawAssistant(settings, requestBody);
+    Map<String, Object> normalized = invokeAssistantEngine(token, settings, requestBody);
     if (normalized == null || normalized.isEmpty()) {
       normalized = buildHeuristicAssistantResponse(token, safeRequest, session, settings, context);
     }
@@ -4279,6 +4805,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     AssistantHandoffRequest safeRequest = request == null ? new AssistantHandoffRequest() : request;
     Map<String, Object> session = resolveAssistantSession(safeRequest.sessionId, safeRequest.communityId, safeRequest.houseId, safeRequest.userId, safeRequest.userName, safeRequest.phone);
     Map<String, Object> settings = assistantSettingsRecord(String.valueOf(firstNonEmpty(safeRequest.communityId, session.get("communityId"), currentCommunityId())));
+    String provider = effectiveAssistantProvider(settings);
     String sessionId = String.valueOf(session.getOrDefault("id", ""));
     String ticketId = "hf-" + newId();
     Map<String, Object> result = mapOf(
@@ -4291,7 +4818,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "community", session.getOrDefault("community", ""),
         "openclawUrl", session.getOrDefault("openclawUrl", "")
     );
-    String endpoint = assistantEndpoint(settings, "openclawHandoffPath");
+    String endpoint = "gemma".equals(provider) ? "" : assistantEndpoint(settings, "openclawHandoffPath");
     if (!endpoint.isEmpty()) {
       try {
         Map<String, Object> response = parseJsonObject(postJson(endpoint, mapOf(
@@ -4313,6 +4840,9 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       } catch (Exception ignored) {
         result.put("status", "queued");
       }
+    } else if ("gemma".equals(provider)) {
+      result.put("status", "queued");
+      result.put("reason", String.valueOf(firstNonEmpty(safeRequest.reason, "用户请求转人工")));
     }
     session.put("status", "handoff");
     session.put("handoffTicketId", ticketId);

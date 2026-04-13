@@ -53,7 +53,7 @@ function defaultSettings(community) {
   const remoteBaseUrl = DEFAULT_OPENCLAW_REMOTE_BASE_URL;
   return {
     enabled: true,
-    assistantName: '物业AI客服',
+    assistantName: '物业智能助手',
     openclawMode: 'local',
     openclawBaseUrl: localBaseUrl,
     openclawLocalBaseUrl: localBaseUrl,
@@ -68,7 +68,7 @@ function defaultSettings(community) {
     autoCreateSession: true,
     autoSaveHistory: true,
     autoHandoff: true,
-    promptTemplate: '你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON。',
+    promptTemplate: '你是物业智能助手，只回答当前小区和当前房屋的问题。先判断意图，再输出最短可用回复或结构化 JSON。不要闲聊，不要重复上下文。',
     enabledScenes: DEFAULT_SCENES,
     handoffKeywords: ['人工', '客服', '投诉升级', '找主管'],
     defaultSupervisor: community?.defaultSupervisor || '卜立胜',
@@ -173,7 +173,7 @@ export default function AssistantPromptPage() {
       const merged = { ...defaultSettings(activeCommunity), ...saved };
       setSettings(merged);
       writePromptSnapshot(payload.communityId, merged);
-      window.alert('Prompt 已保存到后端');
+      window.alert('提示词已保存到后端');
     } catch (error) {
       window.alert(error.message || '保存失败');
     }
@@ -194,9 +194,9 @@ export default function AssistantPromptPage() {
   };
 
   const previewPrompt = useMemo(() => [
-    `你是 ${settings.assistantName || '物业AI客服'}。`,
+    `你是 ${settings.assistantName || '物业智能助手'}。`,
     `当前项目：${communityName(activeCommunity)}`,
-    `当前负责人：${settings.defaultSupervisor || '卜立胜'}`,
+    `当前主负责人：${settings.defaultSupervisor || '卜立胜'}`,
     `连接模式：${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地'}`,
     `可用场景：${parseList(settings.enabledScenes).join('、') || '未配置'}`,
     `转人工关键词：${parseList(settings.handoffKeywords).join('、') || '无'}`,
@@ -241,14 +241,14 @@ export default function AssistantPromptPage() {
   const copyPromptTemplate = async () => {
     try {
       await navigator.clipboard.writeText(settings.promptTemplate || '');
-      window.alert('已复制 Prompt 模板');
+      window.alert('已复制提示词模板');
     } catch (error) {
       window.alert(error.message || '复制失败');
     }
   };
 
   const resetToDefault = () => {
-    if (!window.confirm('确定恢复当前项目的默认 Prompt 配置吗？')) {
+    if (!window.confirm('确定恢复当前项目的默认提示词配置吗？')) {
       return;
     }
     setSettings(defaultSettings(activeCommunity));
@@ -279,16 +279,16 @@ export default function AssistantPromptPage() {
     <div className="assistant-center-page">
       <header className="assistant-center-hero card">
         <div>
-          <div className="eyebrow">AI 中台</div>
-          <h1>Prompt 配置</h1>
-          <p>这里专门维护 openclaw 提示词和场景开关，方便调整 AI 的回答风格和动作边界。</p>
+          <div className="eyebrow">智能中台</div>
+          <h1>提示词配置</h1>
+          <p>这里专门维护智能引擎提示词和场景开关，方便调整智能助手的回答风格和动作边界。</p>
         </div>
         <div className="assistant-center-actions">
           <button type="button" className="btn btn-primary" onClick={save}>保存配置</button>
           <button type="button" className="btn btn-ghost" onClick={copyPromptTemplate}>一键复制模板</button>
           <button type="button" className="btn btn-ghost" onClick={restoreLastSaved}>恢复上一次保存</button>
           <button type="button" className="btn btn-ghost" onClick={resetToDefault}>重置默认模板</button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>FAQ</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>常见问题</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-sessions')}>会话日志</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/')}>返回控制台</button>
         </div>
@@ -319,16 +319,16 @@ export default function AssistantPromptPage() {
       <div className="assistant-center-layout">
         <section className="card assistant-center-list">
           <div className="assistant-list-head">
-            <div>Prompt 主配置</div>
+            <div>提示词主配置</div>
             <div className="hint">这些字段会直接保存到后端</div>
           </div>
           <div className="assistant-form">
             <label className="field-group">
-              <span className="field-label">客服名称</span>
+              <span className="field-label">助手名称</span>
               <input className="field" value={settings.assistantName || ''} onChange={(e) => setField('assistantName', e.target.value)} />
             </label>
             <label className="field-group">
-              <span className="field-label">Prompt 模板</span>
+              <span className="field-label">提示词模板</span>
               <textarea className="field textarea prompt" rows={12} value={settings.promptTemplate || ''} onChange={(e) => setField('promptTemplate', e.target.value)} />
             </label>
             <div className="form-grid two">
@@ -346,9 +346,9 @@ export default function AssistantPromptPage() {
               <textarea className="field textarea" rows={3} value={joinList(settings.handoffKeywords)} onChange={(e) => setField('handoffKeywords', e.target.value)} />
             </label>
             <label className="field-group">
-              <span className="field-label">默认负责人</span>
+              <span className="field-label">默认主负责人</span>
               <select className="field" value={settings.defaultSupervisor || ''} onChange={(e) => setField('defaultSupervisor', e.target.value)}>
-                <option value="">请选择负责人</option>
+                <option value="">请选择主负责人</option>
                 {currentStaffOptions.map((staff) => <option key={staff.id} value={staff.name}>{staff.name}</option>)}
               </select>
             </label>
@@ -372,7 +372,7 @@ export default function AssistantPromptPage() {
         <aside className="card assistant-center-drawer">
           <div className="section-header">
             <div>
-              <div className="section-title">Prompt 预览</div>
+              <div className="section-title">提示词预览</div>
               <div className="hint">保存前先确认这段内容是否符合预期。</div>
             </div>
           </div>
@@ -380,7 +380,7 @@ export default function AssistantPromptPage() {
           <div className="section-header">
             <div>
               <div className="section-title">JSON 预览</div>
-              <div className="hint">建议 openclaw 返回这类结构化内容。</div>
+              <div className="hint">建议智能引擎返回这类结构化内容。</div>
             </div>
           </div>
           <pre className="json-preview small">{JSON.stringify({

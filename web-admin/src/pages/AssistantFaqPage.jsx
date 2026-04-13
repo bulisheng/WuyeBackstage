@@ -70,7 +70,7 @@ export default function AssistantFaqPage() {
     const options = [];
     const seen = new Set();
     if (currentSupervisorName) {
-      options.push({ value: currentSupervisorName, label: `${currentSupervisorName}（当前负责人）` });
+      options.push({ value: currentSupervisorName, label: `${currentSupervisorName}（当前主负责人）` });
       seen.add(currentSupervisorName);
     }
     currentStaffOptions.forEach((staff) => {
@@ -273,12 +273,12 @@ export default function AssistantFaqPage() {
       <header className="assistant-center-hero card">
         <div>
           <div className="eyebrow">AI 中台</div>
-          <h1>FAQ 管理</h1>
-          <p>维护常见问题，AI 客服会优先拿这些答案做回复。</p>
+          <h1>常见问题管理</h1>
+          <p>维护常见问题，智能助手会优先拿这些答案做回复。</p>
         </div>
         <div className="assistant-center-actions">
-          <button type="button" className="btn btn-primary" onClick={openCreate}>新增 FAQ</button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-prompt')}>Prompt</button>
+          <button type="button" className="btn btn-primary" onClick={openCreate}>新增问题</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-prompt')}>提示词</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-sessions')}>会话日志</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/')}>返回控制台</button>
         </div>
@@ -338,11 +338,11 @@ export default function AssistantFaqPage() {
             </div>
           </div>
           <div className="assistant-toolbar-row">
-            <div className="toolbar-title">负责人</div>
+            <div className="toolbar-title">主负责人</div>
             <div className="chip-row compact">
               <button type="button" className={`chip ${supervisorFilter === 'all' ? 'active' : ''}`} onClick={() => setSupervisorFilter('all')}>全部</button>
-              <button type="button" className={`chip ${supervisorFilter === 'current' ? 'active' : ''}`} onClick={() => setSupervisorFilter('current')}>只看当前负责人</button>
-              {currentSupervisorName ? <span className="hint">当前负责人：{currentSupervisorName}</span> : <span className="hint">当前项目未配置负责人</span>}
+              <button type="button" className={`chip ${supervisorFilter === 'current' ? 'active' : ''}`} onClick={() => setSupervisorFilter('current')}>只看当前主负责人</button>
+              {currentSupervisorName ? <span className="hint">当前主负责人：{currentSupervisorName}</span> : <span className="hint">当前项目未配置主负责人</span>}
             </div>
           </div>
           <div className="assistant-toolbar-row wrap">
@@ -379,7 +379,7 @@ export default function AssistantFaqPage() {
                   <div className="assistant-list-meta">
                     <span className={`status-pill ${item.enabled === false ? 'danger' : 'success'}`}>{item.enabled === false ? '停用' : '启用'}</span>
                     <span className="status-pill">{item.community || communityName(activeCommunity)}</span>
-                    <span className="status-pill">{item.responsibleSupervisor || item.supervisorName || currentSupervisorName || '未设置负责人'}</span>
+                    <span className="status-pill">{item.responsibleSupervisor || item.supervisorName || currentSupervisorName || '未设置主负责人'}</span>
                     <span className="status-pill">顺序 {item.orderNo || 0}</span>
                   </div>
                   <div className="chip-row compact">
@@ -412,7 +412,7 @@ export default function AssistantFaqPage() {
               <div className="drawer-line">答案：{drawer.item?.answer || '-'}</div>
               <div className="drawer-line">标签：{splitTags(drawer.item?.tags) || '-'}</div>
               <div className="drawer-line">项目：{drawer.item?.community || '-'}</div>
-              <div className="drawer-line">负责人：{drawer.item?.responsibleSupervisor || drawer.item?.supervisorName || currentSupervisorName || '-'}</div>
+              <div className="drawer-line">主负责人：{drawer.item?.responsibleSupervisor || drawer.item?.supervisorName || currentSupervisorName || '-'}</div>
               <div className="drawer-line">顺序：{drawer.item?.orderNo || 0}</div>
               <div className="drawer-line">状态：{drawer.item?.enabled === false ? '停用' : '启用'}</div>
               <div className="footer-actions">
@@ -435,9 +435,9 @@ export default function AssistantFaqPage() {
                 <input className="field" value={draft.tags} onChange={(e) => setDraft((prev) => ({ ...prev, tags: e.target.value }))} />
               </label>
               <label className="field-group">
-                <span className="field-label">负责人</span>
+                <span className="field-label">主负责人</span>
                 <select className="field" value={draft.responsibleSupervisor || ''} onChange={(e) => setDraft((prev) => ({ ...prev, responsibleSupervisor: e.target.value }))}>
-                  <option value="">请选择负责人</option>
+                  <option value="">请选择主负责人</option>
                   {responsibleOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

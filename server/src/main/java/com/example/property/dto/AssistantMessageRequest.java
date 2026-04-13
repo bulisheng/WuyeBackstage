@@ -10,6 +10,7 @@ public class AssistantMessageRequest {
   public String content;
   public String contentType;
   public String communityId;
+  public String community;
   public String houseId;
   public String userId;
   public String userName;

@@ -1,5 +1,7 @@
 const { getRuntimeConfig } = require('./config');
 
+const ASSISTANT_REQUEST_TIMEOUT = 60000;
+
 function getAppToken() {
   try {
     return wx.getStorageSync('authToken') || '';
@@ -170,7 +172,7 @@ function createVegetableOrder(payload) {
 }
 
 function createAssistantSession(payload) {
-  return post('/assistant/sessions', payload);
+  return post('/assistant/sessions', payload, { timeout: ASSISTANT_REQUEST_TIMEOUT });
 }
 
 function getAssistantSession(id) {
@@ -187,11 +189,11 @@ function saveAssistantSettings(payload) {
 }
 
 function assistantMessage(payload) {
-  return post('/assistant/messages', payload);
+  return post('/assistant/messages', payload, { timeout: ASSISTANT_REQUEST_TIMEOUT });
 }
 
 function assistantHandoff(payload) {
-  return post('/assistant/handoff', payload);
+  return post('/assistant/handoff', payload, { timeout: ASSISTANT_REQUEST_TIMEOUT });
 }
 
 function callbackOpenclaw(payload) {

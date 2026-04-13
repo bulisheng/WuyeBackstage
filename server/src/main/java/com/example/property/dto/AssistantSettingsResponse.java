@@ -9,6 +9,7 @@ public class AssistantSettingsResponse {
   public String community;
   public Boolean enabled;
   public String assistantName;
+  public String assistantProvider;
   public String openclawMode;
   public String openclawBaseUrl;
   public String openclawLocalBaseUrl;
@@ -17,6 +18,14 @@ public class AssistantSettingsResponse {
   public String openclawSessionPath;
   public String openclawMessagePath;
   public String openclawHandoffPath;
+  public String gemmaMode;
+  public String gemmaBaseUrl;
+  public String gemmaLocalBaseUrl;
+  public String gemmaRemoteBaseUrl;
+  public String gemmaChatPath;
+  public String gemmaModel;
+  public Double gemmaTemperature;
+  public Integer gemmaMaxTokens;
   public String promptVersion;
   public Integer analysisTimeoutMs;
   public Boolean fallbackToHeuristic;

@@ -20,13 +20,22 @@
 如果你只是想马上跑起来：
 
 1. 启动 MongoDB
-2. 启动后端 `server`
-3. 启动 Web 管理台 `web-admin`
-4. 用微信开发者工具打开小程序
+2. 启动本地智能引擎
+3. 启动后端 `server`
+4. 启动 Web 管理台 `web-admin`
+5. 用微信开发者工具打开小程序
+
+如果你想省事，可以直接双击根目录的 `start-all.bat`，它会依次拉起：
+
+- MongoDB
+- 后端 `server`
+- Web 管理台 `web-admin`
+- 本地 openclaw（请确保它已单独启动）
+
+`start-all.bat` 现在只是入口包装，真正的启动逻辑在 `start-all.ps1`，这样比纯 cmd 批处理更稳。它不会再自动启动本地大模型。
 
 更详细的步骤请看：
 
 - [开发者文档](docs/DEV_GUIDE.md)
 - [使用者文档](docs/USER_GUIDE.md)
 - [AI 接手文档](docs/AI_GUIDE.md)
-

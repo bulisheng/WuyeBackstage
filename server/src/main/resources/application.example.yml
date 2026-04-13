@@ -19,8 +19,13 @@ openclaw:
   complaint-analysis-path: /api/v1/assistant/complaint/analyze
   analysis-timeout-ms: 5000
 
+assistant:
+  provider: openclaw
+
 feishu:
-  webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/5f9b23b9-859d-4cb8-96b8-465b02a25f97
+  customer-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/3151f64f-bbbe-4ea2-a2cd-abae45822947
+  repair-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/fa44ef03-9edf-404f-97a0-c8745b45d380
+  life-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/9e81812c-50e9-4eca-ab11-8a5e9c403f5f
 
 complaint:
   default-supervisor: 卜立胜
