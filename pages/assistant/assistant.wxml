@@ -32,10 +32,29 @@
   </scroll-view>
 
   <view class="assistant-loading card" wx:if="{{loading}}">
-    <view class="assistant-loading-dot"></view>
+    <view class="assistant-loading-head">
+      <view class="assistant-loading-dot-group">
+        <view class="assistant-loading-dot"></view>
+        <view class="assistant-loading-dot assistant-loading-dot-delay"></view>
+        <view class="assistant-loading-dot assistant-loading-dot-delay-2"></view>
+      </view>
+      <view class="assistant-loading-head-texts">
+        <text class="assistant-loading-title">{{loadingStageTitle}}</text>
+        <text class="assistant-loading-subtitle">{{loadingStageHint}}</text>
+      </view>
+    </view>
     <view class="assistant-loading-texts">
-      <text class="assistant-loading-title">智能助手正在思考</text>
-      <text class="assistant-loading-subtitle">请稍候，正在连接 openclaw 并整理回复。</text>
+      <block wx:for="{{loadingSteps}}" wx:key="id">
+        <view class="assistant-loading-step {{item.stateClass}}">
+          <text class="assistant-loading-step-index">{{item.index}}</text>
+          <view class="assistant-loading-step-texts">
+            <text class="assistant-loading-step-title">{{item.label}}</text>
+            <text class="assistant-loading-step-subtitle">{{item.hint}}</text>
+          </view>
+          <text class="assistant-loading-step-status" wx:if="{{item.active}}">进行中</text>
+          <text class="assistant-loading-step-status" wx:if="{{item.done}}">已完成</text>
+        </view>
+      </block>
     </view>
   </view>
 

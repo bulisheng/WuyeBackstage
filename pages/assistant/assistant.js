@@ -97,6 +97,9 @@ function normalizeMessage(message) {
 Page({
   data: {
     loading: false,
+    loadingStageTitle: '正在提交到智能助手',
+    loadingStageHint: '已收到你的消息，正在接入 openclaw 并排队处理。',
+    loadingSteps: [],
     inputText: '',
     messages: [],
     serviceCards: [],
@@ -116,6 +119,10 @@ Page({
 
   onShow() {
     this.syncContext();
+  },
+
+  onUnload() {
+    this.stopLoadingQueue();
   },
 
   bootstrap() {
@@ -217,6 +224,81 @@ Page({
     this.pushMessage({ role: 'system', type: 'system', text });
   },
 
+  buildLoadingSteps(stageIndex) {
+    const stages = [
+      {
+        id: 'submitted',
+        index: '1',
+        label: '已提交请求',
+        hint: '消息已经进入智能助手通道'
+      },
+      {
+        id: 'queue',
+        index: '2',
+        label: '排队中',
+        hint: '正在等待 openclaw 处理'
+      },
+      {
+        id: 'compose',
+        index: '3',
+        label: '整理回复',
+        hint: '正在生成适合当前小区的答复'
+      }
+    ];
+    return stages.map((item, index) => {
+      const done = index < stageIndex;
+      const active = index === stageIndex;
+      return Object.assign({}, item, {
+        done,
+        active,
+        stateClass: done ? 'done' : active ? 'active' : 'pending'
+      });
+    });
+  },
+
+  startLoadingQueue() {
+    this.stopLoadingQueue();
+    const queueStates = [
+      {
+        title: '正在提交到智能助手',
+        hint: '消息已发送，正在接入 openclaw。',
+        stage: 0
+      },
+      {
+        title: '智能助手正在排队',
+        hint: '系统正在等待智能引擎处理当前问题。',
+        stage: 1
+      },
+      {
+        title: '智能助手正在整理回复',
+        hint: '正在结合当前小区和房屋信息生成答复。',
+        stage: 2
+      }
+    ];
+    let currentStage = 0;
+    this.setData({
+      loadingStageTitle: queueStates[currentStage].title,
+      loadingStageHint: queueStates[currentStage].hint,
+      loadingSteps: this.buildLoadingSteps(queueStates[currentStage].stage)
+    });
+    this.loadingQueueTimer = setInterval(() => {
+      currentStage = (currentStage + 1) % queueStates.length;
+      const state = queueStates[currentStage];
+      this.setData({
+        loadingStageTitle: state.title,
+        loadingStageHint: state.hint,
+        loadingSteps: this.buildLoadingSteps(state.stage)
+      });
+    }, 1600);
+  },
+
+  stopLoadingQueue() {
+    if (this.loadingQueueTimer) {
+      clearInterval(this.loadingQueueTimer);
+      this.loadingQueueTimer = null;
+    }
+  },
+
   saveDraftStorage(key, value) {
     try {
       wx.setStorageSync(key, value);
@@ -270,6 +352,7 @@ Page({
 
     this.pushMessage({ role: 'user', type: 'text', text });
     this.setData({ loading: true, inputText: '', canSend: false, draftCard: null });
+    this.startLoadingQueue();
 
     try {
       const response = await app.services.assistantMessage({
@@ -398,8 +481,12 @@ Page({
       }
       this.setData({
         loading: false,
+        loadingStageTitle: '正在提交到智能助手',
+        loadingStageHint: '已收到你的消息，正在接入 openclaw 并排队处理。',
+        loadingSteps: this.buildLoadingSteps(0),
         quickReplies
       });
+      this.stopLoadingQueue();
     } catch (error) {
       this.pushMessage({
         role: 'assistant',
@@ -409,8 +496,12 @@ Page({
       });
       this.setData({
         loading: false,
+        loadingStageTitle: '正在提交到智能助手',
+        loadingStageHint: '已收到你的消息，正在接入 openclaw 并排队处理。',
+        loadingSteps: this.buildLoadingSteps(0),
         quickReplies: ['查物业费', '查报修', '提交报修', '提交投诉', '转人工']
       });
+      this.stopLoadingQueue();
     }
   },
 
