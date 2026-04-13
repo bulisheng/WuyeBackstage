@@ -25,10 +25,6 @@
             <text class="card-line" wx:if="{{item.showHandler}}">处理人：{{item.card.handler}}</text>
             <text class="card-line" wx:if="{{item.showSuggestion}}">建议：{{item.card.suggestion}}</text>
           </view>
-          <view class="message-meta-line" wx:if="{{item.showMeta}}">
-            <text class="meta-pill">意图：{{item.intentText}}</text>
-            <text class="meta-pill">置信度：{{item.confidenceText}}</text>
-          </view>
         </view>
       </view>
     </block>

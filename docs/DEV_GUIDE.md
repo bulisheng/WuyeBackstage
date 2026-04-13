@@ -9,7 +9,7 @@
 - MongoDB
 - Vite + React
 - 飞书 Webhook
-- openclaw 适配层
+- 智能引擎适配层
 
 ## 本机启动顺序
 
@@ -36,7 +36,7 @@ mvn spring-boot:run
 http://0.0.0.0:8080
 ```
 
-API 前缀：
+接口前缀：
 
 ```text
 /api/v1
@@ -54,31 +54,31 @@ npm run dev
 
 - 用微信开发者工具导入项目根目录
 - 真机联调时把 `devApiBaseUrl` 改成电脑局域网 IP
-- `pages/assistant/assistant` 是 AI 客服页，报修/投诉草稿会先缓存到本地再跳转到对应业务页
-- `web-admin/src/pages/AssistantSessionsPage.jsx` 里可以切换 `格式化 / 原始` JSON。
-- `web-admin/src/pages/AssistantPromptPage.jsx` 支持 `恢复上一次保存`。
-- `web-admin/src/pages/AssistantFaqPage.jsx` 支持按项目、标签、启用状态和当前主负责人筛选 FAQ；FAQ 记录里建议保留 `responsibleSupervisor` 字段。
+- `pages/assistant/assistant` 是智能助手页，报修/投诉草稿会先缓存到本地再跳转到对应业务页
+- `web-admin/src/pages/AssistantSessionsPage.jsx` 里可以切换 `格式化 / 原始` 数据。
+- 提示词页支持 `恢复上一次保存`。
+- 常见问题页支持按项目、标签、启用状态和当前负责人筛选常见问题；常见问题记录里建议保留 `responsibleSupervisor` 字段。
 
-### AI 客服联调
+### 智能助手联调
 
-AI 客服现在已经可以测，最小联调顺序是：
+智能助手现在已经可以测，最小联调顺序是：
 
 1. 启动 MongoDB。
 2. 启动后端 `server`。
 3. 启动 Web 管理台 `web-admin`。
-4. 启动本地 openclaw，本地默认入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`。
-5. 在 Web 管理台 `AI 配置` 页面里确认 `智能引擎类型` 是 `智能路由`，再把 `连接模式` 切到 `本地` 或 `远程`。
+4. 启动本地智能引擎，本地默认入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`。
+5. 在 Web 管理台 `智能配置` 页面里确认 `智能引擎类型` 是 `智能引擎`，再把 `连接模式` 切到 `本地` 或 `远程`。
 6. 打开小程序首页，点击 `智能助手`。
 7. 先测这几个场景：
    - `查本月物业费`
    - `帮我提报修，水管漏水`
    - `帮我生成一条投诉，楼上太吵`
    - `转人工`
-8. 如果要看链路是否真的走了智能引擎，去 `web-admin` 的 `会话日志` 页面看原始 JSON。
+8. 如果要看链路是否真的走了智能引擎，去 `web-admin` 的 `会话日志` 页面看原始数据。
 
 补充说明：
-- 如果 openclaw 没启动，AI 客服页仍然能打开，但会回退到本地规则或草稿模式。
-- 要测真正的 openclaw 返回，至少要确认后端能访问本地 openclaw 地址。
+- 如果智能引擎没启动，智能助手页仍然能打开，但会回退到本地规则或草稿模式。
+- 要测真正的智能引擎返回，至少要确认后端能访问本地智能引擎地址。
 
 ## 关键配置文件
 
@@ -87,7 +87,7 @@ AI 客服现在已经可以测，最小联调顺序是：
 - Web 开发环境配置：[web-admin/.env.development](../web-admin/.env.development)
 - Web 环境模板：[web-admin/.env.example](../web-admin/.env.example)
 - 小程序本地配置：[utils/config.js](../utils/config.js)
-- 小区功能、项目名称、默认主负责人都在 Web 管理台的 `小区管理` 里配置。
+- 小区功能、项目名称、默认负责人都在 Web 管理台的 `小区管理` 里配置。
 
 ## 需要改哪里
 
@@ -100,22 +100,22 @@ AI 客服现在已经可以测，最小联调顺序是：
 - `FEISHU_LIFE_WEBHOOK_URL`
 - `complaint.default-supervisor`
 - 投诉规则表里的 `mentionTargets`
-- `web-admin` 的 `智能配置` 页面里，通知路由会显示 `绑定机器人 / 推送事项 / 主负责人 / 备选负责人`，这是后续排查飞书路由最先看的地方。
+- `web-admin` 的 `智能配置` 页面里，通知路由会显示 `绑定机器人 / 推送事项 / 负责人 / 备选负责人`，这是后续排查飞书路由最先看的地方。
 - 原来的单一 `FEISHU_WEBHOOK_URL` 已经删掉，后续只保留这三路机器人配置。
 
-### 改 openclaw
+### 改智能引擎
 - 默认本地入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`
-- 远程入口默认占位是 `https://openclaw.example.com`
+- 远程入口默认占位是示例地址 `https://openclaw.example.com`
 - Web 管理台会优先保存 `openclawMode`、`openclawLocalBaseUrl`、`openclawRemoteBaseUrl`
 - `OPENCLAW_BASE_URL`
 - `OPENCLAW_LOCAL_BASE_URL`
 - `OPENCLAW_REMOTE_BASE_URL`
 - `OPENCLAW_COMPLAINT_ANALYSIS_PATH`
 - `OPENCLAW_ANALYSIS_TIMEOUT_MS`
-- 未来如果要部署成“云后端 + Mac mini 上 openclaw”，优先在 Web 管理台里切换 `本地 / 远程`，不要只改一个 baseUrl。
-- 现在默认智能引擎已经回到 `openclaw`，本地模型不是主路径。
+- 未来如果要部署成“云后端 + Mac mini 上智能引擎”，优先在 Web 管理台里切换 `本地 / 远程`，不要只改一个地址。
+- 现在默认智能引擎已经回到智能引擎路线，本地模型不是主路径。
 
-### 改默认主管
+### 改默认负责人
 - 后端 `complaint.default-supervisor`
 - Web 管理台里的 `小区管理`
 
@@ -130,10 +130,10 @@ AI 客服现在已经可以测，最小联调顺序是：
 
 ## 业务数据流
 
-- 小程序只打自己的后端 API
+- 小程序只打自己的后端接口
 - 后端落 MongoDB
 - Web 管理台也是打同一个后端
-- openclaw 只做分析辅助
+- 智能引擎只做分析辅助
 - 飞书机器人只负责通知
 - 多小区数据要靠 `communityId` 和 `community` 一起对齐，不能只靠名称过滤。
 
@@ -163,15 +163,15 @@ AI 客服现在已经可以测，最小联调顺序是：
 4. 关闭微信开发者工具里的域名校验，或改用正式 HTTPS 域名。
 5. 登录后如果房屋绑定正确，首页账单只会看得到当前房屋对应的账单。
 
-## AI 客服测试清单
+## 智能助手测试清单
 
-1. 打开小程序首页 `AI客服`。
+1. 打开小程序首页 `智能助手`。
 2. 输入 `查本月物业费`，确认返回当前房屋账单摘要。
 3. 输入 `帮我提报修，水管漏水`，确认是否出现报修草稿卡。
 4. 输入 `帮我生成一条投诉，楼上太吵`，确认是否出现投诉草稿卡。
 5. 输入 `转人工`，确认是否进入人工接管流程。
-6. 打开后台 `会话日志`，确认原始 JSON、格式化 JSON 和回退逻辑都正常。
-7. 如果 openclaw 未命中，检查：
-   - `openclawMode`
-   - `openclawBaseUrl`
-   - 本地 openclaw 进程是否已启动
+6. 打开后台 `会话日志`，确认原始数据、格式化数据和回退逻辑都正常。
+7. 如果智能引擎未命中，检查：
+   - 智能引擎模式（`openclawMode`）
+   - 智能引擎地址（`openclawBaseUrl`）
+   - 本地智能引擎进程是否已启动

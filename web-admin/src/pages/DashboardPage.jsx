@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   deleteDecoration,
@@ -58,7 +58,7 @@ const TABS = {
   notice: { label: '公告', title: '公告管理', subtitle: '搜索、筛选、排序、分页和编辑都在这里完成。' },
   bill: { label: '账单', title: '账单管理', subtitle: '账单查询、筛选、排序、编辑和批量状态变更都在这里。' },
   repair: { label: '报修', title: '报修管理', subtitle: '报修记录、审批流转、详情编辑和批量处理都能直接完成。' },
-  community: { label: '小区', title: '小区管理', subtitle: '多小区配置、默认主管、主管列表和启用状态都能统一维护。' },
+  community: { label: '小区', title: '小区管理', subtitle: '多小区配置、默认负责人、负责人列表和启用状态都能统一维护。' },
   resident: { label: '住户', title: '住户账号管理', subtitle: '住户账号、绑定信息、入住状态和备注都能直接维护。' },
   house: { label: '房屋', title: '房屋档案管理', subtitle: '房屋档案、产权人、入住状态和房间信息都能维护。' },
   staff: { label: '人员', title: '物业人员管理', subtitle: '物业人员和维修人员的角色、岗位和在岗状态都能管理。' },
@@ -137,7 +137,7 @@ function defaultDraftFor(type) {
     return { id: '', community: '', houseNo: '', building: '', unit: '', room: '', area: '', ownerName: '', ownerPhone: '', occupantName: '', occupantPhone: '', boundUserId: '', boundUserName: '', boundUserPhone: '', ownershipStatus: 'self_owned', occupancyStatus: 'occupied', status: 'occupied', statusText: '已入住', remark: '', createTime: '' };
   }
   if (type === 'staff') {
-    return { id: '', community: '', name: '', feishuDisplayName: '', feishuUserId: '', feishuOpenId: '', feishuUnionId: '', role: '物业人员', position: '', department: '', phone: '', status: 'active', statusText: '在岗', skill: '', shift: '白班', scope: '', remark: '', createTime: '' };
+    return { id: '', community: '', name: '', feishuUserId: '', role: '物业人员', position: '', department: '', phone: '', status: 'active', statusText: '在岗', skill: '', shift: '白班', scope: '', remark: '', createTime: '' };
   }
   if (type === 'bill') {
     return { id: '', type: 'property', title: '', amount: '', period: '', dueDate: '', status: 'unpaid', paidDate: '', room: '', openid: '' };
@@ -646,8 +646,8 @@ function fieldLabel(field) {
     totalHouse: '总房源',
     totalPark: '总车位',
     availablePark: '可用车位',
-    defaultSupervisor: '默认主管',
-    supervisors: '主管列表',
+    defaultSupervisor: '默认负责人',
+    supervisors: '负责人列表',
     active: '启用',
     relationship: '关系',
     role: '角色',
@@ -696,10 +696,11 @@ function fieldLabel(field) {
     shift: '班次',
     scope: '负责区域',
     responsibleBuildings: '负责楼栋',
-    feishuDisplayName: '飞书成员名',
     feishuUserId: '飞书成员标识',
-    feishuOpenId: '飞书开放标识',
-    feishuUnionId: '飞书统一标识',
+    handler: '处理人',
+    handlerPhone: '处理电话',
+    staffName: '人员名称',
+    staffPosition: '人员岗位',
     dispatchTime: '分派时间',
     dispatchRemark: '分派备注',
     dispatchShift: '目标班次',
@@ -720,7 +721,7 @@ function fieldLabel(field) {
     pushError: '推送错误',
     ruleId: '规则ID',
     ruleName: '规则名称',
-    supervisorName: '主负责人',
+    supervisorName: '负责人',
     mentionTargets: '通知对象',
     onlyCurrentCommunityStaff: '只看当前小区人员',
     suggestedAction: '建议动作',
@@ -912,8 +913,8 @@ function rowsFor(type, item) {
       ['总房源', item.totalHouse],
       ['总车位', item.totalPark],
       ['可用车位', item.availablePark],
-      ['默认主管', item.defaultSupervisor],
-      ['主管列表', Array.isArray(item.supervisors) ? item.supervisors.join('、') : item.supervisors],
+      ['默认负责人', item.defaultSupervisor],
+      ['负责人列表', Array.isArray(item.supervisors) ? item.supervisors.join('、') : item.supervisors],
       ['状态', item.active ? '当前小区' : '未启用'],
       ['当前启用功能', COMMUNITY_FEATURES.filter((feature) => item[feature.field] !== false).map((feature) => feature.label).join('、')],
       ['更新时间', item.updateTime],
@@ -957,11 +958,8 @@ function rowsFor(type, item) {
     return [
       ['小区', item.community],
       ['姓名', item.name],
-      ['飞书成员名', item.feishuDisplayName || item.name],
-      ['飞书绑定', item.feishuUserId || item.feishuOpenId || item.feishuUnionId ? '已绑定' : '未绑定'],
-      ['飞书 user_id', item.feishuUserId],
-      ['飞书 open_id', item.feishuOpenId],
-      ['飞书 union_id', item.feishuUnionId],
+      ['飞书绑定', item.feishuUserId ? '已绑定' : '未绑定'],
+      ['飞书标识', item.feishuUserId || '-'],
       ['角色', item.role],
       ['岗位', item.position],
       ['部门', item.department],
@@ -1029,7 +1027,7 @@ function rowsFor(type, item) {
       ['推送状态', complaintPushLabel(item.pushStatus)],
       ['推送时间', item.pushTime],
       ['规则', item.ruleName],
-      ['主负责人', item.supervisorName],
+      ['负责人', item.supervisorName],
       ['通知对象', Array.isArray(item.mentionTargets) ? item.mentionTargets.join('、') : item.mentionTargets],
       ['建议动作', item.suggestedAction],
       ['摘要', item.summary],
@@ -1046,7 +1044,7 @@ function rowsFor(type, item) {
       ['关键词', Array.isArray(item.matchKeywords) ? item.matchKeywords.join('、') : item.matchKeywords],
       ['分类', Array.isArray(item.matchCategories) ? item.matchCategories.join('、') : item.matchCategories],
       ['楼栋', Array.isArray(item.matchBuildings) ? item.matchBuildings.join('、') : item.matchBuildings],
-      ['主负责人', item.supervisorName],
+      ['负责人', item.supervisorName],
       ['通知对象', Array.isArray(item.mentionTargets) ? item.mentionTargets.join('、') : item.mentionTargets],
       ['自动分析', item.autoAnalyze ? '是' : '否'],
       ['自动推送', item.autoPush ? '是' : '否'],
@@ -1114,14 +1112,15 @@ function rowsFor(type, item) {
   ];
 }
 
-function renderField(item, field, type, onChange, onToggle) {
+function renderField(item, field, type, onChange, onToggle, options = {}) {
   const value = item[field] == null ? '' : item[field];
+  const readOnly = Boolean(options.readOnly);
   if (type === 'textarea') {
     const textValue = typeof value === 'string' ? value : JSON.stringify(value ?? '', null, 2);
     return (
       <label className="form-field">
         <span className="field-label">{fieldLabel(field)}</span>
-        <textarea className="field textarea" value={textValue} onChange={onChange(field)} />
+        <textarea className="field textarea" value={textValue} onChange={onChange(field)} readOnly={readOnly} />
       </label>
     );
   }
@@ -1148,7 +1147,7 @@ function renderField(item, field, type, onChange, onToggle) {
   return (
     <label className="form-field">
       <span className="field-label">{fieldLabel(field)}</span>
-      <input className="field" type={type === 'number' ? 'number' : 'text'} value={value} onChange={onChange(field)} />
+      <input className="field" type={type === 'number' ? 'number' : 'text'} value={value} onChange={onChange(field)} readOnly={readOnly} />
     </label>
   );
 }
@@ -1234,8 +1233,13 @@ function FormFields({
   currentDefaultSupervisor = '',
   onResidentHouseChange,
   onHouseResidentChange,
+  onHouseOwnerChange,
+  onHouseOccupantChange,
   onRepairHouseChange,
   onStaffBuildingsChange,
+  onCommunitySupervisorsChange,
+  onRepairHandlerChange,
+  onFeedbackStaffChange,
   onComplaintRuleMentionsChange,
   onComplaintRuleFillDefault,
   onComplaintRuleFillCommunity
@@ -1258,9 +1262,17 @@ function FormFields({
           value={item.defaultSupervisor || ''}
           options={staffSupervisorOptions}
           onChange={onChange('defaultSupervisor')}
-          placeholder="输入姓名搜索主管"
+          placeholder="输入姓名搜索负责人"
         />
-        {renderField(item, 'supervisors', 'textarea', onChange, onToggle)}
+        <MultiSelectField
+          label={fieldLabel('supervisors')}
+          options={staffSupervisorOptions}
+          value={Array.isArray(item.supervisors) ? item.supervisors : splitTextList(item.supervisors)}
+          showActions
+          onSelectAll={() => onCommunitySupervisorsChange('__select_all__')}
+          onClear={() => onCommunitySupervisorsChange('__clear__')}
+          onToggleValue={(name) => onCommunitySupervisorsChange(name)}
+        />
         {renderField(item, 'active', 'switch', onChange, onToggle)}
         <div className="form-field feature-switches-field">
           <span className="field-label">功能开关</span>
@@ -1345,9 +1357,19 @@ function FormFields({
         {renderField(item, 'unit', 'text', onChange, onToggle)}
         {renderField(item, 'room', 'text', onChange, onToggle)}
         {renderField(item, 'area', 'number', onChange, onToggle)}
-        {renderField(item, 'ownerName', 'text', onChange, onToggle)}
+        <SelectField
+          label={fieldLabel('ownerName')}
+          value={item.ownerName || ''}
+          options={residentNameOptions}
+          onChange={(event) => onHouseOwnerChange(event.target.value)}
+        />
         {renderField(item, 'ownerPhone', 'text', onChange, onToggle)}
-        {renderField(item, 'occupantName', 'text', onChange, onToggle)}
+        <SelectField
+          label={fieldLabel('occupantName')}
+          value={item.occupantName || ''}
+          options={residentNameOptions}
+          onChange={(event) => onHouseOccupantChange(event.target.value)}
+        />
         {renderField(item, 'occupantPhone', 'text', onChange, onToggle)}
         <label className="form-field">
           <span className="field-label">{fieldLabel('boundUserId')}</span>
@@ -1358,8 +1380,8 @@ function FormFields({
             ))}
           </select>
         </label>
-        {renderField(item, 'boundUserName', 'text', onChange, onToggle)}
-        {renderField(item, 'boundUserPhone', 'text', onChange, onToggle)}
+        {renderField(item, 'boundUserName', 'text', onChange, onToggle, { readOnly: true })}
+        {renderField(item, 'boundUserPhone', 'text', onChange, onToggle, { readOnly: true })}
         {renderField(item, 'ownershipStatus', 'text', onChange, onToggle)}
         {renderField(item, 'occupancyStatus', 'text', onChange, onToggle)}
         {renderField(item, 'status', 'text', onChange, onToggle)}
@@ -1368,25 +1390,22 @@ function FormFields({
       </div>
     );
   }
-  if (type === 'staff') {
-    return (
-      <div className="form-grid two">
-        <SearchSelectField
-          label={fieldLabel('community')}
-          value={item.community || ''}
-          options={communityOptions}
-          onChange={onChange('community')}
-          placeholder="输入小区名称搜索"
-        />
-        {renderField(item, 'name', 'text', onChange, onToggle)}
-        {renderField(item, 'feishuDisplayName', 'text', onChange, onToggle)}
-        {renderField(item, 'feishuUserId', 'text', onChange, onToggle)}
-        {renderField(item, 'feishuOpenId', 'text', onChange, onToggle)}
-        {renderField(item, 'feishuUnionId', 'text', onChange, onToggle)}
-        {renderField(item, 'role', 'text', onChange, onToggle)}
-        {renderField(item, 'position', 'text', onChange, onToggle)}
-        {renderField(item, 'department', 'text', onChange, onToggle)}
-        {renderField(item, 'phone', 'text', onChange, onToggle)}
+    if (type === 'staff') {
+      return (
+        <div className="form-grid two">
+          <SearchSelectField
+            label={fieldLabel('community')}
+            value={item.community || ''}
+            options={communityOptions}
+            onChange={onChange('community')}
+            placeholder="输入小区名称搜索"
+          />
+          {renderField(item, 'name', 'text', onChange, onToggle)}
+          {renderField(item, 'feishuUserId', 'text', onChange, onToggle)}
+          {renderField(item, 'role', 'text', onChange, onToggle)}
+          {renderField(item, 'position', 'text', onChange, onToggle)}
+          {renderField(item, 'department', 'text', onChange, onToggle)}
+          {renderField(item, 'phone', 'text', onChange, onToggle)}
         {renderField(item, 'status', 'text', onChange, onToggle)}
         {renderField(item, 'statusText', 'text', onChange, onToggle)}
         {renderField(item, 'skill', 'text', onChange, onToggle)}
@@ -1440,7 +1459,13 @@ function FormFields({
         {renderField(item, 'dispatchRemark', 'textarea', onChange, onToggle)}
         {renderField(item, 'status', 'text', onChange, onToggle)}
         {renderField(item, 'statusName', 'text', onChange, onToggle)}
-        {renderField(item, 'handler', 'text', onChange, onToggle)}
+        <SearchSelectField
+          label={fieldLabel('handler')}
+          value={item.handler || ''}
+          options={currentCommunityStaffOptions}
+          onChange={(event) => onRepairHandlerChange(event.target.value)}
+          placeholder="输入人员名称搜索"
+        />
         {renderField(item, 'handlerPhone', 'text', onChange, onToggle)}
         {renderField(item, 'description', 'textarea', onChange, onToggle)}
       </div>
@@ -1478,7 +1503,13 @@ function FormFields({
         />
         {renderField(item, 'statusText', 'text', onChange, onToggle)}
         {renderField(item, 'location', 'text', onChange, onToggle)}
-        {renderField(item, 'staffName', 'text', onChange, onToggle)}
+        <SearchSelectField
+          label={fieldLabel('staffName')}
+          value={item.staffName || ''}
+          options={currentCommunityStaffOptions}
+          onChange={(event) => onFeedbackStaffChange(event.target.value)}
+          placeholder="输入人员名称搜索"
+        />
         {renderField(item, 'staffPosition', 'text', onChange, onToggle)}
         {renderField(item, 'content', 'textarea', onChange, onToggle)}
         {renderField(item, 'reply', 'textarea', onChange, onToggle)}
@@ -1522,7 +1553,13 @@ function FormFields({
           onChange={onChange('pushStatus')}
         />
         {renderField(item, 'ruleName', 'text', onChange, onToggle)}
-        {renderField(item, 'supervisorName', 'text', onChange, onToggle)}
+        <SearchSelectField
+          label={fieldLabel('supervisorName')}
+          value={item.supervisorName || ''}
+          options={staffSupervisorOptions}
+          onChange={onChange('supervisorName')}
+          placeholder="输入姓名搜索负责人"
+        />
         {renderField(item, 'mentionTargets', 'textarea', onChange, onToggle)}
         {renderField(item, 'summary', 'textarea', onChange, onToggle)}
         {renderField(item, 'suggestedAction', 'text', onChange, onToggle)}
@@ -1538,7 +1575,7 @@ function FormFields({
     return (
       <div className="form-grid two">
         <div className="form-field form-field-span">
-          <span className="field-label">当前默认主负责人</span>
+          <span className="field-label">当前默认负责人</span>
           <div className="hint">{currentDefaultSupervisor || '未配置'}</div>
         </div>
         <div className="form-field form-field-span">
@@ -1547,7 +1584,7 @@ function FormFields({
         </div>
         <div className="form-field form-field-span">
           <span className="field-label">推送说明</span>
-          <div className="hint">“主负责人”是这条规则的负责人，“通知对象”才是实际会收到飞书推送的人。</div>
+          <div className="hint">“负责人”是这条规则的负责人，“通知对象”才是实际会收到飞书推送的人。</div>
         </div>
         {renderField(item, 'name', 'text', onChange, onToggle)}
         {renderField(item, 'enabled', 'switch', onChange, onToggle)}
@@ -1589,7 +1626,7 @@ function FormFields({
           value={item.supervisorName || ''}
           options={staffSupervisorOptions}
           onChange={onChange('supervisorName')}
-          placeholder="输入姓名搜索，留空则跟随默认主负责人"
+          placeholder="输入姓名搜索，留空则跟随默认负责人"
         />
         <MultiSelectField
           label={fieldLabel('mentionTargets')}
@@ -1601,7 +1638,7 @@ function FormFields({
           onToggleValue={(name) => onComplaintRuleMentionsChange(name)}
         />
         <div className="button-row form-field-span">
-          <button type="button" className="btn btn-ghost tiny" onClick={onComplaintRuleFillDefault}>填充当前主负责人</button>
+          <button type="button" className="btn btn-ghost tiny" onClick={onComplaintRuleFillDefault}>填充当前负责人</button>
           <button type="button" className="btn btn-ghost tiny" onClick={onComplaintRuleFillCommunity}>填充当前小区人员</button>
         </div>
         {renderField(item, 'matchKeywords', 'textarea', onChange, onToggle)}
@@ -1736,6 +1773,7 @@ export default function DashboardPage() {
   const [collapsedGroups, setCollapsedGroups] = useState({ core: false, communityConfig: false, asset: false, organization: false, service: false, mall: false });
   const [projectsCollapsed, setProjectsCollapsed] = useState(true);
   const [focusStaffId, setFocusStaffId] = useState('');
+  const feishuBindCloseTimerRef = useRef(null);
 
   const currentList =
     activeTab === 'bill' ? bills :
@@ -1782,6 +1820,24 @@ export default function DashboardPage() {
     value: user.id,
     label: `${user.name || '未命名'}${user.phone ? ` / ${user.phone}` : ''}${user.houseNo ? ` / ${user.houseNo}` : ''}`
   })), [users]);
+  const residentNameOptions = useMemo(() => {
+    const seen = new Set();
+    return users
+      .map((user) => {
+        const value = String(user.name || '').trim();
+        if (!value || seen.has(value)) {
+          return null;
+        }
+        seen.add(value);
+        const label = [
+          value,
+          user.phone || '',
+          user.houseNo || ''
+        ].filter(Boolean).join(' / ');
+        return { value, label };
+      })
+      .filter(Boolean);
+  }, [users]);
   const houseOptions = useMemo(() => houses.map((house) => ({
     value: house.id,
     label: `${house.houseNo || `${house.building || ''}${house.unit || ''}${house.room || ''}` || '未命名'}${house.statusText ? ` / ${house.statusText}` : ''}`
@@ -1897,6 +1953,16 @@ export default function DashboardPage() {
   const userById = useMemo(() => Object.fromEntries(users.map((user) => [user.id, user])), [users]);
   const houseById = useMemo(() => Object.fromEntries(houses.map((house) => [house.id, house])), [houses]);
   const staffById = useMemo(() => Object.fromEntries(staffs.map((staff) => [staff.id, staff])), [staffs]);
+  const userByName = useMemo(() => Object.fromEntries(
+    users
+      .map((user) => [String(user.name || '').trim(), user])
+      .filter(([name]) => Boolean(name))
+  ), [users]);
+  const staffByName = useMemo(() => Object.fromEntries(
+    staffs
+      .map((staff) => [String(staff.name || '').trim(), staff])
+      .filter(([name]) => Boolean(name))
+  ), [staffs]);
   const operatorLabel = profile?.adminKeyHint ? 'Web管理员' : '管理员';
   const repairRecommendationSet = useMemo(() => {
     if (!drawer || drawer.type !== 'repair') {
@@ -2201,6 +2267,14 @@ export default function DashboardPage() {
     setDrawer({ type: activeTab, item: clone(item) });
     setDrawerMode(mode);
     setDrawerDraft(clone(item));
+  };
+
+  const beginDrawerEdit = () => {
+    if (!drawer) {
+      return;
+    }
+    setDrawerDraft(clone(drawer.item));
+    setDrawerMode('edit');
   };
 
   const openModal = () => {
@@ -2711,18 +2785,25 @@ export default function DashboardPage() {
     if (!staff) {
       return;
     }
+    if (feishuBindCloseTimerRef.current) {
+      clearTimeout(feishuBindCloseTimerRef.current);
+      feishuBindCloseTimerRef.current = null;
+    }
     setFeishuBindModal({
       id: staff.id,
+      status: 'idle',
+      message: '',
       draft: {
-        feishuDisplayName: staff.feishuDisplayName || staff.name || '',
-        feishuUserId: staff.feishuUserId || '',
-        feishuOpenId: staff.feishuOpenId || '',
-        feishuUnionId: staff.feishuUnionId || ''
+        feishuUserId: staff.feishuUserId || ''
       }
     });
   };
 
   const closeFeishuBindModal = () => {
+    if (feishuBindCloseTimerRef.current) {
+      clearTimeout(feishuBindCloseTimerRef.current);
+      feishuBindCloseTimerRef.current = null;
+    }
     setFeishuBindModal(null);
   };
 
@@ -2747,16 +2828,34 @@ export default function DashboardPage() {
     }
     try {
       setLoading(true);
+      setFeishuBindModal((prev) => prev ? ({
+        ...prev,
+        status: 'saving',
+        message: '正在保存到数据库...'
+      }) : prev);
       const saved = await saveStaff(apiBase, token, stripUiFields({
         ...target,
-        ...feishuBindModal.draft
+        feishuUserId: String(feishuBindModal.draft.feishuUserId || '').trim()
       }));
-      setFeishuBindModal(null);
       setDrawer((current) => current && current.type === 'staff' && current.item.id === saved.id
         ? { ...current, item: saved }
         : current);
       await refreshLists();
+      setFeishuBindModal((prev) => prev ? ({
+        ...prev,
+        status: 'saved',
+        message: '已保存到数据库，重启后仍会保留'
+      }) : prev);
+      feishuBindCloseTimerRef.current = setTimeout(() => {
+        setFeishuBindModal(null);
+        feishuBindCloseTimerRef.current = null;
+      }, 1200);
     } catch (error) {
+      setFeishuBindModal((prev) => prev ? ({
+        ...prev,
+        status: 'error',
+        message: error.message || '绑定失败'
+      }) : prev);
       window.alert(error.message || '绑定失败');
       if (error.status === 401) {
         await logout();
@@ -2803,6 +2902,32 @@ export default function DashboardPage() {
     }));
   };
 
+  const linkHouseOwner = (setDraft) => (userName) => {
+    const user = userByName[String(userName || '').trim()];
+    setDraft((prev) => ({
+      ...prev,
+      ownerName: user?.name || '',
+      ownerPhone: user?.phone || '',
+      community: user?.community || prev.community || '',
+      building: user?.building || prev.building || '',
+      unit: user?.unit || prev.unit || '',
+      room: user?.room || prev.room || ''
+    }));
+  };
+
+  const linkHouseOccupant = (setDraft) => (userName) => {
+    const user = userByName[String(userName || '').trim()];
+    setDraft((prev) => ({
+      ...prev,
+      occupantName: user?.name || '',
+      occupantPhone: user?.phone || '',
+      community: user?.community || prev.community || '',
+      building: user?.building || prev.building || '',
+      unit: user?.unit || prev.unit || '',
+      room: user?.room || prev.room || ''
+    }));
+  };
+
   const linkRepairHouse = (setDraft) => (houseId) => {
     const house = houseById[houseId];
     setDraft((prev) => ({
@@ -2817,6 +2942,30 @@ export default function DashboardPage() {
     }));
   };
 
+  const linkRepairHandler = (setDraft) => (staffName) => {
+    const staff = staffByName[String(staffName || '').trim()];
+    setDraft((prev) => ({
+      ...prev,
+      handler: staffName,
+      handlerPhone: staff?.phone || prev.handlerPhone || '',
+      dispatchShift: staff?.shift || prev.dispatchShift || '',
+      dispatchBuilding: Array.isArray(staff?.responsibleBuildings) && staff.responsibleBuildings.length
+        ? staff.responsibleBuildings[0]
+        : prev.dispatchBuilding || '',
+      dispatchRemark: staff ? `已分派给${staff.name}` : prev.dispatchRemark || ''
+    }));
+  };
+
+  const linkFeedbackStaff = (setDraft) => (staffName) => {
+    const staff = staffByName[String(staffName || '').trim()];
+    setDraft((prev) => ({
+      ...prev,
+      staffName,
+      staffPosition: staff?.position || staff?.role || prev.staffPosition || '',
+      phone: staff?.phone || prev.phone || ''
+    }));
+  };
+
   const toggleStaffBuilding = (setDraft) => (building) => {
     setDraft((prev) => {
       const current = Array.isArray(prev.responsibleBuildings) ? prev.responsibleBuildings : [];
@@ -2825,6 +2974,30 @@ export default function DashboardPage() {
         responsibleBuildings: current.includes(building)
           ? current.filter((value) => value !== building)
           : [...current, building]
+      };
+    });
+  };
+
+  const toggleCommunitySupervisors = (setDraft) => (name) => {
+    setDraft((prev) => {
+      const current = Array.isArray(prev.supervisors) ? prev.supervisors : splitTextList(prev.supervisors);
+      if (name === '__select_all__') {
+        return {
+          ...prev,
+          supervisors: staffSupervisorOptions.map((item) => item.value)
+        };
+      }
+      if (name === '__clear__') {
+        return {
+          ...prev,
+          supervisors: []
+        };
+      }
+      return {
+        ...prev,
+        supervisors: current.includes(name)
+          ? current.filter((value) => value !== name)
+          : [...current, name]
       };
     });
   };
@@ -2968,12 +3141,12 @@ export default function DashboardPage() {
             {activeTab === 'complaintRule' ? (
               <div className="topbar-note">
                 <span className="badge">当前小区：{communityDisplayName(activeCommunity) || '未选择'}</span>
-                <span className="badge">当前默认主负责人：{defaultSupervisorName}</span>
+                <span className="badge">当前默认负责人：{defaultSupervisorName}</span>
               </div>
             ) : null}
             <div className="topbar-summary">
               <span className="badge">状态：{statusText}</span>
-              <span className="badge">API：{apiBase}</span>
+              <span className="badge">接口：{apiBase}</span>
               <span className="badge">登录：{token ? '已登录' : '未登录'}</span>
               <span className="badge">当前小区：{communityDisplayName(activeCommunity) || '未选择'}</span>
               <span className="badge">项目数：{communitySwitchOptions.length}</span>
@@ -3178,6 +3351,11 @@ export default function DashboardPage() {
                   <div className="row-main">
                     <div className="row-title">
                     {activeTab === 'community' ? (communityDisplayName(item) || '未命名项目') : (item.title || '未命名')}
+                    {activeTab === 'staff' ? (
+                      <span className={`status-pill tiny-inline ${item.feishuUserId ? 'success' : 'warn'}`}>
+                        {item.feishuUserId ? '飞书已绑' : '未绑定'}
+                      </span>
+                    ) : null}
                     </div>
                     <div className="row-sub">
                       {activeTab === 'community' ? `${item.propertyCompany || '物业公司'} · ${item.address || '地址未填写'}` :
@@ -3373,14 +3551,14 @@ export default function DashboardPage() {
               <div className="drawer-actions">
                 {drawerMode === 'view' ? (
                   drawer.type === 'community' ? (
-                    <button type="button" className="btn btn-primary" onClick={() => setDrawerMode('edit')}>编辑</button>
+                    <button type="button" className="btn btn-primary" onClick={beginDrawerEdit}>编辑</button>
                   ) : drawer.type === 'complaintQueue' ? (
                     <>
                       <button type="button" className="btn btn-primary" onClick={() => batchRun('analyze', [drawer.item])}>AI 分析</button>
                       <button type="button" className="btn btn-ghost" onClick={() => batchRun('push', [drawer.item])}>推飞书</button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-primary" onClick={() => setDrawerMode('edit')}>编辑</button>
+                    <button type="button" className="btn btn-primary" onClick={beginDrawerEdit}>编辑</button>
                   )
                 ) : (
                   <button type="button" className="btn btn-primary" onClick={() => saveItem(drawer.type, drawerDraft)}>保存</button>
@@ -3557,7 +3735,7 @@ export default function DashboardPage() {
                     <div className="hint">投诉队列为只读视图，先分析或推送，再到规则页调整 @ 主管 规则。</div>
                   ) : (
                     <>
-                      <button type="button" className="btn btn-ghost" onClick={() => setDrawerMode('edit')}>编辑模式</button>
+                      <button type="button" className="btn btn-ghost" onClick={beginDrawerEdit}>编辑模式</button>
                       <button type="button" className="btn danger" onClick={() => removeItem(drawer.type, drawer.item.id)}>删除</button>
                     </>
                   )}
@@ -3576,17 +3754,22 @@ export default function DashboardPage() {
                   buildingOptions={buildingOptions}
                   staffMentionOptions={staffMentionOptions}
                   currentCommunityStaffOptions={currentCommunityStaffOptions}
-              currentCommunityStaffSummary={currentCommunityStaffSummary}
-              staffSupervisorOptions={staffSupervisorOptions}
-              currentDefaultSupervisor={defaultSupervisorName}
-              onResidentHouseChange={linkResidentHouse(setDrawerDraft)}
-              onHouseResidentChange={linkHouseResident(setDrawerDraft)}
-              onRepairHouseChange={linkRepairHouse(setDrawerDraft)}
-              onStaffBuildingsChange={toggleStaffBuilding(setDrawerDraft)}
-              onComplaintRuleMentionsChange={toggleComplaintRuleMention(setDrawerDraft)}
-              onComplaintRuleFillDefault={() => fillComplaintRuleMentions(setDrawerDraft, 'default')}
-              onComplaintRuleFillCommunity={() => fillComplaintRuleMentions(setDrawerDraft, 'community')}
-            />
+                  currentCommunityStaffSummary={currentCommunityStaffSummary}
+                  staffSupervisorOptions={staffSupervisorOptions}
+                  currentDefaultSupervisor={defaultSupervisorName}
+                  onResidentHouseChange={linkResidentHouse(setDrawerDraft)}
+                  onHouseResidentChange={linkHouseResident(setDrawerDraft)}
+                  onHouseOwnerChange={linkHouseOwner(setDrawerDraft)}
+                  onHouseOccupantChange={linkHouseOccupant(setDrawerDraft)}
+                  onRepairHouseChange={linkRepairHouse(setDrawerDraft)}
+                  onStaffBuildingsChange={toggleStaffBuilding(setDrawerDraft)}
+                  onCommunitySupervisorsChange={toggleCommunitySupervisors(setDrawerDraft)}
+                  onRepairHandlerChange={linkRepairHandler(setDrawerDraft)}
+                  onFeedbackStaffChange={linkFeedbackStaff(setDrawerDraft)}
+                  onComplaintRuleMentionsChange={toggleComplaintRuleMention(setDrawerDraft)}
+                  onComplaintRuleFillDefault={() => fillComplaintRuleMentions(setDrawerDraft, 'default')}
+                  onComplaintRuleFillCommunity={() => fillComplaintRuleMentions(setDrawerDraft, 'community')}
+                />
                 <div className="drawer-footer">
                   <button type="button" className="btn btn-ghost" onClick={() => setDrawerMode('view')}>取消</button>
                 </div>
@@ -3625,8 +3808,13 @@ export default function DashboardPage() {
               currentDefaultSupervisor={defaultSupervisorName}
               onResidentHouseChange={linkResidentHouse(setModalDraft)}
               onHouseResidentChange={linkHouseResident(setModalDraft)}
+              onHouseOwnerChange={linkHouseOwner(setModalDraft)}
+              onHouseOccupantChange={linkHouseOccupant(setModalDraft)}
               onRepairHouseChange={linkRepairHouse(setModalDraft)}
               onStaffBuildingsChange={toggleStaffBuilding(setModalDraft)}
+              onCommunitySupervisorsChange={toggleCommunitySupervisors(setModalDraft)}
+              onRepairHandlerChange={linkRepairHandler(setModalDraft)}
+              onFeedbackStaffChange={linkFeedbackStaff(setModalDraft)}
               onComplaintRuleMentionsChange={toggleComplaintRuleMention(setModalDraft)}
               onComplaintRuleFillDefault={() => fillComplaintRuleMentions(setModalDraft, 'default')}
               onComplaintRuleFillCommunity={() => fillComplaintRuleMentions(setModalDraft, 'community')}
@@ -3642,18 +3830,20 @@ export default function DashboardPage() {
               <div>
                 <div className="eyebrow">飞书成员绑定</div>
                 <h2>{staffById[feishuBindModal.id]?.name || '未命名人员'}</h2>
-                <div className="hint">至少填入 `feishuUserId`，投诉推送才会真正 @ 到该成员。</div>
+                <div className={`bind-status ${feishuBindModal.status || 'idle'}`}>
+                  {feishuBindModal.status === 'saving' ? '正在保存到数据库...' :
+                    feishuBindModal.status === 'saved' ? '已保存到数据库，重启后仍会保留' :
+                    feishuBindModal.status === 'error' ? (feishuBindModal.message || '绑定失败') :
+                    '只需要填飞书成员标识，投诉推送才会真正 @ 到该成员。'}
+                </div>
               </div>
               <div className="drawer-actions">
-                <button type="button" className="btn btn-primary" onClick={saveFeishuBinding}>保存绑定</button>
+                <button type="button" className="btn btn-primary" onClick={saveFeishuBinding} disabled={feishuBindModal.status === 'saving'}>{feishuBindModal.status === 'saving' ? '保存中...' : '保存绑定'}</button>
                 <button type="button" className="btn btn-ghost" onClick={closeFeishuBindModal}>关闭</button>
               </div>
             </div>
-            <div className="form-grid two">
-              {renderField(feishuBindModal.draft, 'feishuDisplayName', 'text', onFeishuBindChange, onToggleSwitch(() => () => {}))}
+            <div className="form-grid">
               {renderField(feishuBindModal.draft, 'feishuUserId', 'text', onFeishuBindChange, onToggleSwitch(() => () => {}))}
-              {renderField(feishuBindModal.draft, 'feishuOpenId', 'text', onFeishuBindChange, onToggleSwitch(() => () => {}))}
-              {renderField(feishuBindModal.draft, 'feishuUnionId', 'text', onFeishuBindChange, onToggleSwitch(() => () => {}))}
             </div>
           </div>
         </div>

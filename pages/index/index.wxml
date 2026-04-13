@@ -8,11 +8,11 @@
         <text class="debug-panel-tag">{{debugInfo.connectionHint}}</text>
       </view>
       <view class="debug-row">
-        <text class="debug-label">runtimeEnv</text>
+        <text class="debug-label">运行环境</text>
         <text class="debug-value">{{debugInfo.runtimeEnv}}</text>
       </view>
       <view class="debug-row">
-        <text class="debug-label">devApiBaseUrl</text>
+        <text class="debug-label">开发接口地址</text>
         <text class="debug-value debug-url">{{debugInfo.apiBaseUrl}}</text>
       </view>
       <view class="debug-actions">

@@ -26,12 +26,12 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card card">
-        <div className="eyebrow">Property Admin</div>
+        <div className="eyebrow">物业后台</div>
         <h1>登录管理台</h1>
         <p>使用管理员密钥登录后，才能进入公告、账单和报修管理页。</p>
         <form onSubmit={submit} className="login-form">
           <label>
-            <span>API 地址</span>
+            <span>接口地址</span>
             <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="/api/v1 或 http://127.0.0.1:8080/api/v1" />
           </label>
           <label>

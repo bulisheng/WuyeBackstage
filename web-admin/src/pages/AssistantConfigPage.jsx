@@ -210,7 +210,7 @@ function buildDefaultSettings(community) {
     autoCreateSession: true,
     autoSaveHistory: true,
     autoHandoff: true,
-    promptTemplate: '你是物业智能助手，只回答当前小区和当前房屋的问题。先判断意图，再输出最短可用回复或结构化 JSON。不要闲聊，不要重复上下文。',
+    promptTemplate: '你是物业智能助手，只回答当前小区和当前房屋的问题。先判断需求，再输出最短可用回复或结构化结果。不要闲聊，不要重复上下文。',
     enabledScenes: DEFAULT_SCENES,
     handoffKeywords: ['人工', '客服', '投诉升级', '找主管'],
     defaultSupervisor: community?.defaultSupervisor || '卜立胜',
@@ -281,45 +281,45 @@ export default function AssistantConfigPage() {
       route.title,
       `绑定机器人：${route.title}`,
       `推送事项：${route.events.join('、')}`,
-      `主负责人：${route.primaryName}`,
-      `备选负责人：${route.backupName}`
+    `负责人：${route.primaryName}`,
+    `备选负责人：${route.backupName}`
     ].join('\n')).join('\n\n');
   }, [notificationRoutes]);
 
   const previewJson = useMemo(() => JSON.stringify({
-    enabled: settings.enabled,
-    assistantName: settings.assistantName,
-    assistantProvider: settings.assistantProvider,
-    openclawMode: settings.openclawMode,
-    openclawBaseUrl: settings.openclawBaseUrl,
-    openclawLocalBaseUrl: settings.openclawLocalBaseUrl,
-    openclawRemoteBaseUrl: settings.openclawRemoteBaseUrl,
-    openclawModel: settings.openclawModel,
-    promptVersion: settings.promptVersion,
-    analysisTimeoutMs: settings.analysisTimeoutMs,
-    fallbackToHeuristic: settings.fallbackToHeuristic,
-    autoCreateSession: settings.autoCreateSession,
-    autoSaveHistory: settings.autoSaveHistory,
-    autoHandoff: settings.autoHandoff,
-    enabledScenes: normalizeList(settings.enabledScenes),
-    handoffKeywords: normalizeList(settings.handoffKeywords),
-    defaultSupervisor: settings.defaultSupervisor,
-    currentCommunity: displayCommunity(activeCommunity)
+    启用状态: settings.enabled ? '已启用' : '已关闭',
+    助手名称: settings.assistantName,
+    智能引擎类型: '智能引擎',
+    连接模式: normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地',
+    智能引擎地址: settings.openclawBaseUrl,
+    智能引擎本地地址: settings.openclawLocalBaseUrl,
+    智能引擎远程地址: settings.openclawRemoteBaseUrl,
+    智能引擎模型: settings.openclawModel,
+    提示词版本: settings.promptVersion,
+    超时时间毫秒: settings.analysisTimeoutMs,
+    失败回退: settings.fallbackToHeuristic ? '开启' : '关闭',
+    自动创建会话: settings.autoCreateSession ? '开启' : '关闭',
+    自动保存会话: settings.autoSaveHistory ? '开启' : '关闭',
+    自动转人工: settings.autoHandoff ? '开启' : '关闭',
+    可用场景: normalizeList(settings.enabledScenes),
+    转人工关键词: normalizeList(settings.handoffKeywords),
+    默认负责人: settings.defaultSupervisor,
+    当前项目: displayCommunity(activeCommunity)
   }, null, 2), [settings, activeCommunity]);
 
   const promptPreview = useMemo(() => [
     `你是 ${settings.assistantName || '物业智能助手'}。`,
     `当前项目：${displayCommunity(activeCommunity)}`,
-    `默认主负责人：${settings.defaultSupervisor || '卜立胜'}`,
-    `智能引擎：智能路由`,
+    `默认负责人：${settings.defaultSupervisor || '卜立胜'}`,
+    `智能引擎：智能引擎`,
     `连接模式：${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地'}`,
     `可用场景：${normalizeList(settings.enabledScenes).join('、') || '未配置'}`,
     `转人工关键词：${normalizeList(settings.handoffKeywords).join('、') || '无'}`,
-    '先判断意图，再给最短可用回复。总字数尽量不超过 120 字。'
+    '先判断需求，再给最短可用回复。总字数尽量不超过 120 字。'
   ].join('\n'), [settings, activeCommunity]);
 
   const assistantProvider = normalizeAssistantProvider(settings.assistantProvider, settings.openclawBaseUrl);
-  const activeProviderLabel = '智能路由';
+  const activeProviderLabel = '智能引擎';
   const activeProviderMode = normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
 
   const updateSetting = (key, value) => {
@@ -421,7 +421,7 @@ export default function AssistantConfigPage() {
   const copyPreview = async () => {
     try {
       await navigator.clipboard.writeText(previewJson);
-      window.alert('已复制 JSON 预览');
+      window.alert('已复制预览');
     } catch (error) {
       window.alert('复制失败');
     }
@@ -465,12 +465,12 @@ export default function AssistantConfigPage() {
       <header className="assistant-config-hero card">
         <div className="assistant-config-hero-main">
           <div className="eyebrow">智能中台配置</div>
-          <h1>物业智能助手配置页</h1>
-          <p>这里先做成原型，后续可以直接对接智能引擎、FAQ、转人工和业务动作。</p>
+          <h1>智能助手配置页</h1>
+          <p>这里先做成原型，后续可以直接对接智能引擎、常见问题、转人工和业务动作。</p>
         </div>
         <div className="assistant-config-hero-side">
           <div className="hero-chip">当前项目：{displayCommunity(activeCommunity)}</div>
-          <div className="hero-chip">当前主负责人：{settings.defaultSupervisor || '卜立胜'}</div>
+          <div className="hero-chip">当前负责人：{settings.defaultSupervisor || '卜立胜'}</div>
           <div className="hero-chip">智能引擎：{activeProviderLabel}</div>
           <div className="hero-chip">连接模式：{activeProviderMode === 'remote' ? '远程' : '本地'}</div>
           <div className="hero-chip">可选人员：{currentStaffOptions.length} 人</div>
@@ -481,11 +481,11 @@ export default function AssistantConfigPage() {
         <div className="section-header">
           <div>
             <div className="section-title">通知路由</div>
-            <div className="hint">这里直接看：绑定机器人、推送事项、主负责人、备选负责人。</div>
+            <div className="hint">这里直接看：绑定机器人、推送事项、负责人、备选负责人。</div>
           </div>
           <div className="routing-status">
             <span className="hero-chip subtle">当前小区生效中</span>
-            <span className="hero-chip subtle">当前主负责人：{settings.defaultSupervisor || '卜立胜'}</span>
+            <span className="hero-chip subtle">当前负责人：{settings.defaultSupervisor || '卜立胜'}</span>
             <button type="button" className="btn btn-ghost tiny" onClick={copyRouteSummary}>复制当前路由配置</button>
           </div>
         </div>
@@ -497,7 +497,7 @@ export default function AssistantConfigPage() {
                 <div className="routing-pill">{route.robotLabel}</div>
               </div>
               <div className="routing-row">
-                <span className="routing-label">主负责人</span>
+                <span className="routing-label">负责人</span>
                 {route.primaryStaffId ? (
                   <button type="button" className="routing-link" onClick={() => openStaffDetail(route.primaryStaffId)}>
                     {route.primaryName}
@@ -578,7 +578,7 @@ export default function AssistantConfigPage() {
                   className={`chip ${assistantProvider === 'openclaw' ? 'active' : ''}`}
                   onClick={() => switchAssistantProvider('openclaw')}
                 >
-                  智能路由
+                  智能引擎
                 </button>
               </div>
             </label>
@@ -707,7 +707,7 @@ export default function AssistantConfigPage() {
             <div className="section-title">提示词预览</div>
                 <div className="hint">把这段直接交给智能引擎就能先跑原型。</div>
               </div>
-              <button type="button" className="btn btn-ghost tiny" onClick={copyPreview}>复制 JSON</button>
+              <button type="button" className="btn btn-ghost tiny" onClick={copyPreview}>复制预览</button>
             </div>
             <pre className="json-preview">{promptPreview}</pre>
           </section>
@@ -715,20 +715,19 @@ export default function AssistantConfigPage() {
           <section className="card preview-card">
             <div className="section-header">
               <div>
-                <div className="section-title">响应结构</div>
-                <div className="hint">建议智能引擎直接返回这类 JSON。</div>
+          <div className="section-title">返回示例</div>
+                <div className="hint">建议智能引擎直接返回这类结构化内容。</div>
               </div>
             </div>
             <pre className="json-preview small">{JSON.stringify({
-              replyText: '我可以帮你查本月物业费。',
-              intent: 'query_bill',
-              confidence: 0.96,
-              needConfirm: false,
-              handoff: false,
-              action: { type: 'query_bill', params: { communityId: activeCommunity?.id || '', houseId: '' } },
-              slots: { communityId: activeCommunity?.id || '', houseId: '', room: '' },
-              quickReplies: ['查物业费', '提交报修', '转人工'],
-              reason: '用户询问物业费'
+              回复内容: '我可以帮你查本月物业费。',
+              场景: '查物业费',
+              是否需要确认: '否',
+              是否转人工: '否',
+              动作: { 类型: '查物业费', 参数: { 项目ID: activeCommunity?.id || '', 房屋ID: '' } },
+              上下文: { 项目ID: activeCommunity?.id || '', 房屋ID: '', 房号: '' },
+              快捷回复: ['查物业费', '提交报修', '转人工'],
+              原因: '用户询问物业费'
             }, null, 2)}</pre>
           </section>
 
@@ -736,7 +735,7 @@ export default function AssistantConfigPage() {
             <div className="section-header">
               <div>
                 <div className="section-title">当前可选物业人员</div>
-                <div className="hint">这些人会用于“主负责人 / 通知对象”配置。</div>
+                <div className="hint">这些人会用于“负责人 / 通知对象”配置。</div>
               </div>
             </div>
             <div className="staff-list">

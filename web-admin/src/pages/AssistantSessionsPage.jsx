@@ -133,14 +133,14 @@ export default function AssistantSessionsPage() {
     <div className="assistant-center-page">
       <header className="assistant-center-hero card">
         <div>
-          <div className="eyebrow">AI 中台</div>
+          <div className="eyebrow">智能中台</div>
           <h1>会话日志</h1>
           <p>这里可以查看每次智能助手会话、上下文和原始消息记录。</p>
         </div>
         <div className="assistant-center-actions">
           <button type="button" className="btn btn-primary" onClick={() => navigate('/assistant-prompt')}>提示词</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-faq')}>常见问题</button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-config')}>AI 配置</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/assistant-config')}>智能配置</button>
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/')}>返回控制台</button>
         </div>
       </header>
@@ -205,11 +205,11 @@ export default function AssistantSessionsPage() {
               <div className="drawer-line">项目：{selected.community || '-'}</div>
               <div className="drawer-line">房屋：{selected.houseNo || selected.room || '-'}</div>
               <div className="drawer-line">状态：{selected.status || '-'}</div>
-              <div className="drawer-line">会话链接：{selected.openclawUrl || '-'}</div>
+              <div className="drawer-line">会话地址：{selected.openclawUrl || '-'}</div>
               <div className="section-header">
                 <div>
-                  <div className="section-title">智能引擎原始 JSON</div>
-                  <div className="hint">优先展示智能引擎返回的原始结构，方便排查和调提示词。</div>
+                  <div className="section-title">智能引擎原始数据</div>
+                  <div className="hint">优先展示智能引擎返回的原始结构，方便排查和调整提示词。</div>
                 </div>
                 <div className="assistant-center-actions">
                   <button
@@ -242,7 +242,7 @@ export default function AssistantSessionsPage() {
                   </button>
                 </div>
               </div>
-              {!rawCollapsed ? <pre className="json-preview small">{selectedRawJsonDisplayText || '暂无原始 JSON'}</pre> : <div className="drawer-line">已折叠原始 JSON 面板</div>}
+              {!rawCollapsed ? <pre className="json-preview small">{selectedRawJsonDisplayText || '暂无原始数据'}</pre> : <div className="drawer-line">已折叠原始数据面板</div>}
               <div className="assistant-message-log">
                 {(selected.messages || []).map((message) => (
                   <div key={message.id || `${message.role}-${message.createTime}`} className={`assistant-log-item ${message.role || 'system'}`}>
@@ -255,7 +255,7 @@ export default function AssistantSessionsPage() {
                 ))}
               </div>
               <div className="footer-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => navigator.clipboard?.writeText(selected.openclawUrl || '')}>复制会话链接</button>
+                <button type="button" className="btn btn-ghost" onClick={() => navigator.clipboard?.writeText(selected.openclawUrl || '')}>复制会话地址</button>
               </div>
             </div>
           ) : (

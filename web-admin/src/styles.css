@@ -982,6 +982,10 @@ textarea {
 
 .row-title {
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .row-sub {
@@ -1000,6 +1004,12 @@ textarea {
   color: #1d4ed8;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.status-pill.tiny-inline {
+  min-height: 24px;
+  padding: 0 10px;
+  font-size: 11px;
 }
 
 .status-pill.success {
@@ -1100,6 +1110,39 @@ textarea {
   margin: 4px 0 0;
   font-size: 24px;
   letter-spacing: -0.02em;
+}
+
+.bind-status {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: #475569;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.bind-status.saving {
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.92);
+  border-color: rgba(59, 130, 246, 0.24);
+}
+
+.bind-status.saved {
+  color: #166534;
+  background: rgba(220, 252, 231, 0.92);
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.bind-status.error {
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.92);
+  border-color: rgba(239, 68, 68, 0.24);
 }
 
 .drawer-body {

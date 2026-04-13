@@ -68,7 +68,7 @@ function defaultSettings(community) {
     autoCreateSession: true,
     autoSaveHistory: true,
     autoHandoff: true,
-    promptTemplate: '你是物业智能助手，只回答当前小区和当前房屋的问题。先判断意图，再输出最短可用回复或结构化 JSON。不要闲聊，不要重复上下文。',
+    promptTemplate: '你是物业智能助手，只回答当前小区和当前房屋的问题。先判断需求，再输出最短可用回复或结构化结果。不要闲聊，不要重复上下文。',
     enabledScenes: DEFAULT_SCENES,
     handoffKeywords: ['人工', '客服', '投诉升级', '找主管'],
     defaultSupervisor: community?.defaultSupervisor || '卜立胜',
@@ -196,11 +196,11 @@ export default function AssistantPromptPage() {
   const previewPrompt = useMemo(() => [
     `你是 ${settings.assistantName || '物业智能助手'}。`,
     `当前项目：${communityName(activeCommunity)}`,
-    `当前主负责人：${settings.defaultSupervisor || '卜立胜'}`,
+    `当前负责人：${settings.defaultSupervisor || '卜立胜'}`,
     `连接模式：${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地'}`,
     `可用场景：${parseList(settings.enabledScenes).join('、') || '未配置'}`,
     `转人工关键词：${parseList(settings.handoffKeywords).join('、') || '无'}`,
-    '请严格输出 JSON，不要输出多余解释。'
+    '请严格输出结构化结果，不要输出多余解释。'
   ].join('\n'), [settings, activeCommunity]);
 
   const setField = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }));
@@ -346,9 +346,9 @@ export default function AssistantPromptPage() {
               <textarea className="field textarea" rows={3} value={joinList(settings.handoffKeywords)} onChange={(e) => setField('handoffKeywords', e.target.value)} />
             </label>
             <label className="field-group">
-              <span className="field-label">默认主负责人</span>
+              <span className="field-label">默认负责人</span>
               <select className="field" value={settings.defaultSupervisor || ''} onChange={(e) => setField('defaultSupervisor', e.target.value)}>
-                <option value="">请选择主负责人</option>
+                <option value="">请选择负责人</option>
                 {currentStaffOptions.map((staff) => <option key={staff.id} value={staff.name}>{staff.name}</option>)}
               </select>
             </label>
@@ -379,20 +379,19 @@ export default function AssistantPromptPage() {
           <pre className="json-preview">{previewPrompt}</pre>
           <div className="section-header">
             <div>
-              <div className="section-title">JSON 预览</div>
+              <div className="section-title">结构化预览</div>
               <div className="hint">建议智能引擎返回这类结构化内容。</div>
             </div>
           </div>
           <pre className="json-preview small">{JSON.stringify({
-            replyText: '我可以帮你查本月物业费。',
-            intent: 'query_bill',
-            confidence: 0.96,
-            needConfirm: false,
-            handoff: false,
-            action: { type: 'query_bill', params: { communityId: activeCommunity?.id || '', houseId: '' } },
-            slots: { communityId: activeCommunity?.id || '', houseId: '', room: '' },
-            quickReplies: ['查物业费', '提交报修', '转人工'],
-            reason: '用户询问物业费'
+            回复内容: '我可以帮你查本月物业费。',
+            场景: '查物业费',
+            是否需要确认: '否',
+            是否转人工: '否',
+            动作: { 类型: '查物业费', 参数: { 项目ID: activeCommunity?.id || '', 房屋ID: '' } },
+            上下文: { 项目ID: activeCommunity?.id || '', 房屋ID: '', 房号: '' },
+            快捷回复: ['查物业费', '提交报修', '转人工'],
+            原因: '用户询问物业费'
           }, null, 2)}</pre>
         </aside>
       </div>

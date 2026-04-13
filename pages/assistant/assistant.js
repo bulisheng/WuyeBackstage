@@ -83,15 +83,12 @@ function normalizeMessage(message) {
   item.showAssistant = item.role === 'assistant';
   item.showSystem = !item.showUser && !item.showAssistant;
   item.showCard = Boolean(item.card);
-  item.showMeta = Boolean(item.meta);
   item.showAmount = Boolean(item.card && item.card.amount);
   item.showPeriod = Boolean(item.card && item.card.period);
   item.showStatus = Boolean(item.card && item.card.status);
   item.showStatusName = Boolean(item.card && item.card.statusName);
   item.showHandler = Boolean(item.card && item.card.handler);
   item.showSuggestion = Boolean(item.card && item.card.suggestion);
-  item.intentText = item.meta && item.meta.intent ? String(item.meta.intent) : '';
-  item.confidenceText = item.meta && item.meta.confidence !== undefined ? String(item.meta.confidence) : '';
   item.buttonText = item.buttonText || '确认并跳转';
   return item;
 }
@@ -100,7 +97,7 @@ Page({
   data: {
     loading: false,
     loadingStageTitle: '正在提交到智能助手',
-    loadingStageHint: '已收到你的消息，正在接入 openclaw 并排队处理。',
+    loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
     loadingSteps: [],
     inputText: '',
     messages: [],
@@ -196,7 +193,7 @@ Page({
       const session = await app.services.createAssistantSession({
         scene: 'general',
         subjectId: user.openid || user.id || '',
-        prompt: '你是物业智能助手。你要像真实客服一样简洁、自然、直接。只回答当前小区和当前房屋的问题；先给结论，再补必要说明；不要说“我已经看懂你的问题了”这类空话；信息不全时直接指出缺什么；需要办事时先给草稿或下一步；尽量只输出结构化 JSON。',
+        prompt: '你是物业智能助手。你要像真实客服一样简洁、自然、直接。只回答当前小区和当前房屋的问题；先给结论，再补必要说明；不要说“我已经看懂你的问题了”这类空话；信息不全时直接指出缺什么；需要办事时先给草稿或下一步；尽量只输出结构化结果。',
         inputText: '',
         communityId: community.id || '',
         houseId: user.houseId || '',
@@ -238,7 +235,7 @@ Page({
         id: 'queue',
         index: '2',
         label: '排队中',
-        hint: '正在等待 openclaw 处理'
+        hint: '正在等待智能引擎处理'
       },
       {
         id: 'compose',
@@ -263,7 +260,7 @@ Page({
     const queueStates = [
       {
         title: '正在提交到智能助手',
-        hint: '消息已发送，正在接入 openclaw。',
+        hint: '消息已发送，正在接入智能引擎。',
         stage: 0
       },
       {
@@ -369,7 +366,7 @@ Page({
         userName: user.name || '',
         room: user.room || '',
         phone: user.phone || '',
-        prompt: '你是物业智能助手。像真实客服一样简洁、自然地回答问题。只回答当前小区和当前房屋的问题；先给结论，再补必要说明；不要使用空泛兜底句；信息不全时直接指出缺什么；需要办事时先给草稿或下一步；尽量只输出结构化 JSON。',
+        prompt: '你是物业智能助手。像真实客服一样简洁、自然地回答问题。只回答当前小区和当前房屋的问题；先给结论，再补必要说明；不要使用空泛兜底句；信息不全时直接指出缺什么；需要办事时先给草稿或下一步；尽量只输出结构化结果。',
         context: {
           communityName: community.name || community.projectName || '',
           communityAddress: community.address || '',
@@ -397,9 +394,9 @@ Page({
         type: payload.needConfirm || payload.handoff ? 'card' : 'text',
         text: assistantText,
         meta: {
-          intent: intentName,
-          confidence,
-          summary
+          场景: intentName,
+          评分: confidence,
+          摘要: summary
         }
       };
 
@@ -485,7 +482,7 @@ Page({
       this.setData({
         loading: false,
         loadingStageTitle: '正在提交到智能助手',
-        loadingStageHint: '已收到你的消息，正在接入 openclaw 并排队处理。',
+        loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
         loadingSteps: this.buildLoadingSteps(0),
         quickReplies
       });
@@ -495,12 +492,12 @@ Page({
         role: 'assistant',
         type: 'text',
         text: error.message || '智能助手暂时不可用，你可以先使用快捷入口。',
-        meta: { intent: 'general', confidence: 0 }
+        meta: { 场景: 'general', 评分: 0 }
       });
       this.setData({
         loading: false,
         loadingStageTitle: '正在提交到智能助手',
-        loadingStageHint: '已收到你的消息，正在接入 openclaw 并排队处理。',
+        loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
         loadingSteps: this.buildLoadingSteps(0),
         quickReplies: ['查物业费', '查报修', '提交报修', '提交投诉', '转人工']
       });
@@ -566,12 +563,12 @@ Page({
 
   copySessionUrl() {
     if (!this.data.openclawUrl) {
-      wx.showToast({ title: '暂无会话链接', icon: 'none' });
+      wx.showToast({ title: '暂无会话地址', icon: 'none' });
       return;
     }
     wx.setClipboardData({
       data: this.data.openclawUrl,
-      success: () => wx.showToast({ title: '已复制会话链接', icon: 'success' })
+      success: () => wx.showToast({ title: '已复制会话地址', icon: 'success' })
     });
   }
 });

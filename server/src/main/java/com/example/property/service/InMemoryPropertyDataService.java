@@ -2136,7 +2136,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     try {
       List<Map<String, Object>> messages = new ArrayList<>();
       String prompt = String.valueOf(firstNonEmpty(requestBody.get("prompt"), "你是物业智能助手，只回答当前小区和当前房屋的问题。"));
-      messages.add(mapOf("role", "system", "content", prompt + "\n只返回纯 JSON 对象，不要 markdown 代码块，不要额外解释。字段包括 replyText、intent、confidence、needConfirm、handoff、action、slots、quickReplies、reason。"));
+      messages.add(mapOf("role", "system", "content", prompt + "\n只返回纯结构化结果，不要 markdown 代码块，不要额外解释。字段包括回复内容、场景、是否需要确认、是否转人工、动作、上下文、快捷回复、原因。"));
       Object history = requestBody.get("history");
       if (history instanceof List) {
         List<Map<String, Object>> historyList = (List<Map<String, Object>>) history;
@@ -2731,6 +2731,66 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
   }
 
+  private List<String> resolveAssistantHandoffMentionTargets(Map<String, Object> session) {
+    List<String> targets = new ArrayList<>();
+    Map<String, Object> communityRecord = communityRecordById(textValue(session == null ? null : session.get("communityId")));
+    String defaultName = textValue(communityRecord.getOrDefault("defaultSupervisor", currentSupervisorName()));
+    if (!defaultName.isEmpty()) {
+      targets.add(defaultName);
+    }
+    for (String name : normalizeStringList(communityRecord.get("supervisors"))) {
+      if (!name.isEmpty() && !targets.contains(name)) {
+        targets.add(name);
+      }
+    }
+    return targets;
+  }
+
+  private String buildAssistantHandoffMessage(Map<String, Object> session, Map<String, Object> result) {
+    StringBuilder builder = new StringBuilder();
+    builder.append("【智能助手转人工】\n");
+    builder.append("小区: ").append(firstNonEmpty(session == null ? null : session.get("community"), "-")).append("\n");
+    builder.append("房屋: ").append(firstNonEmpty(
+        session == null ? null : session.get("room"),
+        session == null ? null : session.get("houseNo"),
+        session == null ? null : session.get("houseId"),
+        "-")).append("\n");
+    builder.append("用户: ").append(firstNonEmpty(session == null ? null : session.get("userName"), "-")).append("\n");
+    builder.append("原因: ").append(firstNonEmpty(result == null ? null : result.get("reason"), "用户请求转人工")).append("\n");
+    builder.append("工单号: ").append(firstNonEmpty(result == null ? null : result.get("ticketId"), "-")).append("\n");
+    List<String> mentions = resolveFeishuMentionTags(session, resolveAssistantHandoffMentionTargets(session));
+    if (!mentions.isEmpty()) {
+      builder.append("提醒对象: ").append(String.join(" ", mentions)).append("\n");
+    }
+    builder.append("会话: ").append(firstNonEmpty(session == null ? null : session.get("id"), "-"));
+    return builder.toString().trim();
+  }
+
+  private Map<String, Object> notifyAssistantHandoffFeishu(Map<String, Object> session, Map<String, Object> result) {
+    Map<String, Object> notify = new LinkedHashMap<>();
+    String webhook = resolveFeishuWebhook("customer");
+    notify.put("webhookEnabled", !webhook.isEmpty());
+    if (webhook.isEmpty()) {
+      notify.put("pushStatus", "prepared");
+      notify.put("pushResult", "未配置客服飞书 webhook");
+      return notify;
+    }
+    String message = buildAssistantHandoffMessage(session, result);
+    try {
+      String responseBody = postJson(webhook, mapOf(
+          "msg_type", "text",
+          "content", mapOf("text", message)
+      ));
+      notify.put("pushStatus", "sent");
+      notify.put("pushResult", responseBody);
+      return notify;
+    } catch (Exception error) {
+      notify.put("pushStatus", "failed");
+      notify.put("pushError", error.getMessage());
+      return notify;
+    }
+  }
+
   @Override
   public List<Map<String, Object>> adminListComplaintRules() {
     return sortedValues(complaintRules);
@@ -3235,7 +3295,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "autoCreateSession", true,
         "autoSaveHistory", true,
         "autoHandoff", true,
-        "promptTemplate", "你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON。",
+        "promptTemplate", "你是物业智能助手，只回答当前小区和当前房屋的问题。输出严格结构化结果。",
         "enabledScenes", Arrays.asList("query_bill", "query_repair", "create_repair", "create_feedback", "query_notice", "handoff"),
         "handoffKeywords", Arrays.asList("人工", "客服", "投诉升级", "找主管"),
         "defaultSupervisor", supervisor,
@@ -3292,7 +3352,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       item.putIfAbsent("autoCreateSession", true);
       item.putIfAbsent("autoSaveHistory", true);
       item.putIfAbsent("autoHandoff", true);
-      item.putIfAbsent("promptTemplate", "你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON。");
+      item.putIfAbsent("promptTemplate", "你是物业智能助手，只回答当前小区和当前房屋的问题。输出严格结构化结果。");
       item.putIfAbsent("enabledScenes", Arrays.asList("query_bill", "query_repair", "create_repair", "create_feedback", "query_notice", "handoff"));
       item.putIfAbsent("handoffKeywords", Arrays.asList("人工", "客服", "投诉升级", "找主管"));
       item.putIfAbsent("defaultSupervisor", currentSupervisorName());
@@ -3370,7 +3430,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     record.put("autoCreateSession", payload.getOrDefault("autoCreateSession", record.getOrDefault("autoCreateSession", true)));
     record.put("autoSaveHistory", payload.getOrDefault("autoSaveHistory", record.getOrDefault("autoSaveHistory", true)));
     record.put("autoHandoff", payload.getOrDefault("autoHandoff", record.getOrDefault("autoHandoff", true)));
-    record.put("promptTemplate", String.valueOf(payload.getOrDefault("promptTemplate", record.getOrDefault("promptTemplate", "你是物业AI客服，只回答当前小区和当前房屋的问题。输出严格 JSON."))));
+    record.put("promptTemplate", String.valueOf(payload.getOrDefault("promptTemplate", record.getOrDefault("promptTemplate", "你是物业智能助手，只回答当前小区和当前房屋的问题。输出严格结构化结果."))));
     record.put("enabledScenes", normalizeStringList(payload.get("enabledScenes")).isEmpty()
         ? normalizeStringList(record.get("enabledScenes"))
         : normalizeStringList(payload.get("enabledScenes")));
@@ -4849,6 +4909,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     session.put("handoffReason", result.get("reason"));
     session.put("updateTime", now());
     appendAssistantSessionMessage(session, "system", "转人工：" + String.valueOf(result.get("reason")), result);
+    Map<String, Object> feishuNotify = notifyAssistantHandoffFeishu(session, result);
+    result.putAll(feishuNotify);
+    session.put("handoffPushStatus", feishuNotify.getOrDefault("pushStatus", "prepared"));
+    session.put("handoffPushResult", feishuNotify.getOrDefault("pushResult", ""));
+    session.put("handoffPushError", feishuNotify.getOrDefault("pushError", ""));
     assistantSessions.put(sessionId, session);
     persistAll();
     return cloneMap(result);
