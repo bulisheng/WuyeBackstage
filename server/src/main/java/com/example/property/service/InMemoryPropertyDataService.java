@@ -107,6 +107,30 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   @Value("${assistant.provider:openclaw}")
   private String assistantProvider;
 
+  @Value("${deepseek.base-url:https://api.deepseek.com/v1}")
+  private String deepseekBaseUrl;
+
+  @Value("${deepseek.local-base-url:https://api.deepseek.com/v1}")
+  private String deepseekLocalBaseUrl;
+
+  @Value("${deepseek.remote-base-url:https://api.deepseek.com/v1}")
+  private String deepseekRemoteBaseUrl;
+
+  @Value("${deepseek.chat-path:/chat/completions}")
+  private String deepseekChatPath;
+
+  @Value("${deepseek.model:deepseek-chat}")
+  private String deepseekModel;
+
+  @Value("${deepseek.api-key:}")
+  private String deepseekApiKey;
+
+  @Value("${deepseek.temperature:0.2}")
+  private double deepseekTemperature;
+
+  @Value("${deepseek.max-tokens:512}")
+  private int deepseekMaxTokens;
+
   @Value("${gemma.local-base-url:http://127.0.0.1:11434}")
   private String gemmaLocalBaseUrl;
 
@@ -1661,6 +1685,15 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     summary.put("enabled", settings.getOrDefault("enabled", true));
     summary.put("assistantName", settings.getOrDefault("assistantName", "物业AI客服"));
     summary.put("assistantProvider", settings.getOrDefault("assistantProvider", "openclaw"));
+    summary.put("deepseekMode", settings.getOrDefault("deepseekMode", "remote"));
+    summary.put("deepseekBaseUrl", settings.getOrDefault("deepseekBaseUrl", ""));
+    summary.put("deepseekLocalBaseUrl", settings.getOrDefault("deepseekLocalBaseUrl", ""));
+    summary.put("deepseekRemoteBaseUrl", settings.getOrDefault("deepseekRemoteBaseUrl", ""));
+    summary.put("deepseekChatPath", settings.getOrDefault("deepseekChatPath", ""));
+    summary.put("deepseekModel", settings.getOrDefault("deepseekModel", ""));
+    summary.put("deepseekApiKeySet", truthy(settings.get("deepseekApiKey")));
+    summary.put("deepseekTemperature", settings.getOrDefault("deepseekTemperature", 0.2));
+    summary.put("deepseekMaxTokens", settings.getOrDefault("deepseekMaxTokens", 512));
     summary.put("openclawMode", settings.getOrDefault("openclawMode", "local"));
     summary.put("openclawBaseUrl", settings.getOrDefault("openclawBaseUrl", ""));
     summary.put("openclawLocalBaseUrl", settings.getOrDefault("openclawLocalBaseUrl", ""));
@@ -1900,6 +1933,24 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return value.isEmpty() ? "https://gemma.example.com" : value;
   }
 
+  private String defaultDeepseekLocalBaseUrl() {
+    String value = textValue(deepseekLocalBaseUrl);
+    if (!value.isEmpty()) {
+      return value;
+    }
+    value = textValue(deepseekBaseUrl);
+    return value.isEmpty() ? "https://api.deepseek.com/v1" : value;
+  }
+
+  private String defaultDeepseekRemoteBaseUrl() {
+    String value = textValue(deepseekRemoteBaseUrl);
+    if (!value.isEmpty()) {
+      return value;
+    }
+    value = textValue(deepseekBaseUrl);
+    return value.isEmpty() ? "https://api.deepseek.com/v1" : value;
+  }
+
   private boolean looksLikeLocalOpenclawUrl(String value) {
     String normalized = textValue(value).toLowerCase();
     return normalized.contains("127.0.0.1") || normalized.contains("localhost") || normalized.contains(":18789");
@@ -1933,6 +1984,9 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   private String normalizeAssistantProvider(Object value, Object baseValue) {
     String provider = textValue(value).toLowerCase();
+    if (provider.contains("deepseek") || provider.contains("深度求索") || provider.contains("深度")) {
+      return "deepseek";
+    }
     if (provider.contains("gemma") || provider.contains("本地大模型") || provider.contains("本地")) {
       return "gemma";
     }
@@ -1940,10 +1994,21 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       return "openclaw";
     }
     String base = textValue(baseValue).toLowerCase();
+    if (base.contains("deepseek") || base.contains("api.deepseek.com")) {
+      return "deepseek";
+    }
     if (base.contains("11434") || base.contains("gemma")) {
       return "gemma";
     }
     return "openclaw";
+  }
+
+  private String resolveDeepseekBaseUrl(String mode, String localBaseUrl, String remoteBaseUrl, String fallbackBaseUrl) {
+    String normalizedMode = normalizeOpenclawMode(mode, fallbackBaseUrl);
+    if ("remote".equals(normalizedMode)) {
+      return String.valueOf(firstNonEmpty(remoteBaseUrl, fallbackBaseUrl, defaultDeepseekRemoteBaseUrl()));
+    }
+    return String.valueOf(firstNonEmpty(localBaseUrl, fallbackBaseUrl, defaultDeepseekLocalBaseUrl()));
   }
 
   private String resolveGemmaBaseUrl(String mode, String localBaseUrl, String remoteBaseUrl, String fallbackBaseUrl) {
@@ -1958,11 +2023,25 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if (settings == null) {
       return normalizeAssistantProvider(assistantProvider, openclawBaseUrl);
     }
-    String provider = normalizeAssistantProvider(settings.get("assistantProvider"), firstNonEmpty(settings.get("gemmaBaseUrl"), settings.get("openclawBaseUrl")));
+    String provider = normalizeAssistantProvider(settings.get("assistantProvider"), firstNonEmpty(settings.get("deepseekBaseUrl"), settings.get("gemmaBaseUrl"), settings.get("openclawBaseUrl")));
+    if ("deepseek".equals(provider)) {
+      return "deepseek";
+    }
     if ("gemma".equals(provider)) {
       return "gemma";
     }
     return "openclaw";
+  }
+
+  private String effectiveDeepseekBaseUrl(Map<String, Object> settings) {
+    if (settings == null) {
+      return defaultDeepseekLocalBaseUrl();
+    }
+    String mode = textValue(settings.get("deepseekMode"));
+    String localBase = textValue(settings.get("deepseekLocalBaseUrl"));
+    String remoteBase = textValue(settings.get("deepseekRemoteBaseUrl"));
+    String base = textValue(settings.get("deepseekBaseUrl"));
+    return resolveDeepseekBaseUrl(mode, localBase, remoteBase, base);
   }
 
   private String effectiveGemmaBaseUrl(Map<String, Object> settings) {
@@ -2001,7 +2080,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       String base = String.valueOf(firstNonEmpty(item.get("openclawBaseUrl"), localBase));
       String mode = normalizeOpenclawMode(item.get("openclawMode"), base);
       String resolved = resolveOpenclawBaseUrl(mode, localBase, remoteBase, base);
-      String provider = normalizeAssistantProvider(item.get("assistantProvider"), firstNonEmpty(item.get("gemmaBaseUrl"), item.get("openclawBaseUrl")));
+      String provider = normalizeAssistantProvider(item.get("assistantProvider"), firstNonEmpty(item.get("deepseekBaseUrl"), item.get("gemmaBaseUrl"), item.get("openclawBaseUrl")));
+      String deepseekLocal = String.valueOf(firstNonEmpty(item.get("deepseekLocalBaseUrl"), defaultDeepseekLocalBaseUrl()));
+      String deepseekRemote = String.valueOf(firstNonEmpty(item.get("deepseekRemoteBaseUrl"), defaultDeepseekRemoteBaseUrl()));
+      String deepseekBase = String.valueOf(firstNonEmpty(item.get("deepseekBaseUrl"), deepseekLocal));
+      String deepseekMode = normalizeOpenclawMode(item.get("deepseekMode"), deepseekBase);
+      String deepseekResolved = resolveDeepseekBaseUrl(deepseekMode, deepseekLocal, deepseekRemote, deepseekBase);
       String gemmaLocal = String.valueOf(firstNonEmpty(item.get("gemmaLocalBaseUrl"), defaultGemmaLocalBaseUrl()));
       String gemmaRemote = String.valueOf(firstNonEmpty(item.get("gemmaRemoteBaseUrl"), defaultGemmaRemoteBaseUrl()));
       String gemmaBase = String.valueOf(firstNonEmpty(item.get("gemmaBaseUrl"), gemmaLocal));
@@ -2027,6 +2111,22 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         item.put("assistantProvider", provider);
         changed = true;
       }
+      if (!deepseekMode.equals(String.valueOf(item.getOrDefault("deepseekMode", "")))) {
+        item.put("deepseekMode", deepseekMode);
+        changed = true;
+      }
+      if (!deepseekLocal.equals(String.valueOf(item.getOrDefault("deepseekLocalBaseUrl", "")))) {
+        item.put("deepseekLocalBaseUrl", deepseekLocal);
+        changed = true;
+      }
+      if (!deepseekRemote.equals(String.valueOf(item.getOrDefault("deepseekRemoteBaseUrl", "")))) {
+        item.put("deepseekRemoteBaseUrl", deepseekRemote);
+        changed = true;
+      }
+      if (!deepseekResolved.equals(String.valueOf(item.getOrDefault("deepseekBaseUrl", "")))) {
+        item.put("deepseekBaseUrl", deepseekResolved);
+        changed = true;
+      }
       if (!gemmaMode.equals(String.valueOf(item.getOrDefault("gemmaMode", "")))) {
         item.put("gemmaMode", gemmaMode);
         changed = true;
@@ -2043,6 +2143,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         item.put("gemmaBaseUrl", gemmaResolved);
         changed = true;
       }
+      item.putIfAbsent("deepseekChatPath", "/chat/completions");
+      item.putIfAbsent("deepseekModel", deepseekModel);
+      item.putIfAbsent("deepseekApiKey", "");
+      item.putIfAbsent("deepseekTemperature", deepseekTemperature);
+      item.putIfAbsent("deepseekMaxTokens", deepseekMaxTokens);
       item.putIfAbsent("gemmaChatPath", "/api/chat");
       item.putIfAbsent("gemmaModel", gemmaModel);
       item.putIfAbsent("gemmaTemperature", gemmaTemperature);
@@ -2085,13 +2190,16 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   private Map<String, Object> invokeAssistantEngine(String token, Map<String, Object> settings, Map<String, Object> requestBody) {
     String provider = effectiveAssistantProvider(settings);
-    Map<String, Object> normalized = "gemma".equals(provider)
+    Map<String, Object> normalized = "deepseek".equals(provider)
+        ? invokeDeepseekAssistant(settings, requestBody)
+        : "gemma".equals(provider)
         ? invokeGemmaAssistant(settings, requestBody)
         : invokeOpenclawAssistant(settings, requestBody);
     if (normalized != null && !normalized.isEmpty()) {
       return normalized;
     }
-    if (truthy(settings == null ? null : settings.get("fallbackToHeuristic"))) {
+    boolean fallbackEnabled = truthy(settings == null ? null : settings.get("fallbackToHeuristic"));
+    if (fallbackEnabled || "deepseek".equals(provider) || "gemma".equals(provider)) {
       Map<String, Object> safeRequestBody = requestBody == null ? new LinkedHashMap<>() : requestBody;
       return buildHeuristicAssistantResponse(
           String.valueOf(firstNonEmpty(token, safeRequestBody.get("sessionToken"), safeRequestBody.get("sessionId"), "")),
@@ -2102,6 +2210,55 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       );
     }
     return null;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> invokeDeepseekAssistant(Map<String, Object> settings, Map<String, Object> requestBody) {
+    String endpoint = assistantEndpointForProvider(settings, "deepseek", "deepseekChatPath");
+    if (endpoint.isEmpty()) {
+      return null;
+    }
+    String apiKey = String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekApiKey"), deepseekApiKey, "")).trim();
+    if (apiKey.isEmpty()) {
+      return null;
+    }
+    try {
+      List<Map<String, Object>> messages = new ArrayList<>();
+      String prompt = String.valueOf(firstNonEmpty(requestBody.get("prompt"), "你是物业智能助手，只回答当前小区和当前房屋的问题。"));
+      messages.add(mapOf("role", "system", "content", prompt + "\n只返回纯 JSON，不要 markdown 代码块，不要额外解释。字段包括 回复内容、场景、是否需要确认、是否转人工、动作、上下文、快捷回复、原因。"));
+      Object history = requestBody.get("history");
+      if (history instanceof List) {
+        List<Map<String, Object>> historyList = (List<Map<String, Object>>) history;
+        int start = Math.max(0, historyList.size() - 6);
+        for (int i = start; i < historyList.size(); i++) {
+          Map<String, Object> item = historyList.get(i);
+          if (item == null) {
+            continue;
+          }
+          String role = String.valueOf(firstNonEmpty(item.get("role"), "user"));
+          String content = String.valueOf(firstNonEmpty(item.get("content"), item.get("text"), ""));
+          if (!content.trim().isEmpty()) {
+            messages.add(mapOf("role", role, "content", content));
+          }
+        }
+      }
+      String inputText = String.valueOf(firstNonEmpty(requestBody.get("inputText"), requestBody.get("content"), ""));
+      messages.add(mapOf("role", "user", "content", inputText));
+      Map<String, Object> payload = mapOf(
+          "model", String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekModel"), deepseekModel, "deepseek-chat")),
+          "messages", messages,
+          "stream", false,
+          "response_format", mapOf("type", "json_object"),
+          "temperature", Double.parseDouble(String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekTemperature"), deepseekTemperature, 0.2))),
+          "max_tokens", Integer.parseInt(String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekMaxTokens"), deepseekMaxTokens, 512)))
+      );
+      String responseBody = postJsonWithAuth(endpoint, payload, apiKey);
+      Map<String, Object> response = parseJsonObject(responseBody);
+      Map<String, Object> raw = flattenDeepseekEnvelope(response);
+      return normalizeOpenclawAssistantResponse(raw);
+    } catch (Exception error) {
+      return null;
+    }
   }
 
   private AssistantMessageRequest toAssistantMessageRequest(Map<String, Object> requestBody) {
@@ -2174,6 +2331,71 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> flattenGemmaEnvelope(Map<String, Object> response) {
+    Map<String, Object> raw = new LinkedHashMap<>();
+    if (response == null) {
+      return raw;
+    }
+    raw.putAll(cloneMap(response));
+    for (String key : Arrays.asList("data", "result", "payload", "output", "assistant", "response", "message")) {
+      Object value = response.get(key);
+      if (value instanceof Map) {
+        raw.putAll(cloneMap((Map<String, Object>) value));
+      }
+    }
+    Object choices = response.get("choices");
+    if (choices instanceof List && !((List<?>) choices).isEmpty()) {
+      Object firstChoice = ((List<?>) choices).get(0);
+      if (firstChoice instanceof Map) {
+        Map<String, Object> choiceMap = cloneMap((Map<String, Object>) firstChoice);
+        raw.putAll(choiceMap);
+        Object message = choiceMap.get("message");
+        if (message instanceof Map) {
+          raw.putAll(cloneMap((Map<String, Object>) message));
+        }
+      }
+    }
+    Object content = firstNonEmpty(
+        raw.get("replyText"),
+        raw.get("content"),
+        raw.get("message"),
+        findDeepValue(raw, "replyText", "content", "message", "text")
+    );
+    if (content instanceof String) {
+      String text = String.valueOf(content);
+      String cleanText = normalizeAssistantJsonText(text);
+      if (!cleanText.isEmpty()) {
+        raw.put("replyText", cleanText);
+        raw.put("content", cleanText);
+      }
+      String jsonCandidate = extractJsonCandidate(stripMarkdownFence(text));
+      if (!jsonCandidate.isEmpty()) {
+        try {
+          Map<String, Object> parsed = parseJsonObject(jsonCandidate);
+          if (!parsed.isEmpty()) {
+            raw.putAll(parsed);
+            Object parsedReply = firstNonEmpty(
+                parsed.get("replyText"),
+                parsed.get("reply"),
+                parsed.get("answer"),
+                parsed.get("content"),
+                parsed.get("message"),
+                parsed.get("text")
+            );
+            if (parsedReply != null && !String.valueOf(parsedReply).trim().isEmpty()) {
+              raw.put("replyText", String.valueOf(parsedReply).trim());
+            }
+            raw.put("rawText", text.trim());
+          }
+        } catch (Exception ignored) {
+          // keep cleaned text
+        }
+      }
+    }
+    return raw;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> flattenDeepseekEnvelope(Map<String, Object> response) {
     Map<String, Object> raw = new LinkedHashMap<>();
     if (response == null) {
       return raw;
@@ -3137,6 +3359,22 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return response.body();
   }
 
+  private String postJsonWithAuth(String url, Map<String, Object> payload, String apiKey) throws Exception {
+    String body = toJson(payload);
+    HttpRequest.Builder builder = HttpRequest.newBuilder()
+        .uri(URI.create(url))
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(body));
+    if (apiKey != null && !apiKey.trim().isEmpty()) {
+      builder.header("Authorization", "Bearer " + apiKey.trim());
+    }
+    HttpResponse<String> response = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+      throw new BusinessException(response.statusCode(), "智能引擎调用失败");
+    }
+    return response.body();
+  }
+
   private String toJson(Object value) {
     if (value == null) {
       return "null";
@@ -3264,19 +3502,30 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if (supervisors.isEmpty() && !supervisor.isEmpty()) {
       supervisors = Arrays.asList(supervisor);
     }
-    String localBaseUrl = defaultOpenclawLocalBaseUrl();
-    String remoteBaseUrl = defaultOpenclawRemoteBaseUrl();
+    String deepseekLocalBaseUrl = defaultDeepseekLocalBaseUrl();
+    String deepseekRemoteBaseUrl = defaultDeepseekRemoteBaseUrl();
+    String openclawLocalBaseUrl = defaultOpenclawLocalBaseUrl();
+    String openclawRemoteBaseUrl = defaultOpenclawRemoteBaseUrl();
     Map<String, Object> settings = mapOf(
         "id", normalizedCommunityId,
         "communityId", normalizedCommunityId,
         "community", normalizedCommunityName,
         "enabled", true,
         "assistantName", "物业AI客服",
-        "assistantProvider", normalizeAssistantProvider(assistantProvider, openclawBaseUrl),
+        "assistantProvider", normalizeAssistantProvider(assistantProvider, deepseekBaseUrl),
+        "deepseekMode", "remote",
+        "deepseekBaseUrl", deepseekRemoteBaseUrl,
+        "deepseekLocalBaseUrl", deepseekLocalBaseUrl,
+        "deepseekRemoteBaseUrl", deepseekRemoteBaseUrl,
+        "deepseekChatPath", "/chat/completions",
+        "deepseekModel", deepseekModel,
+        "deepseekApiKey", "",
+        "deepseekTemperature", deepseekTemperature,
+        "deepseekMaxTokens", deepseekMaxTokens,
         "openclawMode", "local",
-        "openclawBaseUrl", localBaseUrl,
-        "openclawLocalBaseUrl", localBaseUrl,
-        "openclawRemoteBaseUrl", remoteBaseUrl,
+        "openclawBaseUrl", openclawLocalBaseUrl,
+        "openclawLocalBaseUrl", openclawLocalBaseUrl,
+        "openclawRemoteBaseUrl", openclawRemoteBaseUrl,
         "openclawModel", "openclaw-assistant",
         "openclawSessionPath", "/session/{sessionId}",
         "openclawMessagePath", "/api/v1/assistant/messages",
@@ -3319,7 +3568,21 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       item.putIfAbsent("community", communityNameById(target));
       item.putIfAbsent("enabled", true);
       item.putIfAbsent("assistantName", "物业AI客服");
-      item.put("assistantProvider", normalizeAssistantProvider(item.get("assistantProvider"), firstNonEmpty(item.get("gemmaBaseUrl"), item.get("openclawBaseUrl"))));
+      item.put("assistantProvider", normalizeAssistantProvider(item.get("assistantProvider"), firstNonEmpty(item.get("deepseekBaseUrl"), item.get("gemmaBaseUrl"), item.get("openclawBaseUrl"))));
+      item.put("deepseekMode", normalizeOpenclawMode(item.get("deepseekMode"), item.get("deepseekBaseUrl")));
+      item.putIfAbsent("deepseekLocalBaseUrl", defaultDeepseekLocalBaseUrl());
+      item.putIfAbsent("deepseekRemoteBaseUrl", defaultDeepseekRemoteBaseUrl());
+      item.put("deepseekBaseUrl", resolveDeepseekBaseUrl(
+          String.valueOf(item.getOrDefault("deepseekMode", "remote")),
+          String.valueOf(item.getOrDefault("deepseekLocalBaseUrl", defaultDeepseekLocalBaseUrl())),
+          String.valueOf(item.getOrDefault("deepseekRemoteBaseUrl", defaultDeepseekRemoteBaseUrl())),
+          String.valueOf(item.getOrDefault("deepseekBaseUrl", deepseekBaseUrl))
+      ));
+      item.putIfAbsent("deepseekChatPath", "/chat/completions");
+      item.putIfAbsent("deepseekModel", deepseekModel);
+      item.put("deepseekApiKeySet", truthy(item.get("deepseekApiKey")));
+      item.putIfAbsent("deepseekTemperature", deepseekTemperature);
+      item.putIfAbsent("deepseekMaxTokens", deepseekMaxTokens);
       item.put("openclawMode", normalizeOpenclawMode(item.get("openclawMode"), item.get("openclawBaseUrl")));
       item.putIfAbsent("openclawLocalBaseUrl", defaultOpenclawLocalBaseUrl());
       item.putIfAbsent("openclawRemoteBaseUrl", defaultOpenclawRemoteBaseUrl());
@@ -3377,8 +3640,43 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     record.put("id", communityId);
     record.put("communityId", communityId);
     record.put("community", communityName);
-    String provider = normalizeAssistantProvider(firstNonEmpty(payload.get("assistantProvider"), previous.get("assistantProvider"), assistantProvider), firstNonEmpty(payload.get("gemmaBaseUrl"), previous.get("gemmaBaseUrl"), payload.get("openclawBaseUrl"), previous.get("openclawBaseUrl"), openclawBaseUrl));
+    String provider = normalizeAssistantProvider(firstNonEmpty(payload.get("assistantProvider"), previous.get("assistantProvider"), assistantProvider), firstNonEmpty(payload.get("deepseekBaseUrl"), previous.get("deepseekBaseUrl"), payload.get("gemmaBaseUrl"), previous.get("gemmaBaseUrl"), payload.get("openclawBaseUrl"), previous.get("openclawBaseUrl"), openclawBaseUrl));
     record.put("assistantProvider", provider);
+    String deepseekMode = normalizeOpenclawMode(firstNonEmpty(payload.get("deepseekMode"), previous.get("deepseekMode")), previous.get("deepseekBaseUrl"));
+    String deepseekLocalBaseUrl = String.valueOf(firstNonEmpty(payload.get("deepseekLocalBaseUrl"), previous.get("deepseekLocalBaseUrl"), defaultDeepseekLocalBaseUrl()));
+    String deepseekRemoteBaseUrl = String.valueOf(firstNonEmpty(payload.get("deepseekRemoteBaseUrl"), previous.get("deepseekRemoteBaseUrl"), defaultDeepseekRemoteBaseUrl()));
+    record.put("deepseekMode", deepseekMode);
+    record.put("deepseekLocalBaseUrl", deepseekLocalBaseUrl);
+    record.put("deepseekRemoteBaseUrl", deepseekRemoteBaseUrl);
+    record.put("deepseekBaseUrl", resolveDeepseekBaseUrl(
+        deepseekMode,
+        deepseekLocalBaseUrl,
+        deepseekRemoteBaseUrl,
+        String.valueOf(firstNonEmpty(payload.get("deepseekBaseUrl"), record.getOrDefault("deepseekBaseUrl", deepseekBaseUrl)))
+    ));
+    record.put("deepseekChatPath", String.valueOf(payload.getOrDefault("deepseekChatPath", record.getOrDefault("deepseekChatPath", "/chat/completions"))));
+    record.put("deepseekModel", String.valueOf(payload.getOrDefault("deepseekModel", record.getOrDefault("deepseekModel", deepseekModel))));
+    Object deepseekApiKeyValue = firstNonEmpty(payload.get("deepseekApiKey"), previous.get("deepseekApiKey"));
+    if (deepseekApiKeyValue != null && !String.valueOf(deepseekApiKeyValue).trim().isEmpty()) {
+      record.put("deepseekApiKey", String.valueOf(deepseekApiKeyValue));
+    } else if (previous.containsKey("deepseekApiKey")) {
+      record.put("deepseekApiKey", previous.get("deepseekApiKey"));
+    } else {
+      record.put("deepseekApiKey", "");
+    }
+    record.put("deepseekApiKeySet", truthy(record.get("deepseekApiKey")));
+    Object deepseekTemperatureValue = firstNonEmpty(payload.get("deepseekTemperature"), previous.get("deepseekTemperature"), deepseekTemperature);
+    try {
+      record.put("deepseekTemperature", Double.parseDouble(String.valueOf(deepseekTemperatureValue)));
+    } catch (Exception error) {
+      record.put("deepseekTemperature", deepseekTemperature);
+    }
+    Object deepseekMaxTokensValue = firstNonEmpty(payload.get("deepseekMaxTokens"), previous.get("deepseekMaxTokens"), deepseekMaxTokens);
+    try {
+      record.put("deepseekMaxTokens", Integer.parseInt(String.valueOf(deepseekMaxTokensValue)));
+    } catch (Exception error) {
+      record.put("deepseekMaxTokens", deepseekMaxTokens);
+    }
     String mode = normalizeOpenclawMode(firstNonEmpty(payload.get("openclawMode"), previous.get("openclawMode")), previous.get("openclawBaseUrl"));
     String localBaseUrl = String.valueOf(firstNonEmpty(payload.get("openclawLocalBaseUrl"), previous.get("openclawLocalBaseUrl"), defaultOpenclawLocalBaseUrl()));
     String remoteBaseUrl = String.valueOf(firstNonEmpty(payload.get("openclawRemoteBaseUrl"), previous.get("openclawRemoteBaseUrl"), defaultOpenclawRemoteBaseUrl()));
@@ -4716,6 +5014,89 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       payload.put("extra", request.extra);
     }
     return upsertAssistantSettings(payload);
+  }
+
+  @Override
+  public Map<String, Object> testAssistantSettings(String token, Map<String, Object> payload) {
+    Map<String, Object> request = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
+    String communityId = textValue(firstNonEmpty(request.get("communityId"), currentCommunityId()));
+    Map<String, Object> settings = assistantSettingsRecord(communityId);
+    String provider = effectiveAssistantProvider(settings);
+    String communityName = String.valueOf(firstNonEmpty(
+        request.get("community"),
+        settings.get("community"),
+        communityNameById(communityId)
+    ));
+    String engineLabel = "deepseek".equals(provider) ? "深度求索" : "gemma".equals(provider) ? "本地模型" : "兼容引擎";
+    String endpoint = "deepseek".equals(provider)
+        ? assistantEndpointForProvider(settings, "deepseek", "deepseekChatPath")
+        : "gemma".equals(provider)
+        ? assistantEndpointForProvider(settings, "gemma", "gemmaChatPath")
+        : assistantEndpoint(settings, "openclawMessagePath");
+    long started = System.currentTimeMillis();
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("测试结果", "失败");
+    result.put("智能引擎", engineLabel);
+    result.put("连接模式", "deepseek".equals(provider)
+        ? ("remote".equals(normalizeOpenclawMode(settings.get("deepseekMode"), settings.get("deepseekBaseUrl"))) ? "远程" : "本地")
+        : "gemma".equals(provider)
+        ? ("remote".equals(normalizeOpenclawMode(settings.get("gemmaMode"), settings.get("gemmaBaseUrl"))) ? "远程" : "本地")
+        : ("remote".equals(normalizeOpenclawMode(settings.get("openclawMode"), settings.get("openclawBaseUrl"))) ? "远程" : "本地"));
+    result.put("项目ID", communityId);
+    result.put("项目名称", communityName);
+    result.put("接口地址", endpoint.isEmpty() ? "未配置" : endpoint);
+    result.put("模型名称", "deepseek".equals(provider)
+        ? String.valueOf(settings.getOrDefault("deepseekModel", deepseekModel))
+        : "gemma".equals(provider)
+        ? String.valueOf(settings.getOrDefault("gemmaModel", gemmaModel))
+        : String.valueOf(settings.getOrDefault("openclawModel", "openclaw-assistant")));
+    try {
+      Map<String, Object> testRequest = mapOf(
+          "sessionId", "test-" + newId(),
+          "sessionToken", "test-" + newId(),
+          "assistantProvider", provider,
+          "scene", "general",
+          "role", "user",
+          "contentType", "text",
+          "content", "请用一句中文回复：连接成功",
+          "communityId", communityId,
+          "community", communityName,
+          "houseId", "",
+          "userId", "",
+          "userName", "",
+          "room", "",
+          "phone", "",
+          "enabledScenes", normalizeStringList(settings.get("enabledScenes")),
+          "history", new ArrayList<Map<String, Object>>(),
+          "settings", assistantSettingsSummary(settings),
+          "context", mapOf("communityId", communityId, "community", communityName),
+          "promptVersion", String.valueOf(firstNonEmpty(settings.get("promptVersion"), "v1")),
+          "prompt", String.valueOf(firstNonEmpty(settings.get("promptTemplate"), "你是物业智能助手，只回答当前小区和当前房屋的问题。")),
+          "inputText", "请用一句中文回复：连接成功"
+      );
+      Map<String, Object> normalized = "deepseek".equals(provider)
+          ? invokeDeepseekAssistant(settings, testRequest)
+          : "gemma".equals(provider)
+          ? invokeGemmaAssistant(settings, testRequest)
+          : invokeOpenclawAssistant(settings, testRequest);
+      if (normalized == null || normalized.isEmpty()) {
+        result.put("测试结果", "失败");
+        result.put("提示", "接口未返回内容，请检查地址、密钥或服务状态。");
+        result.put("耗时毫秒", System.currentTimeMillis() - started);
+        return result;
+      }
+      result.put("测试结果", "成功");
+      result.put("耗时毫秒", System.currentTimeMillis() - started);
+      result.put("回复内容", String.valueOf(firstNonEmpty(normalized.get("replyText"), normalized.get("回复内容"), "")));
+      result.put("原始结果", normalized);
+      result.put("提示", "连接正常，可以保存并使用。");
+      return result;
+    } catch (Exception error) {
+      result.put("测试结果", "失败");
+      result.put("耗时毫秒", System.currentTimeMillis() - started);
+      result.put("提示", String.valueOf(firstNonEmpty(error.getMessage(), "连接失败，请检查配置。")));
+      return result;
+    }
   }
 
   @Override

@@ -9,6 +9,15 @@ public class AssistantConfigRequest {
   public Boolean enabled;
   public String assistantName;
   public String assistantProvider;
+  public String deepseekMode;
+  public String deepseekBaseUrl;
+  public String deepseekLocalBaseUrl;
+  public String deepseekRemoteBaseUrl;
+  public String deepseekChatPath;
+  public String deepseekModel;
+  public String deepseekApiKey;
+  public Double deepseekTemperature;
+  public Integer deepseekMaxTokens;
   public String openclawMode;
   public String openclawBaseUrl;
   public String openclawLocalBaseUrl;

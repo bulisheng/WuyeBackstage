@@ -30,6 +30,9 @@
 - 小区配置里的“负责人列表”也已经改成多选，不要再回退成 textarea 手填；优先用当前已有物业人员做选项来源。
 - `负责人` 是规则负责人，`通知对象` 才是实际通知对象。
 - `智能配置` 页里的通知路由要优先按 `绑定机器人 / 推送事项 / 负责人 / 备选负责人` 这四个词来保持中文一致。
+- `智能配置` 页现在按 `基础配置 / 引擎配置 / 通知配置 / 提示词配置` 四块展示；右侧有 `查看当前生效配置` 折叠面板，底部按钮是 `保存后立即测试连接`，测试结果会直接显示中文状态条。
+- 现在智能引擎默认优先走 DeepSeek，后台配置页里可以直接改模型地址、请求路径、密钥、温度和最大输出；密钥只保存在后端，不要回显到文档或前端默认值里。
+- 如果保存后测试结果里显示的是旧地址或旧模型，先看 `查看当前生效配置`，再到该项目的智能配置里切换引擎并保存。
 - 当前本地智能引擎默认入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`，如果要改默认地址，优先改这个模板。
 - 后台现在支持智能引擎 `本地 / 远程` 两套预设，部署到云服务器 + Mac mini 时优先改智能引擎模式和对应的本地/远程地址，不要只改单一地址。
 - 小区配置里会有 `项目名称`、`功能开关` 和 `当前启用功能` 概览，别再用英文字段当展示名。
@@ -52,6 +55,154 @@
 - Web 管理台主页面：[web-admin/src/pages/DashboardPage.jsx](../web-admin/src/pages/DashboardPage.jsx)
 - Web 接口封装：[web-admin/src/lib/api.js](../web-admin/src/lib/api.js)
 - Web 样式：[web-admin/src/styles.css](../web-admin/src/styles.css)
+
+## 智能配置原型
+
+Web 管理台的 `智能配置` 页建议按下面四块展示，方便运营和维护直接在后台改：
+
+### 1. 智能引擎
+- 智能引擎类型：`深度求索` / `兼容引擎`
+- 连接模式：`本地` / `远程`
+- 当前项目是否启用：`已启用` / `已关闭`
+
+### 2. 深度求索配置
+- 接口地址
+- 接口密钥
+- 模型名称
+- 请求路径
+- 输出温度
+- 最大输出
+
+### 3. 通知路由
+- 绑定机器人
+- 推送事项
+- 负责人
+- 备选负责人
+
+### 4. 提示词与场景
+- 提示词模板
+- 可用场景
+- 转人工关键词
+- 失败回退开关
+
+## 后端配置 DTO 草案
+
+### `AssistantConfigRequest`
+- `communityId`
+- `community`
+- `enabled`
+- `assistantName`
+- `assistantProvider`
+- `deepseekMode`
+- `deepseekBaseUrl`
+- `deepseekLocalBaseUrl`
+- `deepseekRemoteBaseUrl`
+- `deepseekChatPath`
+- `deepseekModel`
+- `deepseekApiKey`
+- `deepseekTemperature`
+- `deepseekMaxTokens`
+- `openclawMode`
+- `openclawBaseUrl`
+- `openclawLocalBaseUrl`
+- `openclawRemoteBaseUrl`
+- `openclawModel`
+- `openclawSessionPath`
+- `openclawMessagePath`
+- `openclawHandoffPath`
+- `gemmaMode`
+- `gemmaBaseUrl`
+- `gemmaLocalBaseUrl`
+- `gemmaRemoteBaseUrl`
+- `gemmaChatPath`
+- `gemmaModel`
+- `gemmaTemperature`
+- `gemmaMaxTokens`
+- `promptVersion`
+- `defaultSupervisor`
+- `analysisTimeoutMs`
+- `fallbackToHeuristic`
+- `autoCreateSession`
+- `autoSaveHistory`
+- `autoHandoff`
+- `promptTemplate`
+- `enabledScenes`
+- `handoffKeywords`
+- `extra`
+
+### `AssistantSettingsRequest`
+- 和 `AssistantConfigRequest` 保持同名字段一致，便于 Web 配置页直接提交。
+
+### `AssistantSettingsResponse`
+- 在请求字段基础上，再补：
+  - `id`
+  - `deepseekApiKeySet`
+  - `createTime`
+  - `updateTime`
+
+## 数据库结构草案
+
+建议后端落库时按这些集合存：
+
+### `property_assistant_settings`
+- `id`
+- `communityId`
+- `community`
+- `enabled`
+- `assistantName`
+- `assistantProvider`
+- `deepseekMode`
+- `deepseekBaseUrl`
+- `deepseekLocalBaseUrl`
+- `deepseekRemoteBaseUrl`
+- `deepseekChatPath`
+- `deepseekModel`
+- `deepseekApiKey`
+- `deepseekApiKeySet`
+- `deepseekTemperature`
+- `deepseekMaxTokens`
+- `openclawMode`
+- `openclawBaseUrl`
+- `openclawLocalBaseUrl`
+- `openclawRemoteBaseUrl`
+- `openclawModel`
+- `openclawSessionPath`
+- `openclawMessagePath`
+- `openclawHandoffPath`
+- `gemmaMode`
+- `gemmaBaseUrl`
+- `gemmaLocalBaseUrl`
+- `gemmaRemoteBaseUrl`
+- `gemmaChatPath`
+- `gemmaModel`
+- `gemmaTemperature`
+- `gemmaMaxTokens`
+- `promptVersion`
+- `analysisTimeoutMs`
+- `fallbackToHeuristic`
+- `autoCreateSession`
+- `autoSaveHistory`
+- `autoHandoff`
+- `promptTemplate`
+- `enabledScenes`
+- `handoffKeywords`
+- `defaultSupervisor`
+- `extra`
+- `createTime`
+- `updateTime`
+
+### `property_assistant_sessions`
+- 会话主记录，存当前小区、当前房屋、当前用户、会话状态、模型模式、sessionToken、openclawUrl、消息数、更新时间等。
+
+### `property_assistant_messages`
+- 会话消息记录，存角色、内容、意图、动作、原始返回、是否转人工等。
+
+### `property_assistant_faqs`
+- 常见问题，存问题、答案、标签、负责人、启用状态、项目归属。
+
+### 注意
+- 密钥只保存在后端数据库，不要写进前端默认值、文档示例或 Git 提交记录。
+- 如果有人把真实密钥贴到聊天或日志里，第一步先去控制台重置或轮换。
 
 ## 数据流
 

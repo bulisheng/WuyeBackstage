@@ -20,7 +20,17 @@ openclaw:
   analysis-timeout-ms: ${OPENCLAW_ANALYSIS_TIMEOUT_MS:5000}
 
 assistant:
-  provider: ${ASSISTANT_PROVIDER:openclaw}
+  provider: ${ASSISTANT_PROVIDER:deepseek}
+
+deepseek:
+  base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+  local-base-url: ${DEEPSEEK_LOCAL_BASE_URL:${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}}
+  remote-base-url: ${DEEPSEEK_REMOTE_BASE_URL:${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}}
+  chat-path: ${DEEPSEEK_CHAT_PATH:/chat/completions}
+  model: ${DEEPSEEK_MODEL:deepseek-chat}
+  api-key: ${DEEPSEEK_API_KEY:}
+  temperature: ${DEEPSEEK_TEMPERATURE:0.2}
+  max-tokens: ${DEEPSEEK_MAX_TOKENS:512}
 
 feishu:
   customer-webhook-url: ${FEISHU_CUSTOMER_WEBHOOK_URL:https://open.feishu.cn/open-apis/bot/v2/hook/3151f64f-bbbe-4ea2-a2cd-abae45822947}

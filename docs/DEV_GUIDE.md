@@ -104,16 +104,31 @@ npm run dev
 - 原来的单一 `FEISHU_WEBHOOK_URL` 已经删掉，后续只保留这三路机器人配置。
 
 ### 改智能引擎
-- 默认本地入口是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`
-- 远程入口默认占位是示例地址 `https://openclaw.example.com`
-- Web 管理台会优先保存 `openclawMode`、`openclawLocalBaseUrl`、`openclawRemoteBaseUrl`
+- 现在后台可切换 `深度求索` 和 `兼容引擎`
+- `智能配置` 页面已经拆成 `基础配置 / 引擎配置 / 通知配置 / 提示词配置` 四块，右侧有 `查看当前生效配置` 折叠面板，底部按钮是 `保存后立即测试连接`
+- 保存后会自动调用测试接口，成功 / 失败都会用中文状态条展示在页面上
+- 深度求索默认地址是 `https://api.deepseek.com/v1`
+- 深度求索默认路径是 `/chat/completions`
+- 深度求索模型默认是 `deepseek-chat`
+- 密钥只保存在后端 `property_assistant_settings`，不要写进前端默认值或文档示例
+- 兼容引擎默认本地入口仍然是 `http://127.0.0.1:18789/chat?session=agent%3Amain%3Amain`
+- 远程入口默认占位仍然是示例地址 `https://openclaw.example.com`
+- Web 管理台会优先保存 `assistantProvider`、`deepseekMode`、`deepseekBaseUrl`、`deepseekLocalBaseUrl`、`deepseekRemoteBaseUrl`
 - `OPENCLAW_BASE_URL`
 - `OPENCLAW_LOCAL_BASE_URL`
 - `OPENCLAW_REMOTE_BASE_URL`
 - `OPENCLAW_COMPLAINT_ANALYSIS_PATH`
 - `OPENCLAW_ANALYSIS_TIMEOUT_MS`
+- `DEEPSEEK_BASE_URL`
+- `DEEPSEEK_LOCAL_BASE_URL`
+- `DEEPSEEK_REMOTE_BASE_URL`
+- `DEEPSEEK_CHAT_PATH`
+- `DEEPSEEK_MODEL`
+- `DEEPSEEK_API_KEY`
+- `DEEPSEEK_TEMPERATURE`
+- `DEEPSEEK_MAX_TOKENS`
 - 未来如果要部署成“云后端 + Mac mini 上智能引擎”，优先在 Web 管理台里切换 `本地 / 远程`，不要只改一个地址。
-- 现在默认智能引擎已经回到智能引擎路线，本地模型不是主路径。
+- 现在默认智能引擎已经回到 `深度求索` 路线，兼容引擎和本地模型都只是备选。
 
 ### 改默认负责人
 - 后端 `complaint.default-supervisor`

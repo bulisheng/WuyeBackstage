@@ -426,6 +426,15 @@ export function saveAssistantSettings(apiBase, token, payload) {
   });
 }
 
+export function testAssistantSettings(apiBase, token, payload) {
+  return request('/assistant/settings/test', {
+    method: 'POST',
+    apiBase,
+    token,
+    body: payload || {}
+  });
+}
+
 export function createAssistantSession(apiBase, token, payload) {
   return request('/assistant/sessions', {
     method: 'POST',

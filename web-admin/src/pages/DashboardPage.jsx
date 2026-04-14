@@ -1774,6 +1774,8 @@ export default function DashboardPage() {
   const [projectsCollapsed, setProjectsCollapsed] = useState(true);
   const [focusStaffId, setFocusStaffId] = useState('');
   const feishuBindCloseTimerRef = useRef(null);
+  const closeShieldRef = useRef(0);
+  const navigationStateRef = useRef('');
 
   const currentList =
     activeTab === 'bill' ? bills :
@@ -2144,6 +2146,11 @@ export default function DashboardPage() {
     const params = new URLSearchParams(location.search || '');
     const nextTab = String(location.state?.tab || params.get('tab') || '').trim();
     const nextFocusStaffId = String(location.state?.focusStaffId || params.get('focusStaffId') || '').trim();
+    const nextStateKey = `${nextTab || '-'}|${nextFocusStaffId || '-'}`;
+    if (navigationStateRef.current === nextStateKey) {
+      return;
+    }
+    navigationStateRef.current = nextStateKey;
     if (nextTab && TABS[nextTab] && nextTab !== activeTab) {
       setTab(nextTab);
     }
@@ -2257,6 +2264,12 @@ export default function DashboardPage() {
 
   const tabCount = (tab) => listForTab(tab).length;
 
+  const armCloseShield = (duration = 1000) => {
+    closeShieldRef.current = Date.now() + duration;
+  };
+
+  const isCloseShieldActive = () => Date.now() < closeShieldRef.current;
+
   const toggleGroup = (key) => {
     setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -2264,6 +2277,9 @@ export default function DashboardPage() {
   const canCreateForTab = (tab) => !['complaintQueue'].includes(tab);
 
   const openDrawer = (item, mode = 'view') => {
+    if (isCloseShieldActive()) {
+      return;
+    }
     setDrawer({ type: activeTab, item: clone(item) });
     setDrawerMode(mode);
     setDrawerDraft(clone(item));
@@ -2278,6 +2294,9 @@ export default function DashboardPage() {
   };
 
   const openModal = () => {
+    if (isCloseShieldActive()) {
+      return;
+    }
     if (!canCreateForTab(activeTab)) {
       if (activeTab === 'complaintQueue') {
         window.alert('投诉队列不支持新建，请通过投诉记录自动进入队列。');
@@ -2307,13 +2326,21 @@ export default function DashboardPage() {
     setModalDraft(draft);
   };
 
-  const closeDrawer = () => {
+  const closeDrawer = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    armCloseShield();
     setDrawer(null);
     setDrawerDraft(null);
     setDrawerMode('view');
+    setSelectedIds([]);
+    setFocusStaffId('');
   };
 
-  const closeModal = () => {
+  const closeModal = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    armCloseShield();
     setModal(null);
     setModalDraft(null);
   };
@@ -2785,6 +2812,9 @@ export default function DashboardPage() {
     if (!staff) {
       return;
     }
+    if (isCloseShieldActive()) {
+      return;
+    }
     if (feishuBindCloseTimerRef.current) {
       clearTimeout(feishuBindCloseTimerRef.current);
       feishuBindCloseTimerRef.current = null;
@@ -2799,7 +2829,10 @@ export default function DashboardPage() {
     });
   };
 
-  const closeFeishuBindModal = () => {
+  const closeFeishuBindModal = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    armCloseShield();
     if (feishuBindCloseTimerRef.current) {
       clearTimeout(feishuBindCloseTimerRef.current);
       feishuBindCloseTimerRef.current = null;
@@ -3519,8 +3552,12 @@ export default function DashboardPage() {
       </main>
 
       {drawer ? (
-        <div className="overlay" onClick={closeDrawer}>
-          <aside className="drawer card" onClick={(event) => event.stopPropagation()}>
+        <div className="overlay" onMouseDown={(event) => event.stopPropagation()} onClick={closeDrawer}>
+          <aside
+            className="drawer card"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="drawer-head">
               <div>
                 <div className="eyebrow">详情</div>
@@ -3563,7 +3600,14 @@ export default function DashboardPage() {
                 ) : (
                   <button type="button" className="btn btn-primary" onClick={() => saveItem(drawer.type, drawerDraft)}>保存</button>
                 )}
-                <button type="button" className="btn btn-ghost" onClick={closeDrawer}>关闭</button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={closeDrawer}
+                >
+                  关闭
+                </button>
               </div>
             </div>
 
@@ -3780,8 +3824,12 @@ export default function DashboardPage() {
       ) : null}
 
       {modal ? (
-        <div className="overlay" onClick={closeModal}>
-          <div className="modal card" onClick={(event) => event.stopPropagation()}>
+        <div className="overlay" onMouseDown={(event) => event.stopPropagation()} onClick={closeModal}>
+          <div
+            className="modal card"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="drawer-head">
               <div>
                 <div className="eyebrow">{modal.type === 'community' ? '小区管理' : '新增记录'}</div>
@@ -3789,7 +3837,14 @@ export default function DashboardPage() {
               </div>
               <div className="drawer-actions">
                 <button type="button" className="btn btn-primary" onClick={() => saveItem(modal.type, modalDraft)}>保存</button>
-                <button type="button" className="btn btn-ghost" onClick={closeModal}>关闭</button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={closeModal}
+                >
+                  关闭
+                </button>
               </div>
             </div>
             <FormFields
@@ -3824,8 +3879,12 @@ export default function DashboardPage() {
       ) : null}
 
       {feishuBindModal ? (
-        <div className="overlay" onClick={closeFeishuBindModal}>
-          <div className="modal card" onClick={(event) => event.stopPropagation()}>
+        <div className="overlay" onMouseDown={(event) => event.stopPropagation()} onClick={closeFeishuBindModal}>
+          <div
+            className="modal card"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="drawer-head">
               <div>
                 <div className="eyebrow">飞书成员绑定</div>
@@ -3839,7 +3898,14 @@ export default function DashboardPage() {
               </div>
               <div className="drawer-actions">
                 <button type="button" className="btn btn-primary" onClick={saveFeishuBinding} disabled={feishuBindModal.status === 'saving'}>{feishuBindModal.status === 'saving' ? '保存中...' : '保存绑定'}</button>
-                <button type="button" className="btn btn-ghost" onClick={closeFeishuBindModal}>关闭</button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={closeFeishuBindModal}
+                >
+                  关闭
+                </button>
               </div>
             </div>
             <div className="form-grid">

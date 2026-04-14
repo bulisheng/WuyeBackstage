@@ -302,6 +302,14 @@ public class ApiController {
     return ApiResponse.ok(service.saveAssistantSettings(token(authorization), request));
   }
 
+  @PostMapping("/assistant/settings/test")
+  public ApiResponse<Map<String, Object>> testAssistantSettings(@RequestHeader(value = "X-Admin-Key", required = false) String apiKey,
+                                                                @RequestHeader(value = "Authorization", required = false) String authorization,
+                                                                @RequestBody Map<String, Object> payload) {
+    checkAdmin(apiKey, authorization);
+    return ApiResponse.ok(service.testAssistantSettings(token(authorization), payload));
+  }
+
   @GetMapping("/assistant/faq")
   public ApiResponse<Object> assistantFaqs(@RequestHeader(value = "Authorization", required = false) String authorization,
                                            @RequestParam(value = "communityId", required = false) String communityId) {

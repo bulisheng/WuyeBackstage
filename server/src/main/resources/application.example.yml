@@ -20,7 +20,17 @@ openclaw:
   analysis-timeout-ms: 5000
 
 assistant:
-  provider: openclaw
+  provider: deepseek
+
+deepseek:
+  base-url: https://api.deepseek.com/v1
+  local-base-url: https://api.deepseek.com/v1
+  remote-base-url: https://api.deepseek.com/v1
+  chat-path: /chat/completions
+  model: deepseek-chat
+  api-key: ""
+  temperature: 0.2
+  max-tokens: 512
 
 feishu:
   customer-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/3151f64f-bbbe-4ea2-a2cd-abae45822947

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { activateCommunity, getAssistantSettings, listCommunities, listStaffs, saveAssistantSettings } from '../lib/api';
+import { activateCommunity, getAssistantSettings, listCommunities, listStaffs, saveAssistantSettings, testAssistantSettings } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 const STORAGE_KEY = 'property-ai-config';
@@ -36,6 +36,13 @@ function readStorage(key, fallback) {
 
 function writeStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function sanitizeAssistantSettingsForForm(settings) {
+  const next = { ...(settings || {}) };
+  next.deepseekApiKeySet = Boolean(next.deepseekApiKeySet || next.deepseekApiKey);
+  next.deepseekApiKey = '';
+  return next;
 }
 
 function normalizeList(value) {
@@ -77,7 +84,26 @@ function normalizeOpenclawMode(mode, baseUrl) {
 }
 
 function normalizeAssistantProvider(provider, baseUrl) {
-  return 'openclaw';
+  const text = String(provider || '').trim().toLowerCase();
+  if (text.includes('deepseek') || text.includes('深度求索') || text.includes('深度')) {
+    return 'deepseek';
+  }
+  if (text.includes('openclaw') || text.includes('兼容') || text.includes('智能引擎')) {
+    return 'openclaw';
+  }
+  const normalizedBase = String(baseUrl || '').trim().toLowerCase();
+  if (normalizedBase.includes('deepseek')) {
+    return 'deepseek';
+  }
+  return 'deepseek';
+}
+
+function resolveDeepseekPresetUrl(mode, localBaseUrl, remoteBaseUrl, baseUrl) {
+  const normalizedMode = normalizeOpenclawMode(mode, baseUrl);
+  if (normalizedMode === 'remote') {
+    return remoteBaseUrl || baseUrl || 'https://api.deepseek.com/v1';
+  }
+  return localBaseUrl || baseUrl || 'https://api.deepseek.com/v1';
 }
 
 function resolveOpenclawPresetUrl(mode, localBaseUrl, remoteBaseUrl, baseUrl) {
@@ -192,10 +218,21 @@ function buildNotificationRoutes(staffs, settings) {
 function buildDefaultSettings(community) {
   const localBaseUrl = DEFAULT_OPENCLAW_LOCAL_BASE_URL;
   const remoteBaseUrl = DEFAULT_OPENCLAW_REMOTE_BASE_URL;
+  const deepseekBaseUrl = import.meta.env.VITE_DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
   return {
     enabled: true,
     assistantName: '物业智能助手',
-    assistantProvider: 'openclaw',
+    assistantProvider: 'deepseek',
+    deepseekMode: 'remote',
+    deepseekBaseUrl,
+    deepseekLocalBaseUrl: deepseekBaseUrl,
+    deepseekRemoteBaseUrl: deepseekBaseUrl,
+    deepseekChatPath: '/chat/completions',
+    deepseekModel: 'deepseek-chat',
+    deepseekApiKey: '',
+    deepseekTemperature: 0.2,
+    deepseekMaxTokens: 512,
+    deepseekApiKeySet: false,
     openclawMode: 'local',
     openclawBaseUrl: localBaseUrl,
     openclawLocalBaseUrl: localBaseUrl,
@@ -225,6 +262,9 @@ export default function AssistantConfigPage() {
   const [communities, setCommunities] = useState([]);
   const [staffs, setStaffs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
   const [activeCommunityId, setActiveCommunityId] = useState('');
   const [settings, setSettings] = useState(() => readStorage(STORAGE_KEY, buildDefaultSettings(null)));
 
@@ -242,8 +282,9 @@ export default function AssistantConfigPage() {
         setActiveCommunityId(String(active?.id || ''));
         const remoteSettings = active?.id ? await getAssistantSettings(apiBase, token, active.id) : null;
         const mergedSettings = { ...buildDefaultSettings(active), ...(remoteSettings && typeof remoteSettings === 'object' ? remoteSettings : readStorage(STORAGE_KEY, {})) };
-        setSettings(mergedSettings);
-        writeStorage(STORAGE_KEY, mergedSettings);
+        const formSettings = sanitizeAssistantSettingsForForm(mergedSettings);
+        setSettings(formSettings);
+        writeStorage(STORAGE_KEY, formSettings);
       } catch (error) {
         if (error.status === 401) {
           await logout();
@@ -275,6 +316,7 @@ export default function AssistantConfigPage() {
   }, [activeCommunity, staffs]);
 
   const notificationRoutes = useMemo(() => buildNotificationRoutes(currentStaffOptions, settings), [currentStaffOptions, settings]);
+  const currentAssistantProvider = normalizeAssistantProvider(settings.assistantProvider, settings.deepseekBaseUrl || settings.openclawBaseUrl);
 
   const routeCopyText = useMemo(() => {
     return notificationRoutes.map((route) => [
@@ -286,41 +328,44 @@ export default function AssistantConfigPage() {
     ].join('\n')).join('\n\n');
   }, [notificationRoutes]);
 
-  const previewJson = useMemo(() => JSON.stringify({
-    启用状态: settings.enabled ? '已启用' : '已关闭',
-    助手名称: settings.assistantName,
-    智能引擎类型: '智能引擎',
-    连接模式: normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地',
-    智能引擎地址: settings.openclawBaseUrl,
-    智能引擎本地地址: settings.openclawLocalBaseUrl,
-    智能引擎远程地址: settings.openclawRemoteBaseUrl,
-    智能引擎模型: settings.openclawModel,
-    提示词版本: settings.promptVersion,
-    超时时间毫秒: settings.analysisTimeoutMs,
-    失败回退: settings.fallbackToHeuristic ? '开启' : '关闭',
+  const effectiveConfigPreview = useMemo(() => ({
+    当前项目: displayCommunity(activeCommunity),
+    当前负责人: settings.defaultSupervisor || '卜立胜',
+    当前智能引擎: activeProviderLabel,
+    当前连接模式: activeProviderMode === 'remote' ? '远程' : '本地',
+    智能引擎地址: currentAssistantProvider === 'deepseek'
+      ? settings.deepseekBaseUrl
+      : settings.openclawBaseUrl,
+    模型名称: currentAssistantProvider === 'deepseek'
+      ? settings.deepseekModel
+      : settings.openclawModel,
     自动创建会话: settings.autoCreateSession ? '开启' : '关闭',
     自动保存会话: settings.autoSaveHistory ? '开启' : '关闭',
     自动转人工: settings.autoHandoff ? '开启' : '关闭',
+    失败回退: settings.fallbackToHeuristic ? '开启' : '关闭',
     可用场景: normalizeList(settings.enabledScenes),
-    转人工关键词: normalizeList(settings.handoffKeywords),
-    默认负责人: settings.defaultSupervisor,
-    当前项目: displayCommunity(activeCommunity)
-  }, null, 2), [settings, activeCommunity]);
+    转人工关键词: normalizeList(settings.handoffKeywords)
+  }), [settings, activeCommunity, activeProviderLabel, activeProviderMode, currentAssistantProvider]);
+
+  const effectiveConfigJson = useMemo(() => JSON.stringify(effectiveConfigPreview, null, 2), [effectiveConfigPreview]);
 
   const promptPreview = useMemo(() => [
     `你是 ${settings.assistantName || '物业智能助手'}。`,
     `当前项目：${displayCommunity(activeCommunity)}`,
     `默认负责人：${settings.defaultSupervisor || '卜立胜'}`,
-    `智能引擎：智能引擎`,
-    `连接模式：${normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地'}`,
+    `智能引擎：${currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎'}`,
+    `连接模式：${currentAssistantProvider === 'deepseek'
+      ? (normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl) === 'remote' ? '远程' : '本地')
+      : (normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地')}`,
     `可用场景：${normalizeList(settings.enabledScenes).join('、') || '未配置'}`,
     `转人工关键词：${normalizeList(settings.handoffKeywords).join('、') || '无'}`,
     '先判断需求，再给最短可用回复。总字数尽量不超过 120 字。'
-  ].join('\n'), [settings, activeCommunity]);
+  ].join('\n'), [settings, activeCommunity, currentAssistantProvider]);
 
-  const assistantProvider = normalizeAssistantProvider(settings.assistantProvider, settings.openclawBaseUrl);
-  const activeProviderLabel = '智能引擎';
-  const activeProviderMode = normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
+  const activeProviderLabel = currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎';
+  const activeProviderMode = currentAssistantProvider === 'deepseek'
+    ? normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl)
+    : normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
 
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -336,6 +381,20 @@ export default function AssistantConfigPage() {
         openclawBaseUrl: nextValue,
         openclawLocalBaseUrl: mode === 'local' ? nextValue : (prev.openclawLocalBaseUrl || DEFAULT_OPENCLAW_LOCAL_BASE_URL),
         openclawRemoteBaseUrl: mode === 'remote' ? nextValue : (prev.openclawRemoteBaseUrl || DEFAULT_OPENCLAW_REMOTE_BASE_URL)
+      };
+    });
+  };
+
+  const updateDeepseekBaseUrl = (value) => {
+    const nextValue = String(value || '').trim();
+    setSettings((prev) => {
+      const mode = normalizeOpenclawMode(prev.deepseekMode, nextValue);
+      return {
+        ...prev,
+        deepseekMode: mode,
+        deepseekBaseUrl: nextValue,
+        deepseekLocalBaseUrl: mode === 'local' ? nextValue : (prev.deepseekLocalBaseUrl || nextValue || 'https://api.deepseek.com/v1'),
+        deepseekRemoteBaseUrl: mode === 'remote' ? nextValue : (prev.deepseekRemoteBaseUrl || nextValue || 'https://api.deepseek.com/v1')
       };
     });
   };
@@ -359,11 +418,32 @@ export default function AssistantConfigPage() {
     });
   };
 
-  const switchAssistantProvider = (provider) => {
+  const switchDeepseekMode = (mode) => {
     setSettings((prev) => {
+      const nextMode = mode === 'remote' ? 'remote' : 'local';
+      const nextBase = resolveDeepseekPresetUrl(
+        nextMode,
+        prev.deepseekLocalBaseUrl,
+        prev.deepseekRemoteBaseUrl,
+        prev.deepseekBaseUrl
+      );
       return {
         ...prev,
-        assistantProvider: 'openclaw',
+        deepseekMode: nextMode,
+        deepseekBaseUrl: nextBase,
+        deepseekLocalBaseUrl: nextMode === 'local' ? nextBase : (prev.deepseekLocalBaseUrl || nextBase),
+        deepseekRemoteBaseUrl: nextMode === 'remote' ? nextBase : (prev.deepseekRemoteBaseUrl || nextBase)
+      };
+    });
+  };
+
+  const switchAssistantProvider = (provider) => {
+    setSettings((prev) => {
+      const nextProvider = provider === 'openclaw' ? 'openclaw' : 'deepseek';
+      return {
+        ...prev,
+        assistantProvider: nextProvider,
+        deepseekBaseUrl: resolveDeepseekPresetUrl(prev.deepseekMode, prev.deepseekLocalBaseUrl, prev.deepseekRemoteBaseUrl, prev.deepseekBaseUrl),
         openclawBaseUrl: resolveOpenclawPresetUrl(prev.openclawMode, prev.openclawLocalBaseUrl, prev.openclawRemoteBaseUrl, prev.openclawBaseUrl)
       };
     });
@@ -381,12 +461,26 @@ export default function AssistantConfigPage() {
     });
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     const next = {
       ...settings,
       communityId: activeCommunity?.id || settings.communityId || '',
       community: displayCommunity(activeCommunity),
-      assistantProvider: 'openclaw',
+      assistantProvider: currentAssistantProvider,
+      deepseekMode: normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl),
+      deepseekBaseUrl: resolveDeepseekPresetUrl(
+        settings.deepseekMode,
+        settings.deepseekLocalBaseUrl,
+        settings.deepseekRemoteBaseUrl,
+        settings.deepseekBaseUrl
+      ),
+      deepseekLocalBaseUrl: settings.deepseekLocalBaseUrl || 'https://api.deepseek.com/v1',
+      deepseekRemoteBaseUrl: settings.deepseekRemoteBaseUrl || 'https://api.deepseek.com/v1',
+      deepseekChatPath: settings.deepseekChatPath || '/chat/completions',
+      deepseekModel: settings.deepseekModel || 'deepseek-chat',
+      deepseekApiKey: String(settings.deepseekApiKey || '').trim(),
+      deepseekTemperature: Number(settings.deepseekTemperature || 0.2),
+      deepseekMaxTokens: Number(settings.deepseekMaxTokens || 512),
       openclawMode: normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl),
       openclawBaseUrl: resolveOpenclawPresetUrl(
         settings.openclawMode,
@@ -400,28 +494,68 @@ export default function AssistantConfigPage() {
       handoffKeywords: normalizeList(settings.handoffKeywords),
       enabledScenes: normalizeList(settings.enabledScenes)
     };
-    saveAssistantSettings(apiBase, token, next)
-      .then((saved) => {
-        const merged = { ...next, ...(saved || {}) };
-        writeStorage(STORAGE_KEY, merged);
-        setSettings(merged);
-        window.alert('AI 配置已保存到后端。');
-      })
-      .catch((error) => {
-        window.alert(error.message || '保存失败');
+    setSaving(true);
+    setTestResult(null);
+    try {
+      const saved = await saveAssistantSettings(apiBase, token, next);
+      const merged = { ...next, ...(saved || {}) };
+      writeStorage(STORAGE_KEY, merged);
+      setSettings(merged);
+      window.alert('AI 配置已保存到后端。');
+      await testConnection(merged.communityId || activeCommunity?.id || '');
+    } catch (error) {
+      window.alert(error.message || '保存失败');
+      setTestResult({
+        success: false,
+        message: error.message || '保存失败'
       });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testConnection = async (communityId = activeCommunity?.id || settings.communityId || '') => {
+    const targetCommunityId = String(communityId || '').trim();
+    if (!targetCommunityId) {
+      window.alert('请先选择项目后再测试连接');
+      return null;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testAssistantSettings(apiBase, token, {
+        communityId: targetCommunityId
+      });
+      setTestResult({
+        success: true,
+        title: result?.['测试结果'] || '成功',
+        message: result?.['提示'] || result?.['回复内容'] || '连接正常',
+        detail: result
+      });
+      return result;
+    } catch (error) {
+      setTestResult({
+        success: false,
+        title: '失败',
+        message: error.message || '测试失败',
+        detail: error?.data || null
+      });
+      return null;
+    } finally {
+      setTesting(false);
+    }
   };
 
   const resetSettings = () => {
-    const next = buildDefaultSettings(activeCommunity);
+    const next = sanitizeAssistantSettingsForForm(buildDefaultSettings(activeCommunity));
     setSettings(next);
     writeStorage(STORAGE_KEY, next);
   };
 
-  const copyPreview = async () => {
+  const copyEffectiveConfig = async () => {
     try {
-      await navigator.clipboard.writeText(previewJson);
-      window.alert('已复制预览');
+      await navigator.clipboard.writeText(effectiveConfigJson);
+      window.alert('已复制当前生效配置');
     } catch (error) {
       window.alert('复制失败');
     }
@@ -453,8 +587,9 @@ export default function AssistantConfigPage() {
       const community = communities.find((item) => String(item.id || '') === String(id)) || null;
       const remoteSettings = await getAssistantSettings(apiBase, token, id);
       const mergedSettings = { ...buildDefaultSettings(community), ...(remoteSettings && typeof remoteSettings === 'object' ? remoteSettings : {}) };
-      setSettings(mergedSettings);
-      writeStorage(STORAGE_KEY, mergedSettings);
+      const formSettings = sanitizeAssistantSettingsForForm(mergedSettings);
+      setSettings(formSettings);
+      writeStorage(STORAGE_KEY, formSettings);
     } catch (error) {
       window.alert(error.message || '切换项目失败');
     }
@@ -563,151 +698,288 @@ export default function AssistantConfigPage() {
             <button type="button" className="btn btn-ghost" onClick={() => navigate('/')}>返回控制台</button>
           </div>
 
-          <div className="form-grid">
-            <label className="field-group">
-              <span className="field-label">启用智能助手</span>
-              <button type="button" className={`chip ${settings.enabled ? 'active' : ''}`} onClick={() => updateSetting('enabled', !settings.enabled)}>
-                {settings.enabled ? '已启用' : '已关闭'}
-              </button>
-            </label>
-            <label className="field-group">
-              <span className="field-label">智能引擎类型</span>
-              <div className="chip-row compact">
-                <button
-                  type="button"
-                  className={`chip ${assistantProvider === 'openclaw' ? 'active' : ''}`}
-                  onClick={() => switchAssistantProvider('openclaw')}
-                >
-                  智能引擎
-                </button>
+          <details className="config-fold" open>
+            <summary className="config-fold-summary">基础配置</summary>
+            <div className="config-fold-body">
+              <div className="form-grid">
+                <label className="field-group">
+                  <span className="field-label">启用智能助手</span>
+                  <button type="button" className={`chip ${settings.enabled ? 'active' : ''}`} onClick={() => updateSetting('enabled', !settings.enabled)}>
+                    {settings.enabled ? '已启用' : '已关闭'}
+                  </button>
+                </label>
+                <label className="field-group">
+                  <span className="field-label">助手名称</span>
+                  <input className="field" value={settings.assistantName} onChange={(e) => updateSetting('assistantName', e.target.value)} />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">当前项目</span>
+                  <input className="field" value={displayCommunity(activeCommunity)} readOnly />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">当前负责人</span>
+                  <input className="field" value={settings.defaultSupervisor || '卜立胜'} readOnly />
+                </label>
               </div>
-            </label>
-            <label className="field-group">
-              <span className="field-label">连接模式</span>
-              <div className="chip-row compact">
-                <button
-                  type="button"
-                  className={`chip ${activeProviderMode === 'local' ? 'active' : ''}`}
-                  onClick={() => switchOpenclawMode('local')}
-                >
-                  本地
-                </button>
-                <button
-                  type="button"
-                  className={`chip ${activeProviderMode === 'remote' ? 'active' : ''}`}
-                  onClick={() => switchOpenclawMode('remote')}
-                >
-                  远程
-                </button>
-              </div>
-            </label>
-            <label className="field-group">
-              <span className="field-label">助手名称</span>
-              <input className="field" value={settings.assistantName} onChange={(e) => updateSetting('assistantName', e.target.value)} />
-            </label>
-            <label className="field-group">
-              <span className="field-label">智能引擎地址</span>
-              <input className="field" value={settings.openclawBaseUrl} onChange={(e) => updateOpenclawBaseUrl(e.target.value)} />
-              <div className="hint">当前模式：{activeProviderMode === 'remote' ? '远程（云端）' : '本地（开发机）'}</div>
-            </label>
-            <label className="field-group">
-              <span className="field-label">智能引擎模型</span>
-              <input
-                className="field"
-                value={settings.openclawModel}
-                onChange={(e) => updateSetting('openclawModel', e.target.value)}
-              />
-            </label>
-            <label className="field-group">
-              <span className="field-label">会话路径</span>
-              <input className="field" value={settings.openclawSessionPath || ''} onChange={(e) => updateSetting('openclawSessionPath', e.target.value)} />
-            </label>
-            <label className="field-group">
-              <span className="field-label">消息路径</span>
-              <input className="field" value={settings.openclawMessagePath || ''} onChange={(e) => updateSetting('openclawMessagePath', e.target.value)} />
-            </label>
-            <label className="field-group">
-              <span className="field-label">转人工路径</span>
-              <input className="field" value={settings.openclawHandoffPath || ''} onChange={(e) => updateSetting('openclawHandoffPath', e.target.value)} />
-            </label>
-            <label className="field-group">
-              <span className="field-label">提示词版本</span>
-              <input className="field" value={settings.promptVersion} onChange={(e) => updateSetting('promptVersion', e.target.value)} />
-            </label>
-            <label className="field-group">
-              <span className="field-label">超时时间（ms）</span>
-              <input className="field" type="number" value={settings.analysisTimeoutMs} onChange={(e) => updateSetting('analysisTimeoutMs', e.target.value)} />
-            </label>
-          </div>
-
-          <div className="toggle-row">
-            <label className="toggle-item">
-              <span>失败回退到规则分析</span>
-              <button type="button" className={`chip ${settings.fallbackToHeuristic ? 'active' : ''}`} onClick={() => updateSetting('fallbackToHeuristic', !settings.fallbackToHeuristic)}>
-                {settings.fallbackToHeuristic ? '是' : '否'}
-              </button>
-            </label>
-            <label className="toggle-item">
-              <span>自动创建会话</span>
-              <button type="button" className={`chip ${settings.autoCreateSession ? 'active' : ''}`} onClick={() => updateSetting('autoCreateSession', !settings.autoCreateSession)}>
-                {settings.autoCreateSession ? '是' : '否'}
-              </button>
-            </label>
-            <label className="toggle-item">
-              <span>自动保存会话</span>
-              <button type="button" className={`chip ${settings.autoSaveHistory ? 'active' : ''}`} onClick={() => updateSetting('autoSaveHistory', !settings.autoSaveHistory)}>
-                {settings.autoSaveHistory ? '是' : '否'}
-              </button>
-            </label>
-            <label className="toggle-item">
-              <span>自动转人工</span>
-              <button type="button" className={`chip ${settings.autoHandoff ? 'active' : ''}`} onClick={() => updateSetting('autoHandoff', !settings.autoHandoff)}>
-                {settings.autoHandoff ? '是' : '否'}
-              </button>
-            </label>
-          </div>
-
-          <div className="section-block">
-            <div className="section-title">可用场景</div>
-            <div className="chip-row compact">
-              {DEFAULT_SCENES.map((scene) => (
-                <button key={scene} type="button" className={`chip ${(settings.enabledScenes || []).includes(scene) ? 'active' : ''}`} onClick={() => toggleScene(scene)}>
-                  {scene === 'query_bill' ? '查物业费'
-                    : scene === 'query_repair' ? '查报修'
-                    : scene === 'create_repair' ? '提交报修'
-                    : scene === 'create_feedback' ? '提交反馈'
-                    : scene === 'query_notice' ? '查公告'
-                    : scene === 'handoff' ? '转人工'
-                    : scene}
-                </button>
-              ))}
             </div>
-          </div>
+          </details>
 
-          <div className="section-block">
-            <div className="section-title">转人工关键词</div>
-            <textarea className="field textarea" rows={3} value={normalizeList(settings.handoffKeywords).join('、')} onChange={(e) => updateSetting('handoffKeywords', e.target.value)} />
-          </div>
+          <details className="config-fold" open>
+            <summary className="config-fold-summary">引擎配置</summary>
+            <div className="config-fold-body">
+              <div className="form-grid">
+                <label className="field-group">
+                  <span className="field-label">智能引擎类型</span>
+                  <div className="provider-switch">
+                    <button
+                      type="button"
+                      className={`provider-option ${currentAssistantProvider === 'deepseek' ? 'active' : ''}`}
+                      onClick={() => switchAssistantProvider('deepseek')}
+                    >
+                      <span className="provider-name">深度求索</span>
+                      <span className="provider-desc">走云端大模型接口</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`provider-option ${currentAssistantProvider === 'openclaw' ? 'active' : ''}`}
+                      onClick={() => switchAssistantProvider('openclaw')}
+                    >
+                      <span className="provider-name">兼容引擎</span>
+                      <span className="provider-desc">走本地 / 第三方兼容接口</span>
+                    </button>
+                  </div>
+                  <div className="hint">当前生效：{activeProviderLabel} / {activeProviderMode === 'remote' ? '远程' : '本地'}</div>
+                </label>
+                <label className="field-group">
+                  <span className="field-label">连接模式</span>
+                  <div className="chip-row compact">
+                    <button
+                      type="button"
+                      className={`chip ${activeProviderMode === 'local' ? 'active' : ''}`}
+                      onClick={() => currentAssistantProvider === 'deepseek' ? switchDeepseekMode('local') : switchOpenclawMode('local')}
+                    >
+                      本地
+                    </button>
+                    <button
+                      type="button"
+                      className={`chip ${activeProviderMode === 'remote' ? 'active' : ''}`}
+                      onClick={() => currentAssistantProvider === 'deepseek' ? switchDeepseekMode('remote') : switchOpenclawMode('remote')}
+                    >
+                      远程
+                    </button>
+                  </div>
+                </label>
+                <label className="field-group">
+                  <span className="field-label">接口地址</span>
+                  {currentAssistantProvider === 'deepseek' ? (
+                    <>
+                      <input className="field" value={settings.deepseekBaseUrl} onChange={(e) => updateDeepseekBaseUrl(e.target.value)} />
+                      <div className="hint">默认地址：{settings.deepseekMode === 'remote' ? 'https://api.deepseek.com/v1' : '本地地址'}</div>
+                    </>
+                  ) : (
+                    <>
+                      <input className="field" value={settings.openclawBaseUrl} onChange={(e) => updateOpenclawBaseUrl(e.target.value)} />
+                      <div className="hint">当前模式：{activeProviderMode === 'remote' ? '远程（云端）' : '本地（开发机）'}</div>
+                    </>
+                  )}
+                </label>
+                <label className="field-group">
+                  <span className="field-label">模型名称</span>
+                  <input
+                    className="field"
+                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekModel : settings.openclawModel}
+                    onChange={(e) => currentAssistantProvider === 'deepseek'
+                      ? updateSetting('deepseekModel', e.target.value)
+                      : updateSetting('openclawModel', e.target.value)}
+                  />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">请求路径</span>
+                  <input
+                    className="field"
+                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekChatPath : settings.openclawMessagePath}
+                    onChange={(e) => currentAssistantProvider === 'deepseek'
+                      ? updateSetting('deepseekChatPath', e.target.value)
+                      : updateSetting('openclawMessagePath', e.target.value)}
+                  />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">输出温度</span>
+                  <input
+                    className="field"
+                    type="number"
+                    step="0.1"
+                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekTemperature : settings.gemmaTemperature}
+                    onChange={(e) => currentAssistantProvider === 'deepseek'
+                      ? updateSetting('deepseekTemperature', e.target.value)
+                      : updateSetting('gemmaTemperature', e.target.value)}
+                  />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">最大输出</span>
+                  <input
+                    className="field"
+                    type="number"
+                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekMaxTokens : settings.gemmaMaxTokens}
+                    onChange={(e) => currentAssistantProvider === 'deepseek'
+                      ? updateSetting('deepseekMaxTokens', e.target.value)
+                      : updateSetting('gemmaMaxTokens', e.target.value)}
+                  />
+                </label>
+                {currentAssistantProvider === 'deepseek' ? (
+                  <label className="field-group field-group-wide">
+                    <span className="field-label">接口密钥</span>
+                    <input
+                      className="field"
+                      type="password"
+                      value={settings.deepseekApiKey || ''}
+                      placeholder={settings.deepseekApiKeySet ? '已保存，留空表示不修改' : '请输入接口密钥'}
+                      onChange={(e) => updateSetting('deepseekApiKey', e.target.value)}
+                    />
+                    <div className="hint">{settings.deepseekApiKeySet ? '密钥已保存到后端' : '尚未保存密钥'}</div>
+                  </label>
+                ) : null}
+              </div>
+            </div>
+          </details>
 
-          <div className="section-block">
-            <div className="section-title">提示词模板</div>
-            <textarea className="field textarea prompt" rows={10} value={settings.promptTemplate} onChange={(e) => updateSetting('promptTemplate', e.target.value)} />
-          </div>
+          <details className="config-fold" open>
+            <summary className="config-fold-summary">通知配置</summary>
+            <div className="config-fold-body">
+              <div className="toggle-row">
+                <label className="toggle-item">
+                  <span>失败回退到规则分析</span>
+                  <button type="button" className={`chip ${settings.fallbackToHeuristic ? 'active' : ''}`} onClick={() => updateSetting('fallbackToHeuristic', !settings.fallbackToHeuristic)}>
+                    {settings.fallbackToHeuristic ? '是' : '否'}
+                  </button>
+                </label>
+                <label className="toggle-item">
+                  <span>自动创建会话</span>
+                  <button type="button" className={`chip ${settings.autoCreateSession ? 'active' : ''}`} onClick={() => updateSetting('autoCreateSession', !settings.autoCreateSession)}>
+                    {settings.autoCreateSession ? '是' : '否'}
+                  </button>
+                </label>
+                <label className="toggle-item">
+                  <span>自动保存会话</span>
+                  <button type="button" className={`chip ${settings.autoSaveHistory ? 'active' : ''}`} onClick={() => updateSetting('autoSaveHistory', !settings.autoSaveHistory)}>
+                    {settings.autoSaveHistory ? '是' : '否'}
+                  </button>
+                </label>
+                <label className="toggle-item">
+                  <span>自动转人工</span>
+                  <button type="button" className={`chip ${settings.autoHandoff ? 'active' : ''}`} onClick={() => updateSetting('autoHandoff', !settings.autoHandoff)}>
+                    {settings.autoHandoff ? '是' : '否'}
+                  </button>
+                </label>
+              </div>
+              <div className="section-block">
+                <div className="section-title">转人工关键词</div>
+                <textarea className="field textarea" rows={3} value={normalizeList(settings.handoffKeywords).join('、')} onChange={(e) => updateSetting('handoffKeywords', e.target.value)} />
+              </div>
+            </div>
+          </details>
+
+          <details className="config-fold" open>
+            <summary className="config-fold-summary">提示词配置</summary>
+            <div className="config-fold-body">
+              <div className="form-grid">
+                <label className="field-group">
+                  <span className="field-label">提示词版本</span>
+                  <input className="field" value={settings.promptVersion} onChange={(e) => updateSetting('promptVersion', e.target.value)} />
+                </label>
+                <label className="field-group">
+                  <span className="field-label">超时时间（毫秒）</span>
+                  <input className="field" type="number" value={settings.analysisTimeoutMs} onChange={(e) => updateSetting('analysisTimeoutMs', e.target.value)} />
+                </label>
+              </div>
+              <div className="section-block">
+                <div className="section-title">可用场景</div>
+                <div className="chip-row compact">
+                  {DEFAULT_SCENES.map((scene) => (
+                    <button key={scene} type="button" className={`chip ${(settings.enabledScenes || []).includes(scene) ? 'active' : ''}`} onClick={() => toggleScene(scene)}>
+                      {scene === 'query_bill' ? '查物业费'
+                        : scene === 'query_repair' ? '查报修'
+                        : scene === 'create_repair' ? '提交报修'
+                        : scene === 'create_feedback' ? '提交反馈'
+                        : scene === 'query_notice' ? '查公告'
+                        : scene === 'handoff' ? '转人工'
+                        : scene}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="section-block">
+                <div className="section-title">提示词模板</div>
+                <textarea className="field textarea prompt" rows={10} value={settings.promptTemplate} onChange={(e) => updateSetting('promptTemplate', e.target.value)} />
+              </div>
+            </div>
+          </details>
 
           <div className="footer-actions">
-            <button type="button" className="btn btn-primary" onClick={saveSettings} disabled={loading}>保存配置</button>
-            <button type="button" className="btn btn-ghost" onClick={resetSettings}>恢复默认</button>
+            <button type="button" className="btn btn-primary" onClick={saveSettings} disabled={loading || saving || testing}>
+              {saving ? '保存中...' : testing ? '保存后测试中...' : '保存后立即测试连接'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => testConnection()} disabled={loading || saving || testing}>
+              {testing ? '测试中...' : '仅测试连接'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={resetSettings} disabled={saving || testing}>恢复默认</button>
           </div>
+          {testResult ? (
+            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+              <div className="test-result-banner">
+                <span className={`test-result-badge ${testResult.success ? 'success' : 'error'}`}>{testResult.success ? '连接正常' : '连接失败'}</span>
+                <span className="test-result-title">{testResult.success ? '保存后测试通过' : '测试未通过'}</span>
+              </div>
+              <div className="test-result-text">{testResult.message || testResult.title || '无结果'}</div>
+              <div className="test-result-grid">
+                <div className="test-result-item">
+                  <span>智能引擎</span>
+                  <strong>{testResult.detail?.['智能引擎'] || activeProviderLabel}</strong>
+                </div>
+                <div className="test-result-item">
+                  <span>接口地址</span>
+                  <strong>{testResult.detail?.['接口地址'] || (currentAssistantProvider === 'deepseek' ? settings.deepseekBaseUrl : settings.openclawBaseUrl)}</strong>
+                </div>
+                <div className="test-result-item">
+                  <span>项目名称</span>
+                  <strong>{testResult.detail?.['项目名称'] || displayCommunity(activeCommunity)}</strong>
+                </div>
+                <div className="test-result-item">
+                  <span>耗时</span>
+                  <strong>{testResult.detail?.['耗时毫秒'] ? `${testResult.detail['耗时毫秒']} 毫秒` : '—'}</strong>
+                </div>
+              </div>
+              {testResult.detail ? (
+                <details className="test-result-detail">
+                  <summary>查看返回详情</summary>
+                  <pre>{JSON.stringify(testResult.detail, null, 2)}</pre>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <aside className="assistant-config-preview">
+          <details className="card preview-card preview-fold" open>
+            <summary className="config-fold-summary preview-fold-summary">查看当前生效配置</summary>
+            <div className="config-fold-body preview-fold-body">
+              <div className="section-header">
+                <div>
+                  <div className="section-title">当前生效配置</div>
+                  <div className="hint">这里显示的是当前小区真正会生效的配置，方便你确认保存后有没有切到正确的引擎。</div>
+                </div>
+                <button type="button" className="btn btn-ghost tiny" onClick={copyEffectiveConfig}>复制当前配置</button>
+              </div>
+              <pre className="json-preview">{effectiveConfigJson}</pre>
+            </div>
+          </details>
+
           <section className="card preview-card">
             <div className="section-header">
               <div>
-            <div className="section-title">提示词预览</div>
+                <div className="section-title">提示词预览</div>
                 <div className="hint">把这段直接交给智能引擎就能先跑原型。</div>
               </div>
-              <button type="button" className="btn btn-ghost tiny" onClick={copyPreview}>复制预览</button>
             </div>
             <pre className="json-preview">{promptPreview}</pre>
           </section>
