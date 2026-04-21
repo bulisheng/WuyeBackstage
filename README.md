@@ -14,7 +14,7 @@
 - MongoDB 数据持久化
 - Vite + React Web 管理台
 - 飞书机器人投诉推送
-- openclaw 智能分析适配层
+- DeepSeek 智能助手适配层（当前默认，已实测打通）
 
 ## 快速开始
 

@@ -135,10 +135,17 @@ function normalizeAssistantProvider(provider, baseUrl) {
 
 function resolveDeepseekPresetUrl(mode, localBaseUrl, remoteBaseUrl, baseUrl) {
   const normalizedMode = normalizeOpenclawMode(mode, baseUrl);
+  const normalize = (value) => {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    if (text.endsWith('/v1')) return text.slice(0, -3);
+    if (text.endsWith('/v1/')) return text.slice(0, -4);
+    return text;
+  };
   if (normalizedMode === 'remote') {
-    return remoteBaseUrl || baseUrl || 'https://api.deepseek.com/v1';
+    return normalize(remoteBaseUrl || baseUrl || 'https://api.deepseek.com');
   }
-  return localBaseUrl || baseUrl || 'https://api.deepseek.com/v1';
+  return normalize(localBaseUrl || baseUrl || 'https://api.deepseek.com');
 }
 
 function resolveOpenclawPresetUrl(mode, localBaseUrl, remoteBaseUrl, baseUrl) {
@@ -253,7 +260,7 @@ function buildNotificationRoutes(staffs, settings) {
 function buildDefaultSettings(community) {
   const localBaseUrl = DEFAULT_OPENCLAW_LOCAL_BASE_URL;
   const remoteBaseUrl = DEFAULT_OPENCLAW_REMOTE_BASE_URL;
-  const deepseekBaseUrl = import.meta.env.VITE_DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
+  const deepseekBaseUrl = import.meta.env.VITE_DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
   return {
     enabled: true,
     assistantName: '物业智能助手',
@@ -268,14 +275,6 @@ function buildDefaultSettings(community) {
     deepseekTemperature: 0.2,
     deepseekMaxTokens: 512,
     deepseekApiKeySet: false,
-    openclawMode: 'local',
-    openclawBaseUrl: localBaseUrl,
-    openclawLocalBaseUrl: localBaseUrl,
-    openclawRemoteBaseUrl: remoteBaseUrl,
-    openclawModel: 'openclaw-assistant',
-    openclawSessionPath: '/session/{sessionId}',
-    openclawMessagePath: '/api/v1/assistant/messages',
-    openclawHandoffPath: '/api/v1/assistant/handoff',
     promptVersion: 'v1',
     analysisTimeoutMs: 5000,
     fallbackToHeuristic: true,
@@ -353,7 +352,7 @@ export default function AssistantConfigPage() {
   }, [activeCommunity, staffs]);
 
   const notificationRoutes = useMemo(() => buildNotificationRoutes(currentStaffOptions, settings), [currentStaffOptions, settings]);
-  const currentAssistantProvider = normalizeAssistantProvider(settings.assistantProvider, settings.deepseekBaseUrl || settings.openclawBaseUrl);
+  const currentAssistantProvider = 'deepseek';
 
   const routeCopyText = useMemo(() => {
     return notificationRoutes.map((route) => [
@@ -365,10 +364,9 @@ export default function AssistantConfigPage() {
     ].join('\n')).join('\n\n');
   }, [notificationRoutes]);
 
-  const activeProviderLabel = currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎';
-  const activeProviderMode = currentAssistantProvider === 'deepseek'
-    ? normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl)
-    : normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
+  const activeProviderLabel = '深度求索';
+  const activeProviderMode = normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl);
+  const deepseekKeySaved = Boolean(settings.deepseekApiKeySet || savedSettings.deepseekApiKeySet);
   const savedConfigSnapshot = useMemo(() => buildAssistantConfigSnapshot(savedSettings), [savedSettings]);
   const editingConfigSnapshot = useMemo(() => buildAssistantConfigSnapshot(settings), [settings]);
   const configDirty = editingConfigSnapshot !== savedConfigSnapshot;
@@ -378,12 +376,8 @@ export default function AssistantConfigPage() {
     当前负责人: settings.defaultSupervisor || '卜立胜',
     当前智能引擎: activeProviderLabel,
     当前连接模式: activeProviderMode === 'remote' ? '远程' : '本地',
-    智能引擎地址: currentAssistantProvider === 'deepseek'
-      ? settings.deepseekBaseUrl
-      : settings.openclawBaseUrl,
-    模型名称: currentAssistantProvider === 'deepseek'
-      ? settings.deepseekModel
-      : settings.openclawModel,
+    智能引擎地址: settings.deepseekBaseUrl,
+    模型名称: settings.deepseekModel,
     自动创建会话: settings.autoCreateSession ? '开启' : '关闭',
     自动保存会话: settings.autoSaveHistory ? '开启' : '关闭',
     自动转人工: settings.autoHandoff ? '开启' : '关闭',
@@ -398,10 +392,8 @@ export default function AssistantConfigPage() {
     `你是 ${settings.assistantName || '物业智能助手'}。`,
     `当前项目：${displayCommunity(activeCommunity)}`,
     `默认负责人：${settings.defaultSupervisor || '卜立胜'}`,
-    `智能引擎：${currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎'}`,
-    `连接模式：${currentAssistantProvider === 'deepseek'
-      ? (normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl) === 'remote' ? '远程' : '本地')
-      : (normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地')}`,
+    '智能引擎：深度求索',
+    `连接模式：${normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl) === 'remote' ? '远程' : '本地'}`,
     `可用场景：${normalizeList(settings.enabledScenes).join('、') || '未配置'}`,
     `转人工关键词：${normalizeList(settings.handoffKeywords).join('、') || '无'}`,
     '先判断需求，再给最短可用回复。总字数尽量不超过 120 字。'
@@ -514,8 +506,8 @@ export default function AssistantConfigPage() {
         settings.deepseekRemoteBaseUrl,
         settings.deepseekBaseUrl
       ),
-      deepseekLocalBaseUrl: settings.deepseekLocalBaseUrl || 'https://api.deepseek.com/v1',
-      deepseekRemoteBaseUrl: settings.deepseekRemoteBaseUrl || 'https://api.deepseek.com/v1',
+      deepseekLocalBaseUrl: settings.deepseekLocalBaseUrl || 'https://api.deepseek.com',
+      deepseekRemoteBaseUrl: settings.deepseekRemoteBaseUrl || 'https://api.deepseek.com',
       deepseekChatPath: settings.deepseekChatPath || '/chat/completions',
       deepseekModel: settings.deepseekModel || 'deepseek-chat',
       deepseekApiKey: String(settings.deepseekApiKey || '').trim(),
@@ -538,7 +530,15 @@ export default function AssistantConfigPage() {
     setTestResult(null);
     try {
       const saved = await saveAssistantSettings(apiBase, token, next);
-      const merged = { ...next, ...(saved || {}) };
+      const merged = {
+        ...next,
+        ...(saved || {}),
+        deepseekApiKeySet: Boolean(
+          (saved && typeof saved.deepseekApiKeySet !== 'undefined' ? saved.deepseekApiKeySet : null)
+          ?? next.deepseekApiKeySet
+          ?? next.deepseekApiKey
+        ) || Boolean(next.deepseekApiKey)
+      };
       writeStorage(STORAGE_KEY, merged);
       writeStorage(`${STORAGE_KEY}-saved`, merged);
       setSettings(merged);
@@ -767,16 +767,14 @@ export default function AssistantConfigPage() {
             <div className="compare-card-title">当前生效</div>
             <div className="compare-line">引擎：{activeProviderLabel}</div>
             <div className="compare-line">模式：{activeProviderMode === 'remote' ? '远程' : '本地'}</div>
-            <div className="compare-line">地址：{currentAssistantProvider === 'deepseek' ? settings.deepseekBaseUrl : settings.openclawBaseUrl}</div>
+            <div className="compare-line">地址：{settings.deepseekBaseUrl}</div>
             <div className="compare-line">负责人：{settings.defaultSupervisor || '卜立胜'}</div>
           </div>
           <div className="compare-card">
             <div className="compare-card-title">编辑中</div>
-            <div className="compare-line">引擎：{currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎'}</div>
-            <div className="compare-line">模式：{currentAssistantProvider === 'deepseek'
-              ? (normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl) === 'remote' ? '远程' : '本地')
-              : (normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地')}</div>
-            <div className="compare-line">地址：{currentAssistantProvider === 'deepseek' ? settings.deepseekBaseUrl : settings.openclawBaseUrl}</div>
+            <div className="compare-line">引擎：深度求索</div>
+            <div className="compare-line">模式：{normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl) === 'remote' ? '远程' : '本地'}</div>
+            <div className="compare-line">地址：{settings.deepseekBaseUrl}</div>
             <div className="compare-line">负责人：{settings.defaultSupervisor || '卜立胜'}</div>
           </div>
         </div>
@@ -825,21 +823,9 @@ export default function AssistantConfigPage() {
                 <label className="field-group">
                   <span className="field-label">智能引擎类型</span>
                   <div className="provider-switch">
-                    <button
-                      type="button"
-                      className={`provider-option ${currentAssistantProvider === 'deepseek' ? 'active' : ''}`}
-                      onClick={() => switchAssistantProvider('deepseek')}
-                    >
+                    <button type="button" className="provider-option active" disabled>
                       <span className="provider-name">深度求索</span>
-                      <span className="provider-desc">走云端大模型接口</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`provider-option ${currentAssistantProvider === 'openclaw' ? 'active' : ''}`}
-                      onClick={() => switchAssistantProvider('openclaw')}
-                    >
-                      <span className="provider-name">兼容引擎</span>
-                      <span className="provider-desc">走本地 / 第三方兼容接口</span>
+                      <span className="provider-desc">当前唯一生效引擎</span>
                     </button>
                   </div>
                   <div className="hint">当前生效：{activeProviderLabel} / {activeProviderMode === 'remote' ? '远程' : '本地'}</div>
@@ -850,14 +836,14 @@ export default function AssistantConfigPage() {
                     <button
                       type="button"
                       className={`chip ${activeProviderMode === 'local' ? 'active' : ''}`}
-                      onClick={() => currentAssistantProvider === 'deepseek' ? switchDeepseekMode('local') : switchOpenclawMode('local')}
+                      onClick={() => switchDeepseekMode('local')}
                     >
                       本地
                     </button>
                     <button
                       type="button"
                       className={`chip ${activeProviderMode === 'remote' ? 'active' : ''}`}
-                      onClick={() => currentAssistantProvider === 'deepseek' ? switchDeepseekMode('remote') : switchOpenclawMode('remote')}
+                      onClick={() => switchDeepseekMode('remote')}
                     >
                       远程
                     </button>
@@ -865,36 +851,23 @@ export default function AssistantConfigPage() {
                 </label>
                 <label className="field-group">
                   <span className="field-label">接口地址</span>
-                  {currentAssistantProvider === 'deepseek' ? (
-                    <>
-                      <input className="field" value={settings.deepseekBaseUrl} onChange={(e) => updateDeepseekBaseUrl(e.target.value)} />
-                      <div className="hint">默认地址：{settings.deepseekMode === 'remote' ? 'https://api.deepseek.com/v1' : '本地地址'}</div>
-                    </>
-                  ) : (
-                    <>
-                      <input className="field" value={settings.openclawBaseUrl} onChange={(e) => updateOpenclawBaseUrl(e.target.value)} />
-                      <div className="hint">当前模式：{activeProviderMode === 'remote' ? '远程（云端）' : '本地（开发机）'}</div>
-                    </>
-                  )}
+                  <input className="field" value={settings.deepseekBaseUrl} onChange={(e) => updateDeepseekBaseUrl(e.target.value)} />
+                  <div className="hint">默认地址：{settings.deepseekMode === 'remote' ? 'https://api.deepseek.com/v1' : '本地地址'}</div>
                 </label>
                 <label className="field-group">
                   <span className="field-label">模型名称</span>
                   <input
                     className="field"
-                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekModel : settings.openclawModel}
-                    onChange={(e) => currentAssistantProvider === 'deepseek'
-                      ? updateSetting('deepseekModel', e.target.value)
-                      : updateSetting('openclawModel', e.target.value)}
+                    value={settings.deepseekModel}
+                    onChange={(e) => updateSetting('deepseekModel', e.target.value)}
                   />
                 </label>
                 <label className="field-group">
                   <span className="field-label">请求路径</span>
                   <input
                     className="field"
-                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekChatPath : settings.openclawMessagePath}
-                    onChange={(e) => currentAssistantProvider === 'deepseek'
-                      ? updateSetting('deepseekChatPath', e.target.value)
-                      : updateSetting('openclawMessagePath', e.target.value)}
+                    value={settings.deepseekChatPath}
+                    onChange={(e) => updateSetting('deepseekChatPath', e.target.value)}
                   />
                 </label>
                 <label className="field-group">
@@ -903,10 +876,8 @@ export default function AssistantConfigPage() {
                     className="field"
                     type="number"
                     step="0.1"
-                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekTemperature : settings.gemmaTemperature}
-                    onChange={(e) => currentAssistantProvider === 'deepseek'
-                      ? updateSetting('deepseekTemperature', e.target.value)
-                      : updateSetting('gemmaTemperature', e.target.value)}
+                    value={settings.deepseekTemperature}
+                    onChange={(e) => updateSetting('deepseekTemperature', e.target.value)}
                   />
                 </label>
                 <label className="field-group">
@@ -914,25 +885,24 @@ export default function AssistantConfigPage() {
                   <input
                     className="field"
                     type="number"
-                    value={currentAssistantProvider === 'deepseek' ? settings.deepseekMaxTokens : settings.gemmaMaxTokens}
-                    onChange={(e) => currentAssistantProvider === 'deepseek'
-                      ? updateSetting('deepseekMaxTokens', e.target.value)
-                      : updateSetting('gemmaMaxTokens', e.target.value)}
+                    value={settings.deepseekMaxTokens}
+                    onChange={(e) => updateSetting('deepseekMaxTokens', e.target.value)}
                   />
                 </label>
-                {currentAssistantProvider === 'deepseek' ? (
-                  <label className="field-group field-group-wide">
-                    <span className="field-label">接口密钥</span>
-                    <input
-                      className="field"
-                      type="password"
-                      value={settings.deepseekApiKey || ''}
-                      placeholder={settings.deepseekApiKeySet ? '已保存，留空表示不修改' : '请输入接口密钥'}
-                      onChange={(e) => updateSetting('deepseekApiKey', e.target.value)}
-                    />
-                    <div className="hint">{settings.deepseekApiKeySet ? '密钥已保存到后端' : '尚未保存密钥'}</div>
-                  </label>
-                ) : null}
+                <label className="field-group field-group-wide">
+                  <span className="field-label">接口密钥</span>
+                  <input
+                    className="field"
+                    type="password"
+                    value={settings.deepseekApiKey || ''}
+                    placeholder={settings.deepseekApiKeySet ? '已保存，留空表示不修改' : '请输入接口密钥'}
+                    onChange={(e) => updateSetting('deepseekApiKey', e.target.value)}
+                  />
+                  <div className={`key-status ${deepseekKeySaved ? 'success' : 'warning'}`}>
+                    <span className="key-status-dot" />
+                    <span>{deepseekKeySaved ? '密钥已保存到后端，重启后仍会保留' : '尚未保存密钥，请填写后点“保存后立即测试连接”'}</span>
+                  </div>
+                </label>
               </div>
             </div>
           </details>
@@ -1033,7 +1003,7 @@ export default function AssistantConfigPage() {
                 </div>
                 <div className="test-result-item">
                   <span>接口地址</span>
-                  <strong>{testResult.detail?.['接口地址'] || (currentAssistantProvider === 'deepseek' ? settings.deepseekBaseUrl : settings.openclawBaseUrl)}</strong>
+                  <strong>{testResult.detail?.['接口地址'] || settings.deepseekBaseUrl}</strong>
                 </div>
                 <div className="test-result-item">
                   <span>项目名称</span>

@@ -23,9 +23,9 @@ assistant:
   provider: deepseek
 
 deepseek:
-  base-url: https://api.deepseek.com/v1
-  local-base-url: https://api.deepseek.com/v1
-  remote-base-url: https://api.deepseek.com/v1
+  base-url: https://api.deepseek.com
+  local-base-url: https://api.deepseek.com
+  remote-base-url: https://api.deepseek.com
   chat-path: /chat/completions
   model: deepseek-chat
   api-key: ""

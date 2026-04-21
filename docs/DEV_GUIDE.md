@@ -77,6 +77,13 @@ npm run dev
    - `转人工`
 8. 如果要看链路是否真的走了智能引擎，去 `web-admin` 的 `会话日志` 页面看原始数据。
 
+最近一次实测补充：
+
+- 当前默认智能引擎已经切到 DeepSeek，并且已经实际测通。
+- `POST /api/v1/assistant/settings/test` 返回过 `成功`，对应接口是 `https://api.deepseek.com/chat/completions`，模型是 `deepseek-chat`。
+- 保存后再读 `GET /api/v1/assistant/settings?communityId=...` 时，`deepseekApiKeySet` 会回读为 `true`。
+- 如果页面还显示“未保存”，优先强刷页面或确认当前项目是否切对，再看后端返回的 `deepseekApiKeySet`。
+
 补充说明：
 - 如果智能引擎没启动，智能助手页仍然能打开，但会回退到本地规则或草稿模式。
 - 要测真正的智能引擎返回，至少要确认后端能访问本地智能引擎地址。
@@ -128,6 +135,7 @@ npm run dev
 - `DEEPSEEK_API_KEY`
 - `DEEPSEEK_TEMPERATURE`
 - `DEEPSEEK_MAX_TOKENS`
+- DeepSeek 当前默认按 `https://api.deepseek.com` + `/chat/completions` + `deepseek-chat` 走，测试已实测成功；如果测试失败，先确认密钥是否真的保存成真，再看当前项目和引擎模式是否切对。
 - 未来如果要部署成“云后端 + Mac mini 上智能引擎”，优先在 Web 管理台里切换 `本地 / 远程`，不要只改一个地址。
 - 现在默认智能引擎已经回到 `深度求索` 路线，兼容引擎和本地模型都只是备选。
 

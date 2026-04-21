@@ -297,9 +297,9 @@ public class ApiController {
   @PutMapping("/assistant/settings")
   public ApiResponse<Map<String, Object>> saveAssistantSettings(@RequestHeader(value = "X-Admin-Key", required = false) String apiKey,
                                                                 @RequestHeader(value = "Authorization", required = false) String authorization,
-                                                                @RequestBody AssistantConfigRequest request) {
+                                                                @RequestBody Map<String, Object> payload) {
     checkAdmin(apiKey, authorization);
-    return ApiResponse.ok(service.saveAssistantSettings(token(authorization), request));
+    return ApiResponse.ok(service.saveAssistantSettings(token(authorization), payload));
   }
 
   @PostMapping("/assistant/settings/test")

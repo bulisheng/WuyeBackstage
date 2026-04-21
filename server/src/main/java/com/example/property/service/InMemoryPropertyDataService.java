@@ -2053,7 +2053,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     summary.put("deepseekRemoteBaseUrl", settings.getOrDefault("deepseekRemoteBaseUrl", ""));
     summary.put("deepseekChatPath", settings.getOrDefault("deepseekChatPath", ""));
     summary.put("deepseekModel", settings.getOrDefault("deepseekModel", ""));
-    summary.put("deepseekApiKeySet", truthy(settings.get("deepseekApiKey")));
+    summary.put("deepseekApiKeySet", hasText(settings.get("deepseekApiKey")));
     summary.put("deepseekTemperature", settings.getOrDefault("deepseekTemperature", 0.2));
     summary.put("deepseekMaxTokens", settings.getOrDefault("deepseekMaxTokens", 512));
     summary.put("openclawMode", settings.getOrDefault("openclawMode", "local"));
@@ -2257,6 +2257,17 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   }
 
   private String assistantEndpointForProvider(Map<String, Object> settings, String provider, String pathKey) {
+    if ("deepseek".equals(provider)) {
+      String base = effectiveDeepseekBaseUrl(settings);
+      String path = textValue(settings == null ? null : settings.get(pathKey));
+      if (base.isEmpty()) {
+        return "";
+      }
+      if (path.isEmpty()) {
+        path = "/chat/completions";
+      }
+      return buildEndpoint(base, path);
+    }
     if ("gemma".equals(provider)) {
       String base = effectiveGemmaBaseUrl(settings);
       String path = textValue(settings == null ? null : settings.get(pathKey));
@@ -2367,10 +2378,27 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   private String resolveDeepseekBaseUrl(String mode, String localBaseUrl, String remoteBaseUrl, String fallbackBaseUrl) {
     String normalizedMode = normalizeOpenclawMode(mode, fallbackBaseUrl);
+    String normalizedLocal = normalizeDeepseekBaseUrl(localBaseUrl);
+    String normalizedRemote = normalizeDeepseekBaseUrl(remoteBaseUrl);
+    String normalizedFallback = normalizeDeepseekBaseUrl(fallbackBaseUrl);
     if ("remote".equals(normalizedMode)) {
-      return String.valueOf(firstNonEmpty(remoteBaseUrl, fallbackBaseUrl, defaultDeepseekRemoteBaseUrl()));
+      return String.valueOf(firstNonEmpty(normalizedRemote, normalizedFallback, defaultDeepseekRemoteBaseUrl()));
     }
-    return String.valueOf(firstNonEmpty(localBaseUrl, fallbackBaseUrl, defaultDeepseekLocalBaseUrl()));
+    return String.valueOf(firstNonEmpty(normalizedLocal, normalizedFallback, defaultDeepseekLocalBaseUrl()));
+  }
+
+  private String normalizeDeepseekBaseUrl(Object value) {
+    String text = textValue(value).trim();
+    if (text.isEmpty()) {
+      return "";
+    }
+    if (text.endsWith("/v1")) {
+      return text.substring(0, text.length() - 3);
+    }
+    if (text.endsWith("/v1/")) {
+      return text.substring(0, text.length() - 4);
+    }
+    return text;
   }
 
   private String resolveGemmaBaseUrl(String mode, String localBaseUrl, String remoteBaseUrl, String fallbackBaseUrl) {
@@ -2610,7 +2638,6 @@ public class InMemoryPropertyDataService implements PropertyDataService {
           "model", String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekModel"), deepseekModel, "deepseek-chat")),
           "messages", messages,
           "stream", false,
-          "response_format", mapOf("type", "json_object"),
           "temperature", Double.parseDouble(String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekTemperature"), deepseekTemperature, 0.2))),
           "max_tokens", Integer.parseInt(String.valueOf(firstNonEmpty(settings == null ? null : settings.get("deepseekMaxTokens"), deepseekMaxTokens, 512)))
       );
@@ -3168,6 +3195,10 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
     String text = String.valueOf(value).trim().toLowerCase();
     return "true".equals(text) || "1".equals(text) || "yes".equals(text) || "y".equals(text) || "是".equals(text);
+  }
+
+  private boolean hasText(Object value) {
+    return value != null && !String.valueOf(value).trim().isEmpty();
   }
 
   private String normalizeSeverityValue(String value) {
@@ -3942,7 +3973,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       ));
       item.putIfAbsent("deepseekChatPath", "/chat/completions");
       item.putIfAbsent("deepseekModel", deepseekModel);
-      item.put("deepseekApiKeySet", truthy(item.get("deepseekApiKey")));
+      item.put("deepseekApiKeySet", hasText(item.get("deepseekApiKey")));
       item.putIfAbsent("deepseekTemperature", deepseekTemperature);
       item.putIfAbsent("deepseekMaxTokens", deepseekMaxTokens);
       item.put("openclawMode", normalizeOpenclawMode(item.get("openclawMode"), item.get("openclawBaseUrl")));
@@ -4026,7 +4057,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     } else {
       record.put("deepseekApiKey", "");
     }
-    record.put("deepseekApiKeySet", truthy(record.get("deepseekApiKey")));
+    record.put("deepseekApiKeySet", hasText(record.get("deepseekApiKey")));
     Object deepseekTemperatureValue = firstNonEmpty(payload.get("deepseekTemperature"), previous.get("deepseekTemperature"), deepseekTemperature);
     try {
       record.put("deepseekTemperature", Double.parseDouble(String.valueOf(deepseekTemperatureValue)));
@@ -5350,7 +5381,19 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       payload.put("enabled", request.enabled);
       payload.put("assistantName", request.assistantName);
       payload.put("assistantProvider", request.assistantProvider);
+      payload.put("deepseekMode", request.deepseekMode);
+      payload.put("deepseekBaseUrl", request.deepseekBaseUrl);
+      payload.put("deepseekLocalBaseUrl", request.deepseekLocalBaseUrl);
+      payload.put("deepseekRemoteBaseUrl", request.deepseekRemoteBaseUrl);
+      payload.put("deepseekChatPath", request.deepseekChatPath);
+      payload.put("deepseekModel", request.deepseekModel);
+      payload.put("deepseekApiKey", request.deepseekApiKey);
+      payload.put("deepseekTemperature", request.deepseekTemperature);
+      payload.put("deepseekMaxTokens", request.deepseekMaxTokens);
+      payload.put("openclawMode", request.openclawMode);
       payload.put("openclawBaseUrl", request.openclawBaseUrl);
+      payload.put("openclawLocalBaseUrl", request.openclawLocalBaseUrl);
+      payload.put("openclawRemoteBaseUrl", request.openclawRemoteBaseUrl);
       payload.put("openclawModel", request.openclawModel);
       payload.put("openclawSessionPath", request.openclawSessionPath);
       payload.put("openclawMessagePath", request.openclawMessagePath);
@@ -5376,6 +5419,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       payload.put("extra", request.extra);
     }
     return upsertAssistantSettings(payload);
+  }
+
+  @Override
+  public Map<String, Object> saveAssistantSettings(String token, Map<String, Object> payload) {
+    Map<String, Object> safePayload = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
+    return upsertAssistantSettings(safePayload);
   }
 
   @Override

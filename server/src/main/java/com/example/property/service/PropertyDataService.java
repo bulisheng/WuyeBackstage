@@ -233,6 +233,8 @@ public interface PropertyDataService {
 
   Map<String, Object> saveAssistantSettings(String token, AssistantConfigRequest request);
 
+  Map<String, Object> saveAssistantSettings(String token, Map<String, Object> payload);
+
   Map<String, Object> testAssistantSettings(String token, Map<String, Object> payload);
 
   List<Map<String, Object>> adminListAssistantFaqs(String communityId);
