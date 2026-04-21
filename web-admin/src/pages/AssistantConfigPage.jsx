@@ -45,6 +45,41 @@ function sanitizeAssistantSettingsForForm(settings) {
   return next;
 }
 
+function buildAssistantConfigSnapshot(settings) {
+  const source = settings || {};
+  return JSON.stringify({
+    enabled: Boolean(source.enabled),
+    assistantName: String(source.assistantName || ''),
+    assistantProvider: String(source.assistantProvider || ''),
+    deepseekMode: String(source.deepseekMode || ''),
+    deepseekBaseUrl: String(source.deepseekBaseUrl || ''),
+    deepseekLocalBaseUrl: String(source.deepseekLocalBaseUrl || ''),
+    deepseekRemoteBaseUrl: String(source.deepseekRemoteBaseUrl || ''),
+    deepseekChatPath: String(source.deepseekChatPath || ''),
+    deepseekModel: String(source.deepseekModel || ''),
+    deepseekTemperature: Number(source.deepseekTemperature || 0),
+    deepseekMaxTokens: Number(source.deepseekMaxTokens || 0),
+    openclawMode: String(source.openclawMode || ''),
+    openclawBaseUrl: String(source.openclawBaseUrl || ''),
+    openclawLocalBaseUrl: String(source.openclawLocalBaseUrl || ''),
+    openclawRemoteBaseUrl: String(source.openclawRemoteBaseUrl || ''),
+    openclawModel: String(source.openclawModel || ''),
+    openclawMessagePath: String(source.openclawMessagePath || ''),
+    promptVersion: String(source.promptVersion || ''),
+    analysisTimeoutMs: Number(source.analysisTimeoutMs || 0),
+    fallbackToHeuristic: Boolean(source.fallbackToHeuristic),
+    autoCreateSession: Boolean(source.autoCreateSession),
+    autoSaveHistory: Boolean(source.autoSaveHistory),
+    autoHandoff: Boolean(source.autoHandoff),
+    promptTemplate: String(source.promptTemplate || ''),
+    enabledScenes: normalizeList(source.enabledScenes).sort(),
+    handoffKeywords: normalizeList(source.handoffKeywords).sort(),
+    defaultSupervisor: String(source.defaultSupervisor || ''),
+    communityId: String(source.communityId || ''),
+    community: String(source.community || '')
+  });
+}
+
 function normalizeList(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (typeof value === 'string') {
@@ -267,6 +302,7 @@ export default function AssistantConfigPage() {
   const [testResult, setTestResult] = useState(null);
   const [activeCommunityId, setActiveCommunityId] = useState('');
   const [settings, setSettings] = useState(() => readStorage(STORAGE_KEY, buildDefaultSettings(null)));
+  const [savedSettings, setSavedSettings] = useState(() => readStorage(`${STORAGE_KEY}-saved`, buildDefaultSettings(null)));
 
   useEffect(() => {
     const load = async () => {
@@ -284,6 +320,7 @@ export default function AssistantConfigPage() {
         const mergedSettings = { ...buildDefaultSettings(active), ...(remoteSettings && typeof remoteSettings === 'object' ? remoteSettings : readStorage(STORAGE_KEY, {})) };
         const formSettings = sanitizeAssistantSettingsForForm(mergedSettings);
         setSettings(formSettings);
+        setSavedSettings(formSettings);
         writeStorage(STORAGE_KEY, formSettings);
       } catch (error) {
         if (error.status === 401) {
@@ -328,6 +365,14 @@ export default function AssistantConfigPage() {
     ].join('\n')).join('\n\n');
   }, [notificationRoutes]);
 
+  const activeProviderLabel = currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎';
+  const activeProviderMode = currentAssistantProvider === 'deepseek'
+    ? normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl)
+    : normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
+  const savedConfigSnapshot = useMemo(() => buildAssistantConfigSnapshot(savedSettings), [savedSettings]);
+  const editingConfigSnapshot = useMemo(() => buildAssistantConfigSnapshot(settings), [settings]);
+  const configDirty = editingConfigSnapshot !== savedConfigSnapshot;
+
   const effectiveConfigPreview = useMemo(() => ({
     当前项目: displayCommunity(activeCommunity),
     当前负责人: settings.defaultSupervisor || '卜立胜',
@@ -361,11 +406,6 @@ export default function AssistantConfigPage() {
     `转人工关键词：${normalizeList(settings.handoffKeywords).join('、') || '无'}`,
     '先判断需求，再给最短可用回复。总字数尽量不超过 120 字。'
   ].join('\n'), [settings, activeCommunity, currentAssistantProvider]);
-
-  const activeProviderLabel = currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎';
-  const activeProviderMode = currentAssistantProvider === 'deepseek'
-    ? normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl)
-    : normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl);
 
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -500,7 +540,9 @@ export default function AssistantConfigPage() {
       const saved = await saveAssistantSettings(apiBase, token, next);
       const merged = { ...next, ...(saved || {}) };
       writeStorage(STORAGE_KEY, merged);
+      writeStorage(`${STORAGE_KEY}-saved`, merged);
       setSettings(merged);
+      setSavedSettings(merged);
       window.alert('AI 配置已保存到后端。');
       await testConnection(merged.communityId || activeCommunity?.id || '');
     } catch (error) {
@@ -549,13 +591,34 @@ export default function AssistantConfigPage() {
   const resetSettings = () => {
     const next = sanitizeAssistantSettingsForForm(buildDefaultSettings(activeCommunity));
     setSettings(next);
+    setSavedSettings(next);
     writeStorage(STORAGE_KEY, next);
+    writeStorage(`${STORAGE_KEY}-saved`, next);
   };
 
   const copyEffectiveConfig = async () => {
     try {
       await navigator.clipboard.writeText(effectiveConfigJson);
       window.alert('已复制当前生效配置');
+    } catch (error) {
+      window.alert('复制失败');
+    }
+  };
+
+  const copyTestResult = async () => {
+    if (!testResult) {
+      window.alert('暂无测试结果');
+      return;
+    }
+    const text = JSON.stringify({
+      连接状态: testResult.success ? '成功' : '失败',
+      标题: testResult.title || '',
+      信息: testResult.message || '',
+      详情: testResult.detail || null
+    }, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+      window.alert('已复制测试结果');
     } catch (error) {
       window.alert('复制失败');
     }
@@ -589,6 +652,7 @@ export default function AssistantConfigPage() {
       const mergedSettings = { ...buildDefaultSettings(community), ...(remoteSettings && typeof remoteSettings === 'object' ? remoteSettings : {}) };
       const formSettings = sanitizeAssistantSettingsForForm(mergedSettings);
       setSettings(formSettings);
+      setSavedSettings(formSettings);
       writeStorage(STORAGE_KEY, formSettings);
     } catch (error) {
       window.alert(error.message || '切换项目失败');
@@ -687,6 +751,36 @@ export default function AssistantConfigPage() {
           </div>
         </div>
       </div>
+
+      <section className="card assistant-config-compare">
+        <div className="section-header">
+          <div>
+            <div className="section-title">当前生效配置 vs 编辑中配置</div>
+            <div className="hint">左边看当前保存并生效的值，右边看你正在编辑的值。</div>
+          </div>
+          <span className={`compare-badge ${configDirty ? 'dirty' : 'clean'}`}>
+            {configDirty ? '有未保存修改' : '编辑与生效一致'}
+          </span>
+        </div>
+        <div className="compare-grid">
+          <div className="compare-card">
+            <div className="compare-card-title">当前生效</div>
+            <div className="compare-line">引擎：{activeProviderLabel}</div>
+            <div className="compare-line">模式：{activeProviderMode === 'remote' ? '远程' : '本地'}</div>
+            <div className="compare-line">地址：{currentAssistantProvider === 'deepseek' ? settings.deepseekBaseUrl : settings.openclawBaseUrl}</div>
+            <div className="compare-line">负责人：{settings.defaultSupervisor || '卜立胜'}</div>
+          </div>
+          <div className="compare-card">
+            <div className="compare-card-title">编辑中</div>
+            <div className="compare-line">引擎：{currentAssistantProvider === 'deepseek' ? '深度求索' : '兼容引擎'}</div>
+            <div className="compare-line">模式：{currentAssistantProvider === 'deepseek'
+              ? (normalizeOpenclawMode(settings.deepseekMode, settings.deepseekBaseUrl) === 'remote' ? '远程' : '本地')
+              : (normalizeOpenclawMode(settings.openclawMode, settings.openclawBaseUrl) === 'remote' ? '远程' : '本地')}</div>
+            <div className="compare-line">地址：{currentAssistantProvider === 'deepseek' ? settings.deepseekBaseUrl : settings.openclawBaseUrl}</div>
+            <div className="compare-line">负责人：{settings.defaultSupervisor || '卜立胜'}</div>
+          </div>
+        </div>
+      </section>
 
       <div className="assistant-config-grid">
         <section className="card assistant-config-form">
@@ -929,6 +1023,7 @@ export default function AssistantConfigPage() {
               <div className="test-result-banner">
                 <span className={`test-result-badge ${testResult.success ? 'success' : 'error'}`}>{testResult.success ? '连接正常' : '连接失败'}</span>
                 <span className="test-result-title">{testResult.success ? '保存后测试通过' : '测试未通过'}</span>
+                <button type="button" className="btn btn-ghost tiny" onClick={copyTestResult}>复制结果</button>
               </div>
               <div className="test-result-text">{testResult.message || testResult.title || '无结果'}</div>
               <div className="test-result-grid">

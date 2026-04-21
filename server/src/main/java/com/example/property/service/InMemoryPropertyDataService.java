@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -419,45 +420,406 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     }
     String communityId = currentCommunityId();
     String communityName = currentCommunityName();
-    assistantFaqs.put("faq-1", mapOf(
-        "id", "faq-1",
-        "communityId", communityId,
-        "community", communityName,
-        "responsibleSupervisor", currentSupervisorName(),
-        "question", "如何查看本月物业费？",
-        "answer", "进入首页即可查看待缴账单，也可以在 AI 客服里直接说“查物业费”。",
-        "tags", Arrays.asList("账单", "物业费"),
-        "enabled", true,
-        "orderNo", 1,
-        "createTime", now(),
-        "updateTime", now()
-    ));
-    assistantFaqs.put("faq-2", mapOf(
-        "id", "faq-2",
-        "communityId", communityId,
-        "community", communityName,
-        "responsibleSupervisor", currentSupervisorName(),
-        "question", "怎么提交报修？",
-        "answer", "在报修页面选择类型、填写描述、选择日期和时段后提交即可，AI 客服也可以帮你生成报修草稿。",
-        "tags", Arrays.asList("报修", "维修"),
-        "enabled", true,
-        "orderNo", 2,
-        "createTime", now(),
-        "updateTime", now()
-    ));
-    assistantFaqs.put("faq-3", mapOf(
-        "id", "faq-3",
-        "communityId", communityId,
-        "community", communityName,
-        "responsibleSupervisor", currentSupervisorName(),
-        "question", "投诉后多久能看到处理？",
-        "answer", "投诉会先进入后台投诉队列，管理员会先分析并推送到飞书，后续可在后台查看进度。",
-        "tags", Arrays.asList("投诉", "飞书"),
-        "enabled", true,
-        "orderNo", 3,
-        "createTime", now(),
-        "updateTime", now()
-    ));
+    List<Map<String, Object>> seeds = new ArrayList<>();
+    int orderNo = 1;
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, true,
+        "进入首页即可查看待缴账单，也可以在 AI 客服里直接说“查物业费”。",
+        Arrays.asList("账单", "物业费"),
+        Arrays.asList("物业费", "账单", "缴费"),
+        "如何查看本月物业费？",
+        "怎么查物业费？",
+        "本月物业费在哪里看？",
+        "物业费怎么缴纳？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, true,
+        "在报修页面填写类型、描述、联系人和时间后提交即可，AI 客服也可以帮你生成报修草稿。",
+        Arrays.asList("报修", "维修"),
+        Arrays.asList("报修", "维修", "维修申请"),
+        "怎么提交报修？",
+        "如何报修？",
+        "报修怎么弄？",
+        "我要修东西怎么办？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "投诉会先进入后台投诉队列，管理员会先分析并推送到飞书，后续可在后台查看进度。",
+        Arrays.asList("投诉", "飞书"),
+        Arrays.asList("投诉", "处理进度", "飞书"),
+        "投诉后多久能看到处理？",
+        "投诉多久处理？",
+        "投诉进度怎么看？",
+        "投诉后怎么跟进？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "在公告列表里可以查看最新通知，AI 客服也可以直接帮你查最新公告。",
+        Arrays.asList("公告", "通知"),
+        Arrays.asList("公告", "通知", "小区公告"),
+        "怎么查看小区公告？",
+        "最新公告在哪里看？",
+        "最近有什么通知？",
+        "公告从哪里进入？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, true,
+        "门禁卡问题可以先联系前台处理，部分项目支持在物业前台补办或重置。",
+        Arrays.asList("门禁", "门禁卡"),
+        Arrays.asList("门禁", "门禁卡", "出入"),
+        "门禁卡丢了怎么办？",
+        "怎么补办门禁卡？",
+        "门禁失效怎么处理？",
+        "门禁卡在哪里办？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "访客可通过访客登记功能提交，生成后会有对应通行信息。",
+        Arrays.asList("访客", "登记"),
+        Arrays.asList("访客", "访客登记", "来访"),
+        "访客怎么登记？",
+        "如何登记来访人员？",
+        "访客通行怎么弄？",
+        "外来人员怎么进小区？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "装修申请提交后会进入审批流程，审批通过再安排进场。",
+        Arrays.asList("装修", "审批"),
+        Arrays.asList("装修", "装修申请", "装修审批"),
+        "装修怎么申请？",
+        "如何提交装修审批？",
+        "装修进场前要做什么？",
+        "装修手续怎么办理？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "快递会放到快递点或前台，具体以项目规则为准。",
+        Arrays.asList("快递", "代收"),
+        Arrays.asList("快递", "代收", "取件"),
+        "快递放哪里？",
+        "怎么取快递？",
+        "快递点在哪里？",
+        "快递谁帮忙收？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "停车费可在停车管理或物业收费页面查看，部分项目支持在线缴费。",
+        Arrays.asList("停车", "车位"),
+        Arrays.asList("停车费", "车位费", "车位"),
+        "停车费怎么查？",
+        "车位费在哪里看？",
+        "月租车位怎么缴费？",
+        "停车费用怎么处理？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "车位申请和绑定信息请联系物业前台确认，部分项目支持线上申请。",
+        Arrays.asList("车位", "停车"),
+        Arrays.asList("车位", "停车位", "绑定"),
+        "车位怎么申请？",
+        "怎么绑定车位？",
+        "临停怎么收费？",
+        "车位信息如何修改？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "垃圾分类按小区投放点标识执行，具体时间和位置以公告为准。",
+        Arrays.asList("垃圾分类", "环境"),
+        Arrays.asList("垃圾分类", "投放", "环境"),
+        "垃圾分类怎么投？",
+        "垃圾桶在哪？",
+        "什么时候扔垃圾？",
+        "分类投放点在哪里？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "水电燃气异常可先查看是否为临时停供，再联系物业或对应服务单位。",
+        Arrays.asList("水电", "燃气"),
+        Arrays.asList("停水", "停电", "停气"),
+        "停水了怎么办？",
+        "停电怎么处理？",
+        "燃气异常找谁？",
+        "水电怎么报修？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "电梯故障请先确保安全，随后联系物业前台报修。",
+        Arrays.asList("电梯", "报修"),
+        Arrays.asList("电梯", "故障", "维修"),
+        "电梯坏了找谁？",
+        "电梯故障怎么报修？",
+        "电梯一直不运行怎么办？",
+        "电梯困人怎么处理？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "卫生和保洁问题可直接反馈给物业前台或客服。",
+        Arrays.asList("保洁", "卫生"),
+        Arrays.asList("卫生", "保洁", "清洁"),
+        "楼道卫生谁负责？",
+        "公共区域保洁怎么反馈？",
+        "垃圾没人清理怎么办？",
+        "卫生打扫不到位找谁？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "物业服务时间和联系电话一般在首页公告或联系方式里可查看。",
+        Arrays.asList("电话", "时间"),
+        Arrays.asList("电话", "服务时间", "上班"),
+        "物业电话是多少？",
+        "几点上班？",
+        "客服什么时候在线？",
+        "怎么联系物业前台？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "维修上门时间会根据排期安排，提交报修时可以备注可上门时段。",
+        Arrays.asList("维修", "上门"),
+        Arrays.asList("维修", "上门", "排期"),
+        "维修什么时候上门？",
+        "报修后多久来修？",
+        "维修师傅怎么预约？",
+        "什么时候可以上门处理？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "发票申请可联系物业财务或在收费记录里查看是否支持开票。",
+        Arrays.asList("发票", "财务"),
+        Arrays.asList("发票", "开票", "财务"),
+        "怎么开物业费发票？",
+        "发票在哪里申请？",
+        "缴费后能开票吗？",
+        "怎么补开发票？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "宠物管理按小区规定执行，遛狗请牵绳并及时清理粪便。",
+        Arrays.asList("宠物", "文明养宠"),
+        Arrays.asList("宠物", "养宠", "遛狗"),
+        "小区能养宠物吗？",
+        "遛狗要注意什么？",
+        "宠物扰民怎么反馈？",
+        "宠物管理规定是什么？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "噪音问题建议先沟通，无法解决可直接提交投诉。",
+        Arrays.asList("噪音", "投诉"),
+        Arrays.asList("噪音", "扰民", "投诉"),
+        "楼上太吵怎么办？",
+        "噪音怎么投诉？",
+        "夜里施工影响休息怎么办？",
+        "邻里噪音找谁处理？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "漏水、渗水、空调问题都可以直接按报修处理。",
+        Arrays.asList("漏水", "空调"),
+        Arrays.asList("漏水", "渗水", "空调"),
+        "天花板漏水怎么办？",
+        "空调坏了怎么报修？",
+        "墙面渗水找谁？",
+        "漏水怎么拍照片给物业？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "楼道照明和公共设施损坏可直接提交报修。",
+        Arrays.asList("照明", "公共设施"),
+        Arrays.asList("楼道灯", "照明", "公共设施"),
+        "楼道灯坏了怎么办？",
+        "公共设施损坏怎么报修？",
+        "灯不亮找谁修？",
+        "扶手坏了怎么处理？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "停水停电一般会在公告里提前通知，突发情况可联系物业前台确认。",
+        Arrays.asList("停水", "停电"),
+        Arrays.asList("停水", "停电", "通知"),
+        "停水停电有通知吗？",
+        "为什么突然停电？",
+        "停水通知在哪里看？",
+        "临时停供怎么知道？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "公共设施报修和建议反馈都可以通过 AI 客服提交。",
+        Arrays.asList("公共设施", "建议"),
+        Arrays.asList("设施", "报修", "建议"),
+        "公共设施坏了怎么报修？",
+        "怎么提建议？",
+        "健身器材坏了找谁？",
+        "公共区域问题怎么反馈？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "账号登录异常可以先尝试重新登录，仍有问题联系物业前台。",
+        Arrays.asList("账号", "登录"),
+        Arrays.asList("登录", "账号", "异常"),
+        "登录不上怎么办？",
+        "账号异常怎么处理？",
+        "手机换了怎么登录？",
+        "验证码收不到怎么办？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "物业收费标准会根据项目公示执行，具体请查看收费通知或咨询前台。",
+        Arrays.asList("收费", "标准"),
+        Arrays.asList("收费标准", "物业收费", "公示"),
+        "物业费收费标准是什么？",
+        "收费依据在哪里看？",
+        "物业怎么收费？",
+        "收费标准有调整吗？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "代缴和补缴费用可以联系物业前台确认，部分项目支持线上处理。",
+        Arrays.asList("代缴", "补缴"),
+        Arrays.asList("代缴", "补缴", "缴费"),
+        "可以代缴物业费吗？",
+        "物业费能补缴吗？",
+        "忘记缴费怎么办？",
+        "物业费怎么代缴？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "车牌录入和绑定车位通常由物业前台或停车管理处理。",
+        Arrays.asList("车牌", "停车"),
+        Arrays.asList("车牌", "绑定", "停车"),
+        "车牌怎么录入？",
+        "车牌绑定怎么做？",
+        "临停车牌怎么处理？",
+        "进出车库识别不了怎么办？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "充电桩安装和使用请先确认小区是否开放该服务，再联系物业登记。",
+        Arrays.asList("充电桩", "新能源"),
+        Arrays.asList("充电桩", "新能源", "电车"),
+        "小区能装充电桩吗？",
+        "充电桩怎么申请？",
+        "新能源车充电怎么登记？",
+        "电车充电位在哪里？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "垃圾清运时间和地点请以小区公告为准，异常情况可反馈物业。",
+        Arrays.asList("垃圾", "清运"),
+        Arrays.asList("垃圾清运", "清运", "公告"),
+        "垃圾什么时候清运？",
+        "垃圾没人收怎么办？",
+        "垃圾点怎么处理？",
+        "清运时间在哪里看？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "门铃和对讲机故障可直接报修，建议注明楼栋单元和故障表现。",
+        Arrays.asList("门铃", "对讲"),
+        Arrays.asList("门铃", "对讲机", "呼叫"),
+        "门铃坏了怎么办？",
+        "对讲机怎么报修？",
+        "呼叫器不响怎么处理？",
+        "门铃故障找谁修？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "车位锁故障或损坏可联系物业前台处理，部分项目支持维修更换。",
+        Arrays.asList("车位锁", "车位"),
+        Arrays.asList("车位锁", "锁", "停车"),
+        "车位锁坏了怎么办？",
+        "车位锁怎么报修？",
+        "停车位被占怎么处理？",
+        "车位锁不升起怎么办？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "维修材料是否需要业主自备，通常会在报修后由维修人员确认。",
+        Arrays.asList("材料", "维修"),
+        Arrays.asList("材料", "维修", "自备"),
+        "报修要自己买材料吗？",
+        "维修材料谁准备？",
+        "上门维修要收费吗？",
+        "材料费用怎么算？");
+    orderNo = addAssistantFaqGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "公共设施巡检和维护会按计划执行，如有问题可直接反馈。",
+        Arrays.asList("巡检", "维护"),
+        Arrays.asList("巡检", "维护", "检查"),
+        "公共设施多久巡检一次？",
+        "物业会定期检查吗？",
+        "设施维护怎么安排？",
+        "巡检问题怎么反馈？");
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, true,
+        "物业费缴纳", "进入首页可查看待缴账单，逾期请尽快缴纳。",
+        Arrays.asList("物业费", "账单"), Arrays.asList("物业费", "缴费", "账单"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, true,
+        "报修提交", "填写报修内容后即可提交，客服可协助生成草稿。",
+        Arrays.asList("报修", "维修"), Arrays.asList("报修", "维修", "申请"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "投诉反馈", "投诉会进入处理队列，后续可查看进度。",
+        Arrays.asList("投诉", "反馈"), Arrays.asList("投诉", "反馈", "进度"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "访客登记", "登记访客信息后可生成通行信息。",
+        Arrays.asList("访客", "登记"), Arrays.asList("访客", "来访", "登记"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "装修审批", "装修申请提交后会进入审批流程。",
+        Arrays.asList("装修", "审批"), Arrays.asList("装修", "审批", "申请"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "停车缴费", "停车费可在停车管理里查看，部分项目支持在线缴费。",
+        Arrays.asList("停车", "车位"), Arrays.asList("停车", "车位", "缴费"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "车牌录入", "车牌信息通常由物业前台或停车管理处理。",
+        Arrays.asList("车牌", "停车"), Arrays.asList("车牌", "绑定", "停车"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "门禁补办", "门禁卡可联系前台补办或重置。",
+        Arrays.asList("门禁", "门禁卡"), Arrays.asList("门禁", "门禁卡", "补办"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "快递代收", "快递一般放到快递点或前台，具体以项目规则为准。",
+        Arrays.asList("快递", "代收"), Arrays.asList("快递", "取件", "代收"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "发票开具", "发票申请可联系物业财务或查看收费记录。",
+        Arrays.asList("发票", "财务"), Arrays.asList("发票", "开票", "财务"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "充电桩安装", "先确认项目是否开放，再联系物业登记。",
+        Arrays.asList("充电桩", "新能源"), Arrays.asList("充电桩", "新能源", "电车"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "楼道照明", "楼道灯或公共照明故障可直接报修。",
+        Arrays.asList("照明", "公共设施"), Arrays.asList("楼道灯", "照明", "报修"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "电梯故障", "电梯故障请先确保安全，再联系物业报修。",
+        Arrays.asList("电梯", "报修"), Arrays.asList("电梯", "故障", "报修"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "噪音扰民", "先沟通，无法解决可提交投诉。",
+        Arrays.asList("噪音", "投诉"), Arrays.asList("噪音", "扰民", "投诉"));
+    orderNo = addAssistantFaqFocusGroup(seeds, communityId, communityName, currentSupervisorName(), orderNo, false,
+        "宠物管理", "按小区规定文明养宠，遛狗请牵绳并清理粪便。",
+        Arrays.asList("宠物", "养宠"), Arrays.asList("宠物", "养宠", "遛狗"));
+    for (int i = 0; i < seeds.size(); i++) {
+      Map<String, Object> item = seeds.get(i);
+      assistantFaqs.put(String.valueOf(item.getOrDefault("id", "faq-" + (i + 1))), item);
+    }
+  }
+
+  private int addAssistantFaqGroup(List<Map<String, Object>> seeds,
+                                   String communityId,
+                                   String communityName,
+                                   String supervisor,
+                                   int startOrderNo,
+                                   boolean pinned,
+                                   String answer,
+                                   List<String> tags,
+                                   List<String> keywords,
+                                   String... questions) {
+    int orderNo = startOrderNo;
+    for (String question : questions) {
+      Map<String, Object> item = mapOf(
+          "id", "faq-" + newId(),
+          "communityId", communityId,
+          "community", communityName,
+          "responsibleSupervisor", supervisor,
+          "question", question,
+          "answer", answer,
+          "tags", new ArrayList<>(tags),
+          "synonyms", buildAssistantFaqSynonyms(question, keywords),
+          "keywords", new ArrayList<>(keywords),
+          "pinned", pinned && orderNo - startOrderNo < 2,
+          "enabled", true,
+          "orderNo", orderNo,
+          "createTime", now(),
+          "updateTime", now()
+      );
+      seeds.add(item);
+      orderNo += 1;
+    }
+    return orderNo;
+  }
+
+  private int addAssistantFaqFocusGroup(List<Map<String, Object>> seeds,
+                                        String communityId,
+                                        String communityName,
+                                        String supervisor,
+                                        int startOrderNo,
+                                        boolean pinned,
+                                        String focus,
+                                        String answer,
+                                        List<String> tags,
+                                        List<String> keywords) {
+    String cleanFocus = String.valueOf(firstNonEmpty(focus, "")).trim();
+    List<String> questions = Arrays.asList(
+        cleanFocus + "怎么办？",
+        "怎么" + cleanFocus + "？",
+        "如何" + cleanFocus + "？",
+        cleanFocus + "怎么处理？",
+        cleanFocus + "怎么查？",
+        cleanFocus + "在哪里看？",
+        cleanFocus + "要找谁？",
+        cleanFocus + "怎么报修？"
+    );
+    return addAssistantFaqGroup(seeds, communityId, communityName, supervisor, startOrderNo, pinned, answer, tags, keywords, questions.toArray(new String[0]));
+  }
+
+  private List<String> buildAssistantFaqSynonyms(String question, List<String> keywords) {
+    String cleanQuestion = String.valueOf(firstNonEmpty(question, "")).trim().replaceAll("[?？。！!，,；;：:\\s]+$", "");
+    String focus = cleanQuestion.replaceFirst("^(请问|麻烦问一下|想问一下|问一下|请教一下|如何|怎么|怎样|请问一下)", "").trim();
+    if (focus.isEmpty()) {
+      focus = cleanQuestion;
+    }
+    List<String> list = new ArrayList<>();
+    if (!focus.isEmpty()) {
+      list.add("怎么" + focus);
+      list.add("如何" + focus);
+      list.add(focus + "怎么弄");
+      list.add(focus + "怎么办");
+      list.add(focus + "怎么查");
+      list.add(focus + "在哪里看");
+      list.add(focus + "怎么处理");
+    }
+    for (String keyword : normalizeStringList(keywords)) {
+      list.add(keyword + "怎么查");
+      list.add(keyword + "怎么办");
+      list.add(keyword + "在哪里看");
+    }
+    return list.stream()
+        .filter(value -> value != null && !value.trim().isEmpty())
+        .distinct()
+        .collect(Collectors.toList());
   }
 
   private void normalizeAssistantFaqOwnership() {
@@ -5105,7 +5467,14 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return assistantFaqs.values().stream()
         .map(this::cloneMap)
         .filter(item -> target.isEmpty() || target.equals(String.valueOf(item.getOrDefault("communityId", ""))))
-        .sorted(Comparator.comparing((Map<String, Object> item) -> String.valueOf(item.getOrDefault("orderNo", 0)))
+        .sorted(Comparator.comparing((Map<String, Object> item) -> !truthy(item.get("pinned")))
+            .thenComparingInt(item -> {
+              try {
+                return Integer.parseInt(String.valueOf(item.getOrDefault("orderNo", 0)));
+              } catch (Exception error) {
+                return 0;
+              }
+            })
             .thenComparing(item -> String.valueOf(item.getOrDefault("createTime", "")), Comparator.reverseOrder()))
         .collect(Collectors.toList());
   }
@@ -5147,7 +5516,14 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     record.put("tags", normalizeStringList(source.get("tags")).isEmpty()
         ? normalizeStringList(record.get("tags"))
         : normalizeStringList(source.get("tags")));
+    record.put("synonyms", normalizeStringList(source.get("synonyms")).isEmpty()
+        ? normalizeStringList(record.get("synonyms"))
+        : normalizeStringList(source.get("synonyms")));
+    record.put("keywords", normalizeStringList(source.get("keywords")).isEmpty()
+        ? normalizeStringList(record.get("keywords"))
+        : normalizeStringList(source.get("keywords")));
     record.put("enabled", truthy(source.getOrDefault("enabled", record.getOrDefault("enabled", true))));
+    record.put("pinned", truthy(source.getOrDefault("pinned", record.getOrDefault("pinned", false))));
     Object orderNoValue = firstNonEmpty(source.get("orderNo"), record.get("orderNo"), 0);
     try {
       record.put("orderNo", Integer.parseInt(String.valueOf(orderNoValue)));
@@ -5167,6 +5543,154 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       throw new BusinessException(404, "FAQ 不存在");
     }
     persistAll();
+  }
+
+  private String normalizeAssistantFaqText(String text) {
+    if (text == null) {
+      return "";
+    }
+    String normalized = text.trim().toLowerCase();
+    normalized = normalized.replaceAll("[\\p{Punct}\\p{IsPunctuation}]", " ");
+    normalized = normalized.replaceAll("\\s+", " ").trim();
+    return normalized;
+  }
+
+  private boolean faqMatchesCommunity(Map<String, Object> faq, String communityId) {
+    String faqCommunityId = textValue(faq == null ? null : faq.get("communityId"));
+    if (faqCommunityId.isEmpty() || communityId.isEmpty()) {
+      return true;
+    }
+    return faqCommunityId.equals(communityId);
+  }
+
+  private int scoreAssistantFaq(String input, Map<String, Object> faq) {
+    String question = normalizeAssistantFaqText(String.valueOf(faq.getOrDefault("question", "")));
+    String answer = normalizeAssistantFaqText(String.valueOf(faq.getOrDefault("answer", "")));
+    String tags = normalizeAssistantFaqText(String.join(" ", normalizeStringList(faq.get("tags"))));
+    String synonyms = normalizeAssistantFaqText(String.join(" ", normalizeStringList(faq.get("synonyms"))));
+    String keywords = normalizeAssistantFaqText(String.join(" ", normalizeStringList(faq.get("keywords"))));
+    String normalizedInput = normalizeAssistantFaqText(input);
+    String compactInput = normalizedInput.replace(" ", "");
+    String compactQuestion = question.replace(" ", "");
+    String compactAnswer = answer.replace(" ", "");
+    String compactTags = tags.replace(" ", "");
+    String compactSynonyms = synonyms.replace(" ", "");
+    String compactKeywords = keywords.replace(" ", "");
+    if (compactInput.isEmpty() || compactQuestion.isEmpty()) {
+      return 0;
+    }
+
+    int score = 0;
+    if (truthy(faq.get("pinned"))) {
+      score += 30;
+    }
+    if (compactInput.equals(compactQuestion)) {
+      score += 120;
+    }
+    if (compactQuestion.contains(compactInput) || compactInput.contains(compactQuestion)) {
+      score += 70;
+    }
+    if (!compactAnswer.isEmpty() && compactAnswer.contains(compactInput)) {
+      score += 20;
+    }
+    if (!compactTags.isEmpty() && compactTags.contains(compactInput)) {
+      score += 25;
+    }
+    if (!compactSynonyms.isEmpty() && compactSynonyms.contains(compactInput)) {
+      score += 55;
+    }
+    if (!compactKeywords.isEmpty() && compactKeywords.contains(compactInput)) {
+      score += 45;
+    }
+
+    LinkedHashSet<String> fragments = new LinkedHashSet<>();
+    for (int size = 2; size <= 4; size++) {
+      for (int i = 0; i + size <= compactInput.length(); i++) {
+        fragments.add(compactInput.substring(i, i + size));
+      }
+    }
+    for (String fragment : fragments) {
+      if (compactQuestion.contains(fragment)) {
+        score += fragment.length() >= 3 ? 18 : 8;
+      }
+      if (!compactAnswer.isEmpty() && compactAnswer.contains(fragment)) {
+        score += fragment.length() >= 3 ? 4 : 2;
+      }
+      if (!compactTags.isEmpty() && compactTags.contains(fragment)) {
+        score += fragment.length() >= 3 ? 15 : 6;
+      }
+      if (!compactSynonyms.isEmpty() && compactSynonyms.contains(fragment)) {
+        score += fragment.length() >= 3 ? 20 : 10;
+      }
+      if (!compactKeywords.isEmpty() && compactKeywords.contains(fragment)) {
+        score += fragment.length() >= 3 ? 16 : 8;
+      }
+    }
+    return score;
+  }
+
+  private Map<String, Object> buildFaqAssistantResponse(Map<String, Object> faq, Map<String, Object> context) {
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("intent", "faq");
+    response.put("confidence", 0.98);
+    response.put("needConfirm", false);
+    response.put("handoff", false);
+    response.put("slots", new LinkedHashMap<>());
+    response.put("action", mapOf("type", "none", "params", new LinkedHashMap<>()));
+    response.put("replyText", String.valueOf(firstNonEmpty(faq.get("answer"), "我查到了对应的常见问题答案。")));
+    response.put("quickReplies", Arrays.asList("继续提问", "查物业费", "查报修", "转人工"));
+    response.put("reason", "FAQ 命中");
+    response.put("faqMatched", true);
+    response.put("faqId", faq.getOrDefault("id", ""));
+    response.put("faqQuestion", faq.getOrDefault("question", ""));
+    response.put("faqAnswer", faq.getOrDefault("answer", ""));
+    response.put("faqTags", normalizeStringList(faq.get("tags")));
+    response.put("faqSynonyms", normalizeStringList(faq.get("synonyms")));
+    response.put("faqKeywords", normalizeStringList(faq.get("keywords")));
+    response.put("faqCommunityId", faq.getOrDefault("communityId", ""));
+    response.put("faqCommunity", faq.getOrDefault("community", ""));
+    response.put("faqResponsibleSupervisor", faq.getOrDefault("responsibleSupervisor", ""));
+    response.put("faqPinned", truthy(faq.get("pinned")));
+    response.put("faqContext", context == null ? new LinkedHashMap<>() : new LinkedHashMap<>(context));
+    return response;
+  }
+
+  private Map<String, Object> matchAssistantFaq(String token, AssistantMessageRequest request, Map<String, Object> session, Map<String, Object> settings, Map<String, Object> context, String input) {
+    String normalizedInput = input == null ? "" : input.trim();
+    if (normalizedInput.isEmpty()) {
+      return null;
+    }
+    String communityId = String.valueOf(firstNonEmpty(
+        request == null ? null : request.communityId,
+        session == null ? null : session.get("communityId"),
+        settings == null ? null : settings.get("communityId"),
+        currentCommunityId()
+    ));
+    Map<String, Object> bestFaq = null;
+    int bestScore = 0;
+    for (Map<String, Object> faq : assistantFaqs.values()) {
+      if (faq == null) {
+        continue;
+      }
+      if (faq.get("enabled") != null && !truthy(faq.get("enabled"))) {
+        continue;
+      }
+      if (!faqMatchesCommunity(faq, communityId)) {
+        continue;
+      }
+      int score = scoreAssistantFaq(normalizedInput, faq);
+      if (score > bestScore) {
+        bestScore = score;
+        bestFaq = faq;
+      }
+    }
+    if (bestFaq == null || bestScore < 35) {
+      return null;
+    }
+    Map<String, Object> response = buildFaqAssistantResponse(bestFaq, context);
+    response.put("confidence", Math.min(0.99, 0.9 + (bestScore / 300.0)));
+    response.put("reason", "FAQ 命中: " + String.valueOf(bestFaq.getOrDefault("question", "")));
+    return response;
   }
 
   @Override
@@ -5213,7 +5737,10 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "prompt", String.valueOf(firstNonEmpty(safeRequest.prompt, session.get("prompt"), settings.get("promptTemplate"), "")),
         "inputText", content
     );
-    Map<String, Object> normalized = invokeAssistantEngine(token, settings, requestBody);
+    Map<String, Object> normalized = matchAssistantFaq(token, safeRequest, session, settings, context, content);
+    if (normalized == null) {
+      normalized = invokeAssistantEngine(token, settings, requestBody);
+    }
     if (normalized == null || normalized.isEmpty()) {
       normalized = buildHeuristicAssistantResponse(token, safeRequest, session, settings, context);
     }
