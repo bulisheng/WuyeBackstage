@@ -10,16 +10,12 @@ public class AuthLoginRequest {
   @NotBlank
   public String code;
 
-  @NotBlank
   public String community;
 
-  @NotBlank
   public String building;
 
-  @NotBlank
   public String unit;
 
-  @NotBlank
   public String room;
 
   public String houseId;

@@ -54,27 +54,35 @@ App({
           app.setAuthState(data.token, data.user, data.community);
           return data;
         } catch (error) {
+          const message = String(error && error.message ? error.message : '');
+          const shouldFallback =
+            /request:fail|HTTP|timeout|网络|connect|ECONN|ENOTFOUND/i.test(message) ||
+            /fail/i.test(message) && !/未绑定房屋|房屋|验证码|手机号|登录/.test(message);
+          if (!shouldFallback) {
+            throw error;
+          }
           const userInfo = payload.userInfo || {};
+          const fallbackCommunity = app.globalData.communityInfo || {};
           const user = {
             openid: `local-${payload.phone}`,
             name: userInfo.nickName || '业主',
             avatar: userInfo.avatarUrl || '/assets/images/default-avatar.png',
             phone: payload.phone,
-            community: payload.community,
-            building: payload.building,
-            unit: payload.unit,
-            room: payload.room,
+            community: fallbackCommunity.name || '',
+            building: fallbackCommunity.building || '',
+            unit: fallbackCommunity.unit || '',
+            room: fallbackCommunity.room || '',
             createTime: new Date().toISOString(),
             status: 'active'
           };
           const community = {
-            name: payload.community,
-            building: payload.building,
-            unit: payload.unit,
-            room: `${payload.room}室`,
-            fullAddress: `${payload.community}${payload.building}${payload.unit}${payload.room}室`,
-            address: app.globalData.communityInfo.address,
-            propertyPhone: app.globalData.communityInfo.propertyPhone
+            name: fallbackCommunity.name || '',
+            building: fallbackCommunity.building || '',
+            unit: fallbackCommunity.unit || '',
+            room: fallbackCommunity.room || '',
+            fullAddress: fallbackCommunity.fullAddress || '',
+            address: fallbackCommunity.address || '',
+            propertyPhone: fallbackCommunity.propertyPhone || ''
           };
           app.setAuthState(`local-token-${payload.phone}`, user, community);
           return { token: app.globalData.token, user, community };
@@ -441,15 +449,30 @@ App({
     return !!leftDigits && leftDigits === rightDigits;
   },
 
+  toTextArray(value) {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item || '').trim()).filter(Boolean);
+    }
+    if (value == null) {
+      return [];
+    }
+    return String(value)
+      .split(/[、,;|\n]/g)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  },
+
   getVisibleBills(bills, userInfo, communityInfo) {
     const list = Array.isArray(bills) ? bills : [];
     const user = userInfo || this.globalData.userInfo || {};
     const community = communityInfo || this.globalData.communityInfo || {};
     const userHouseId = String(user.houseId || '').trim();
     const userHouseNo = String(user.houseNo || user.room || '').trim();
+    const userHouseIds = this.toTextArray(user.houseIds || user.houseId);
+    const userHouseNos = this.toTextArray(user.houseNos || user.houseNo || user.room);
     const userCommunity = String(user.community || community.name || '').trim();
-    const hasHouseBinding = !!(userHouseId || userHouseNo || String(user.building || '').trim() || String(user.unit || '').trim() || String(user.room || '').trim());
-    if (!userHouseId && !userHouseNo && !userCommunity) {
+    const hasHouseBinding = !!(userHouseId || userHouseIds.length || userHouseNo || userHouseNos.length || String(user.building || '').trim() || String(user.unit || '').trim() || String(user.room || '').trim());
+    if (!userHouseId && !userHouseIds.length && !userHouseNo && !userHouseNos.length && !userCommunity) {
       return list.slice();
     }
     return list.filter((bill) => {
@@ -462,10 +485,16 @@ App({
       if (userHouseId && billHouseId && userHouseId === billHouseId) {
         return true;
       }
+      if (userHouseIds.length && billHouseId && userHouseIds.includes(billHouseId)) {
+        return true;
+      }
       if (userHouseNo && billHouseNo && this.sameHouseLabel(userHouseNo, billHouseNo)) {
         return true;
       }
       if (userHouseNo && billHouseNo && this.sameHouseLabel(user.room || userHouseNo, billHouseNo)) {
+        return true;
+      }
+      if (userHouseNos.length && billHouseNo && userHouseNos.some((item) => this.sameHouseLabel(item, billHouseNo))) {
         return true;
       }
       if (hasHouseBinding) {

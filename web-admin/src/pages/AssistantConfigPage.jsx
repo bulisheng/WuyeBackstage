@@ -370,6 +370,13 @@ export default function AssistantConfigPage() {
   const savedConfigSnapshot = useMemo(() => buildAssistantConfigSnapshot(savedSettings), [savedSettings]);
   const editingConfigSnapshot = useMemo(() => buildAssistantConfigSnapshot(settings), [settings]);
   const configDirty = editingConfigSnapshot !== savedConfigSnapshot;
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/');
+  };
 
   const effectiveConfigPreview = useMemo(() => ({
     当前项目: displayCommunity(activeCommunity),
@@ -661,6 +668,9 @@ export default function AssistantConfigPage() {
 
   return (
     <div className="assistant-config-page">
+      <div className="assistant-config-backbar">
+        <button type="button" className="btn btn-ghost tiny" onClick={handleBack}>← 返回控制台</button>
+      </div>
       <header className="assistant-config-hero card">
         <div className="assistant-config-hero-main">
           <div className="eyebrow">智能中台配置</div>

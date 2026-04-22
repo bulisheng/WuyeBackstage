@@ -23,7 +23,10 @@ Page({
     pickerOptions: [],
     pickerIndex: [0],
     pickerType: '',
-    tempSelected: ''
+    tempSelected: '',
+    showHouseSelector: false,
+    houseSelectionHint: '',
+    houseOptions: []
   },
 
   onLoad() {
@@ -33,28 +36,14 @@ Page({
   restoreSavedProfile() {
     try {
       const userInfo = wx.getStorageSync('userInfo') || {};
-      const communityInfo = wx.getStorageSync('communityInfo') || {};
-      if (!userInfo && !communityInfo) {
+      if (!userInfo) {
         return;
       }
-      const room = String(userInfo.room || '').replace(/室$/, '');
       this.setData({
         phone: userInfo.phone || this.data.phone,
-        community: userInfo.community || communityInfo.name || this.data.community,
-        building: userInfo.building || this.data.building,
-        unit: userInfo.unit || this.data.unit,
-        room: room || this.data.room,
         agreed: true
       });
-      this.updateCanLogin(
-        userInfo.phone || this.data.phone,
-        this.data.code,
-        userInfo.community || communityInfo.name || this.data.community,
-        userInfo.building || this.data.building,
-        userInfo.unit || this.data.unit,
-        room || this.data.room,
-        true
-      );
+      this.updateCanLogin(userInfo.phone || this.data.phone, this.data.code, true);
     } catch (error) {
       // ignore storage errors
     }
@@ -67,13 +56,13 @@ Page({
       phone,
       phoneError: this.validatePhone(phone)
     });
-    this.updateCanLogin(phone, this.data.code, this.data.community, this.data.building, this.data.unit, this.data.room, this.data.agreed);
+    this.updateCanLogin(phone, this.data.code, this.data.agreed);
   },
 
   // 清除手机号
   clearPhone() {
     this.setData({ phone: '', phoneError: '' });
-    this.updateCanLogin('', this.data.code, this.data.community, this.data.building, this.data.unit, this.data.room, this.data.agreed);
+    this.updateCanLogin('', this.data.code, this.data.agreed);
   },
 
   // 验证码输入
@@ -83,7 +72,7 @@ Page({
       code,
       codeError: code.length === 6 ? '' : this.data.codeError
     });
-    this.updateCanLogin(this.data.phone, code, this.data.community, this.data.building, this.data.unit, this.data.room, this.data.agreed);
+    this.updateCanLogin(this.data.phone, code, this.data.agreed);
   },
 
   // 发送验证码
@@ -203,17 +192,17 @@ Page({
         building: '',
         unit: ''
       });
-      this.updateCanLogin(this.data.phone, this.data.code, tempSelected, '', '', this.data.room, this.data.agreed);
+      this.updateCanLogin(this.data.phone, this.data.code, this.data.agreed);
     } else if (pickerType === 'building') {
       // 选择楼栋后，清空单元
       this.setData({ 
         building: tempSelected,
         unit: ''
       });
-      this.updateCanLogin(this.data.phone, this.data.code, this.data.community, tempSelected, '', this.data.room, this.data.agreed);
+      this.updateCanLogin(this.data.phone, this.data.code, this.data.agreed);
     } else if (pickerType === 'unit') {
       this.setData({ unit: tempSelected });
-      this.updateCanLogin(this.data.phone, this.data.code, this.data.community, this.data.building, tempSelected, this.data.room, this.data.agreed);
+      this.updateCanLogin(this.data.phone, this.data.code, this.data.agreed);
     }
     
     this.hidePicker();
@@ -228,25 +217,21 @@ Page({
   onRoomInput(e) {
     const room = e.detail.value;
     this.setData({ room });
-    this.updateCanLogin(this.data.phone, this.data.code, this.data.community, this.data.building, this.data.unit, room, this.data.agreed);
+    this.updateCanLogin(this.data.phone, this.data.code, this.data.agreed);
   },
 
   // 切换协议勾选
   toggleAgreement() {
     const agreed = !this.data.agreed;
     this.setData({ agreed });
-    this.updateCanLogin(this.data.phone, this.data.code, this.data.community, this.data.building, this.data.unit, this.data.room, agreed);
+    this.updateCanLogin(this.data.phone, this.data.code, agreed);
   },
 
   // 更新登录按钮状态
-  updateCanLogin(phone, code, community, building, unit, room, agreed) {
+  updateCanLogin(phone, code, agreed) {
     const canLogin = (
       /^1[3-9]\d{9}$/.test(phone) &&
       code.length === 6 &&
-      community &&
-      building &&
-      unit &&
-      room &&
       agreed
     );
     this.setData({ canLogin });
@@ -326,7 +311,10 @@ Page({
   stopPropagation() {},
 
   // 执行登录
-  async doLogin() {
+  async doLogin(selectedHouseIdOrEvent = '') {
+    const selectedHouseId = typeof selectedHouseIdOrEvent === 'string'
+      ? selectedHouseIdOrEvent.trim()
+      : '';
     // 验证手机号
     const phoneError = this.validatePhone(this.data.phone);
     if (phoneError) {
@@ -340,24 +328,6 @@ Page({
       return;
     }
 
-    // 验证房屋信息
-    if (!this.data.community) {
-      wx.showToast({ title: '请选择小区', icon: 'none' });
-      return;
-    }
-    if (!this.data.building) {
-      wx.showToast({ title: '请选择楼栋', icon: 'none' });
-      return;
-    }
-    if (!this.data.unit) {
-      wx.showToast({ title: '请选择单元', icon: 'none' });
-      return;
-    }
-    if (!this.data.room) {
-      wx.showToast({ title: '请输入房间号', icon: 'none' });
-      return;
-    }
-
     // 验证协议
     if (!this.data.agreed) {
       wx.showToast({ title: '请阅读并同意用户协议', icon: 'none' });
@@ -368,17 +338,30 @@ Page({
     wx.showLoading({ title: '登录中...', mask: true });
 
     try {
-      const result = await app.services.login({
+      const loginPayload = {
         phone: this.data.phone,
         code: this.data.code,
-        community: this.data.community,
-        building: this.data.building,
-        unit: this.data.unit,
-        room: this.data.room,
         userInfo: {
           nickName: '业主'
         }
-      });
+      };
+
+      if (selectedHouseId) {
+        loginPayload.houseId = selectedHouseId;
+      }
+
+      const result = await app.services.login(loginPayload);
+
+      if (result && (result.needHouseSelection || result.houseSelectionRequired)) {
+        wx.hideLoading();
+        this.setData({
+          showHouseSelector: true,
+          houseSelectionHint: result.message || '检测到多个房屋，请先选择房屋',
+          houseOptions: Array.isArray(result.houseOptions) ? result.houseOptions : [],
+          canLogin: true
+        });
+        return;
+      }
 
       const userInfo = result.user || {
         phone: this.data.phone,
@@ -386,11 +369,11 @@ Page({
         avatar: '/assets/images/default-avatar.png'
       };
       const communityInfo = result.community || {
-        name: this.data.community,
-        building: this.data.building,
-        unit: this.data.unit,
-        room: this.data.room + '室',
-        fullAddress: `${this.data.community}${this.data.building}${this.data.unit}${this.data.room}室`
+        name: userInfo.community || '',
+        building: userInfo.building || '',
+        unit: userInfo.unit || '',
+        room: userInfo.room || '',
+        fullAddress: [userInfo.community, userInfo.building, userInfo.unit, userInfo.room].filter(Boolean).join('')
       };
 
       app.globalData.userInfo = userInfo;
@@ -426,10 +409,27 @@ Page({
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: error.message || '登录失败',
+        title: error.message || '该手机号未绑定任何房屋，请联系物业处理',
         icon: 'none'
       });
     }
+  },
+
+  selectHouseOption(e) {
+    const houseId = e.currentTarget.dataset.id;
+    if (!houseId) {
+      return;
+    }
+    this.setData({ showHouseSelector: false });
+    this.doLogin(houseId);
+  },
+
+  hideHouseSelector() {
+    this.setData({
+      showHouseSelector: false,
+      houseSelectionHint: '',
+      houseOptions: []
+    });
   },
 
   onUnload() {

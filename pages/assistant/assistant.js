@@ -39,7 +39,19 @@ function extractJsonCandidate(text) {
 }
 
 function normalizeAssistantReply(response) {
-  const rawText = String((response && (response.replyText || response.answer || response.content || response.message || response.text)) || '').trim();
+  const rawText = String((response && firstNonEmpty(
+    response.replyText,
+    response.answer,
+    response.content,
+    response.message,
+    response.text,
+    response['回复内容'],
+    response['回复'],
+    response['回答'],
+    response['答复'],
+    response['内容'],
+    response['文本']
+  )) || '').trim();
   const stripped = stripMarkdownFence(rawText);
   const candidate = extractJsonCandidate(stripped);
   if (!candidate) {
@@ -50,7 +62,20 @@ function normalizeAssistantReply(response) {
   }
   try {
     const parsed = JSON.parse(candidate);
-    const text = String(parsed.replyText || parsed.reply || parsed.answer || parsed.content || parsed.message || parsed.text || '').trim();
+    const text = String(firstNonEmpty(
+      parsed.replyText,
+      parsed.reply,
+      parsed.answer,
+      parsed.content,
+      parsed.message,
+      parsed.text,
+      parsed['回复内容'],
+      parsed['回复'],
+      parsed['回答'],
+      parsed['答复'],
+      parsed['内容'],
+      parsed['文本']
+    ) || '').trim();
     return {
       text: text || stripped || '我已经收到你的问题。',
       parsed
@@ -61,6 +86,24 @@ function normalizeAssistantReply(response) {
       parsed: null
     };
   }
+}
+
+function firstNonEmpty() {
+  for (let i = 0; i < arguments.length; i += 1) {
+    const value = arguments[i];
+    if (value !== null && typeof value !== 'undefined' && String(value).trim()) {
+      return value;
+    }
+  }
+  return '';
+}
+
+function formatMoney(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return '';
+  }
+  return number.toFixed(2).replace(/\.00$/, '');
 }
 
 function roleLabel(role) {
@@ -75,6 +118,7 @@ function roleLabel(role) {
 
 function normalizeMessage(message) {
   const item = Object.assign({}, message || {});
+  item.id = item.id || `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   item.roleLabel = roleLabel(item.role);
   item.messageClass = item.role === 'user' ? 'message user' : item.role === 'assistant' ? 'message assistant' : 'message system';
   item.avatarText = item.role === 'user' ? '我' : item.role === 'assistant' ? '智' : '系';
@@ -82,6 +126,7 @@ function normalizeMessage(message) {
   item.showUser = item.role === 'user';
   item.showAssistant = item.role === 'assistant';
   item.showSystem = !item.showUser && !item.showAssistant;
+  item.showAvatar = item.showUser || item.showAssistant;
   item.showCard = Boolean(item.card);
   item.showAmount = Boolean(item.card && item.card.amount);
   item.showPeriod = Boolean(item.card && item.card.period);
@@ -109,7 +154,8 @@ Page({
     contextTags: [],
     openclawUrl: '',
     sceneSummary: '问答、办事、转人工',
-    canSend: false
+    canSend: false,
+    scrollIntoView: ''
   },
 
   onLoad() {
@@ -180,7 +226,7 @@ Page({
       enabled.visitor && { id: 'visitor', title: '访客通行', subtitle: '访客记录和通行码查询', text: '访客通行', tone: 'violet' },
       enabled.decoration && { id: 'decoration', title: '装修申请', subtitle: '查看装修流程和提交入口', text: '装修申请', tone: 'amber' },
       { id: 'handoff', title: '联系人工', subtitle: '一键转接客服/主管', text: '转人工', tone: 'rose' }
-    ].filter(Boolean);
+    ].filter(Boolean).slice(0, 3);
   },
 
   async ensureSession() {
@@ -212,11 +258,15 @@ Page({
   },
 
   pushMessage(message) {
-    const messages = this.data.messages.concat(normalizeMessage({
+    const item = normalizeMessage({
       time: nowText(),
       ...message
-    }));
-    this.setData({ messages });
+    });
+    const messages = this.data.messages.concat(item);
+    this.setData({
+      messages,
+      scrollIntoView: item.id
+    });
   },
 
   pushSystemMessage(text) {
@@ -343,6 +393,16 @@ Page({
       wx.showToast({ title: '先输入问题吧', icon: 'none' });
       return;
     }
+    const now = Date.now();
+    const duplicateKey = `${text}::${String((app.globalData.communityInfo || {}).id || '')}::${String((app.globalData.userInfo || {}).houseId || '')}`;
+    if (this._sendingAssistantMessage) {
+      return;
+    }
+    if (this._lastAssistantMessage && this._lastAssistantMessage.key === duplicateKey && now - this._lastAssistantMessage.time < 1200) {
+      return;
+    }
+    this._sendingAssistantMessage = true;
+    this._lastAssistantMessage = { key: duplicateKey, time: now };
 
     const community = app.globalData.communityInfo || {};
     const user = app.globalData.userInfo || {};
@@ -388,11 +448,11 @@ Page({
       const confidence = Number(payload.confidence || 0);
       const summary = String(payload.reason || text);
       const quickReplies = safeArray(payload.quickReplies).length ? payload.quickReplies : ['查物业费', '查报修', '提交报修', '提交投诉', '转人工'];
-      const assistantText = normalizedReply.text || payload.replyText || payload.answer || '我已经收到你的问题。';
-      const message = {
-        role: 'assistant',
-        type: payload.needConfirm || payload.handoff ? 'card' : 'text',
-        text: assistantText,
+        const assistantText = normalizedReply.text || payload.replyText || payload.answer || '我已经收到你的问题。';
+        const message = {
+          role: 'assistant',
+          type: payload.needConfirm || payload.handoff ? 'card' : 'text',
+          text: assistantText,
         meta: {
           场景: intentName,
           评分: confidence,
@@ -400,22 +460,40 @@ Page({
         }
       };
 
-      if (payload.action) {
-        message.action = payload.action;
-      }
+        if (payload.action) {
+          message.action = payload.action;
+        }
 
-      if (payload.action && payload.action.type === 'query_bill') {
-        const unpaid = bills.filter((bill) => bill.status === 'unpaid');
-        const firstBill = unpaid[0] || bills[0] || null;
-        message.title = '账单查询结果';
-        message.card = firstBill ? {
-          type: firstBill.type || 'property',
-          title: firstBill.title || '物业费',
-          amount: firstBill.amount || '',
-          period: firstBill.period || '',
-          status: firstBill.status || 'unpaid'
-        } : null;
-      }
+        const wantsBill = /物业费|缴费|账单/.test(text) || intentName === 'payment' || (payload.action && payload.action.type === 'query_bill');
+        if (wantsBill) {
+          const unpaid = bills.filter((bill) => bill.status === 'unpaid');
+          const firstBill = unpaid[0] || bills[0] || null;
+          message.title = '账单查询结果';
+          if (firstBill) {
+            message.text = `你当前有待缴${firstBill.title || '物业费'}，金额 ${formatMoney(firstBill.amount) ? `¥${formatMoney(firstBill.amount)}` : '暂无金额'}。`;
+            message.card = {
+              type: firstBill.type || 'property',
+              title: firstBill.title || '物业费',
+              amount: firstBill.amount || '',
+              period: firstBill.period || '',
+              status: firstBill.status || 'unpaid'
+            };
+            message.action = Object.assign({ type: 'query_bill', params: {} }, message.action || {});
+          } else {
+            message.text = '当前没有找到待缴账单。';
+          }
+        } else if (payload.action && payload.action.type === 'query_bill') {
+          const unpaid = bills.filter((bill) => bill.status === 'unpaid');
+          const firstBill = unpaid[0] || bills[0] || null;
+          message.title = '账单查询结果';
+          message.card = firstBill ? {
+            type: firstBill.type || 'property',
+            title: firstBill.title || '物业费',
+            amount: firstBill.amount || '',
+            period: firstBill.period || '',
+            status: firstBill.status || 'unpaid'
+          } : null;
+        }
 
       if (payload.action && payload.action.type === 'query_repair') {
         const active = repairs.filter((repair) => repair.status === 'processing' || repair.status === 'pending').slice(0, 3);
@@ -479,31 +557,33 @@ Page({
       if (payload.openclawUrl && payload.openclawUrl !== this.data.openclawUrl) {
         this.setData({ openclawUrl: payload.openclawUrl });
       }
-      this.setData({
-        loading: false,
-        loadingStageTitle: '正在提交到智能助手',
-        loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
-        loadingSteps: this.buildLoadingSteps(0),
-        quickReplies
-      });
-      this.stopLoadingQueue();
-    } catch (error) {
+        this.setData({
+          loading: false,
+          loadingStageTitle: '正在提交到智能助手',
+          loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
+          loadingSteps: this.buildLoadingSteps(0),
+          quickReplies
+        });
+        this.stopLoadingQueue();
+      } catch (error) {
       this.pushMessage({
         role: 'assistant',
         type: 'text',
         text: error.message || '智能助手暂时不可用，你可以先使用快捷入口。',
         meta: { 场景: 'general', 评分: 0 }
       });
-      this.setData({
-        loading: false,
-        loadingStageTitle: '正在提交到智能助手',
-        loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
-        loadingSteps: this.buildLoadingSteps(0),
-        quickReplies: ['查物业费', '查报修', '提交报修', '提交投诉', '转人工']
-      });
-      this.stopLoadingQueue();
-    }
-  },
+        this.setData({
+          loading: false,
+          loadingStageTitle: '正在提交到智能助手',
+          loadingStageHint: '已收到你的消息，正在接入智能引擎并排队处理。',
+          loadingSteps: this.buildLoadingSteps(0),
+          quickReplies: ['查物业费', '查报修', '提交报修', '提交投诉', '转人工']
+        });
+        this.stopLoadingQueue();
+      } finally {
+        this._sendingAssistantMessage = false;
+      }
+    },
 
   confirmDraft() {
     const draft = this.data.draftCard || {};

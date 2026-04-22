@@ -5,8 +5,8 @@
   height: 100vh;
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 20rpx;
-  padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
+  padding: 16rpx;
+  padding-bottom: calc(22rpx + env(safe-area-inset-bottom));
   background:
     radial-gradient(circle at top left, rgba(91, 140, 255, 0.16), transparent 34%),
     radial-gradient(circle at top right, rgba(45, 212, 191, 0.12), transparent 28%),
@@ -22,12 +22,12 @@
 }
 
 .assistant-head {
-  padding: 6rpx 8rpx 18rpx;
+  padding: 4rpx 8rpx 10rpx;
 }
 
 .assistant-head-title {
   display: block;
-  font-size: 38rpx;
+  font-size: 34rpx;
   line-height: 1.2;
   color: #172b4d;
   font-weight: 700;
@@ -35,14 +35,74 @@
 
 .assistant-head-subtitle {
   display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
+  margin-top: 6rpx;
+  font-size: 22rpx;
   line-height: 1.6;
   color: #66708b;
 }
 
+.assistant-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 220rpx;
+  margin-bottom: 12rpx;
+  border-radius: 28rpx;
+}
+
+.assistant-hero-image {
+  width: 100%;
+  height: 220rpx;
+  display: block;
+}
+
+.assistant-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24rpx 22rpx 20rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(242, 247, 255, 0.16) 100%);
+}
+
+.assistant-hero-copy {
+  width: 68%;
+}
+
+.assistant-hero-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #14213d;
+  letter-spacing: 1rpx;
+}
+
+.assistant-hero-subtitle {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  line-height: 1.6;
+  color: #54607c;
+}
+
+.assistant-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.assistant-hero-tag {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  color: #16325c;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1rpx solid rgba(59, 91, 253, 0.12);
+  backdrop-filter: blur(10px);
+}
+
 .section {
-  margin-bottom: 22rpx;
+  margin-bottom: 10rpx;
 }
 
 .section-header {
@@ -135,30 +195,41 @@
 
 .service-card-title {
   display: block;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 700;
 }
 
 .service-card-subtitle {
   display: block;
-  margin-top: 6rpx;
-  font-size: 20rpx;
+  margin-top: 4rpx;
+  font-size: 18rpx;
   line-height: 1.5;
   color: #66708b;
 }
 
 .quick-service-section {
-  margin-top: 12rpx;
+  margin-top: 2rpx;
 }
 
-.compact-service-grid {
+.quick-service-scroll {
+  width: 100%;
+}
+
+.quick-service-row {
+  display: flex;
+  align-items: stretch;
   gap: 12rpx;
+  padding-bottom: 4rpx;
+  white-space: nowrap;
+  width: max-content;
 }
 
 .compact-service-card {
-  min-height: 96rpx;
-  padding: 12rpx 14rpx;
-  border-radius: 18rpx;
+  flex: 0 0 auto;
+  width: 186rpx;
+  min-height: 66rpx;
+  padding: 10rpx 10rpx;
+  border-radius: 16rpx;
 }
 
 .service-card.tone-blue {
@@ -192,10 +263,10 @@
 .chat-panel {
   flex: 1;
   min-height: 0;
-  height: auto;
-  padding: 18rpx;
+  height: 58vh;
+  padding: 12rpx;
   overflow: hidden;
-  margin-bottom: 14rpx;
+  margin-bottom: 8rpx;
 }
 
 .assistant-loading {
@@ -203,7 +274,7 @@
   flex-direction: column;
   gap: 16rpx;
   padding: 18rpx 20rpx;
-  margin-bottom: 14rpx;
+  margin-bottom: 8rpx;
   background: rgba(255, 255, 255, 0.94);
   border: 1rpx solid rgba(59, 91, 253, 0.12);
 }
@@ -464,7 +535,7 @@
 
 .draft-card {
   padding: 20rpx 22rpx;
-  margin-top: 14rpx;
+  margin-top: 8rpx;
 }
 
 .draft-body {
@@ -516,30 +587,30 @@
 .input-bar {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  padding: 14rpx 14rpx;
-  margin-top: 8rpx;
+  gap: 8rpx;
+  padding: 8rpx 10rpx;
+  margin-top: 4rpx;
 }
 
 .assistant-input {
   flex: 1;
-  min-height: 70rpx;
+  min-height: 58rpx;
   background: #f7f9ff;
-  border-radius: 18rpx;
-  padding: 0 22rpx;
-  font-size: 24rpx;
+  border-radius: 16rpx;
+  padding: 0 16rpx;
+  font-size: 21rpx;
   box-sizing: border-box;
 }
 
 .send-btn {
-  min-width: 96rpx;
-  height: 70rpx;
-  line-height: 70rpx;
-  border-radius: 16rpx;
+  min-width: 82rpx;
+  height: 58rpx;
+  line-height: 58rpx;
+  border-radius: 14rpx;
   background: linear-gradient(135deg, #3b5bfd 0%, #2dd4bf 100%);
   color: #fff;
-  font-size: 20rpx;
-  padding: 0 14rpx;
+  font-size: 19rpx;
+  padding: 0 10rpx;
 }
 
 .send-btn::after {

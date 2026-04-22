@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -1266,7 +1267,6 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   private List<Map<String, Object>> sortedValues(Map<String, Map<String, Object>> source) {
     List<Map<String, Object>> list = new ArrayList<>();
     source.values().forEach(item -> list.add(cloneMap(item)));
-    list.sort(Comparator.comparing(item -> String.valueOf(item.getOrDefault("createTime", "")), Comparator.reverseOrder()));
     return list;
   }
 
@@ -1425,28 +1425,43 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   @Override
   public Map<String, Object> login(AuthLoginRequest request) {
     String openid = "openid-" + request.phone;
-    Map<String, Object> matchedHouse = findHouseForLogin(request);
+    List<Map<String, Object>> matchedHouses = findHouseMatchesForLogin(request);
+      if (matchedHouses.isEmpty()) {
+        throw new BusinessException(404, "该手机号未绑定任何房屋，请联系物业处理");
+      }
+    String selectedHouseId = textValue(request.houseId);
+    Map<String, Object> matchedHouse = null;
+    if (!selectedHouseId.isEmpty()) {
+      for (Map<String, Object> house : matchedHouses) {
+        if (selectedHouseId.equals(textValue(house.get("id")))) {
+          matchedHouse = cloneMap(house);
+          break;
+        }
+      }
+      if (matchedHouse == null && houses.containsKey(selectedHouseId)) {
+        matchedHouse = cloneMap(houses.get(selectedHouseId));
+      }
+    } else if (matchedHouses.size() == 1) {
+      matchedHouse = cloneMap(matchedHouses.get(0));
+    }
+    if (matchedHouse == null) {
+      return mapOf(
+          "needHouseSelection", true,
+          "houseSelectionRequired", true,
+          "houseCount", matchedHouses.size(),
+          "houseOptions", matchedHouses.stream().map(this::buildHouseLoginOption).collect(Collectors.toList()),
+          "phone", request.phone,
+          "message", "检测到多个房屋，请先选择房屋"
+      );
+    }
+    String resolvedCommunity = textValue(matchedHouse.get("community"));
     String resolvedHouseId = request.houseId;
     String resolvedHouseNo = request.houseNo;
-    if (matchedHouse != null) {
-      if (resolvedHouseId == null || resolvedHouseId.trim().isEmpty()) {
-        resolvedHouseId = textValue(matchedHouse.get("id"));
-      }
-      if (resolvedHouseNo == null || resolvedHouseNo.trim().isEmpty()) {
-        resolvedHouseNo = textValue(matchedHouse.get("houseNo"));
-      }
-      if (request.community == null || request.community.trim().isEmpty()) {
-        request.community = textValue(matchedHouse.get("community"));
-      }
-      if (request.building == null || request.building.trim().isEmpty()) {
-        request.building = textValue(matchedHouse.get("building"));
-      }
-      if (request.unit == null || request.unit.trim().isEmpty()) {
-        request.unit = textValue(matchedHouse.get("unit"));
-      }
-      if (request.room == null || request.room.trim().isEmpty()) {
-        request.room = textValue(matchedHouse.get("room"));
-      }
+    if (resolvedHouseId == null || resolvedHouseId.trim().isEmpty()) {
+      resolvedHouseId = textValue(matchedHouse.get("id"));
+    }
+    if (resolvedHouseNo == null || resolvedHouseNo.trim().isEmpty()) {
+      resolvedHouseNo = textValue(matchedHouse.get("houseNo"));
     }
     Map<String, Object> user = users.get(openid);
     if (user == null) {
@@ -1456,13 +1471,18 @@ public class InMemoryPropertyDataService implements PropertyDataService {
           "openid", openid,
           "name", request.userInfo != null && request.userInfo.get("nickName") != null ? String.valueOf(request.userInfo.get("nickName")) : "业主",
           "avatar", request.userInfo != null && request.userInfo.get("avatarUrl") != null ? String.valueOf(request.userInfo.get("avatarUrl")) : "/assets/images/default-avatar.png",
-          "phone", request.phone,
-        "community", request.community,
-        "building", request.building,
-        "unit", request.unit,
-        "room", request.room,
+        "phone", request.phone,
+        "community", resolvedCommunity,
+        "building", textValue(matchedHouse.get("building")),
+        "unit", textValue(matchedHouse.get("unit")),
+        "room", textValue(matchedHouse.get("room")),
         "houseId", resolvedHouseId == null ? "" : resolvedHouseId,
-        "houseNo", resolvedHouseNo == null || resolvedHouseNo.isEmpty() ? request.room : resolvedHouseNo,
+        "houseNo", resolvedHouseNo == null || resolvedHouseNo.isEmpty() ? textValue(matchedHouse.get("houseNo")) : resolvedHouseNo,
+        "selectedHouseId", textValue(matchedHouse.get("id")),
+        "selectedHouseNo", textValue(matchedHouse.get("houseNo")),
+        "houseIds", matchedHouses.stream().map(item -> textValue(item.get("id"))).filter(value -> !value.isEmpty()).distinct().collect(Collectors.toList()),
+        "houseNos", matchedHouses.stream().map(item -> textValue(item.get("houseNo"))).filter(value -> !value.isEmpty()).distinct().collect(Collectors.toList()),
+        "houseOptions", matchedHouses.stream().map(this::buildHouseLoginOption).collect(Collectors.toList()),
         "relationship", request.relationship == null ? "业主" : request.relationship,
         "createTime", now(),
         "status", "active"
@@ -1470,10 +1490,10 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       users.put(openid, user);
     } else {
       user.put("phone", request.phone);
-      user.put("community", request.community);
-      user.put("building", request.building);
-      user.put("unit", request.unit);
-      user.put("room", request.room);
+      user.put("community", resolvedCommunity);
+      user.put("building", textValue(matchedHouse.get("building")));
+      user.put("unit", textValue(matchedHouse.get("unit")));
+      user.put("room", textValue(matchedHouse.get("room")));
       if (resolvedHouseId != null) {
         user.put("houseId", resolvedHouseId);
       }
@@ -1483,10 +1503,16 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       if (request.relationship != null) {
         user.put("relationship", request.relationship);
       }
+      if (!user.containsKey("houseIds")) {
+        user.put("houseIds", matchedHouses.stream().map(item -> textValue(item.get("id"))).filter(value -> !value.isEmpty()).distinct().collect(Collectors.toList()));
+      }
+      if (!user.containsKey("houseNos")) {
+        user.put("houseNos", matchedHouses.stream().map(item -> textValue(item.get("houseNo"))).filter(value -> !value.isEmpty()).distinct().collect(Collectors.toList()));
+      }
     }
     String token = tokenFor(openid);
     persistAll();
-    return mapOf("token", token, "user", cloneMap(user), "community", communityByName(request.community));
+    return mapOf("token", token, "user", cloneMap(user), "community", communityByName(resolvedCommunity));
   }
 
   @Override
@@ -1508,6 +1534,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       if (payload.get(key) != null) {
         user.put(key, payload.get(key));
       }
+    }
+    if (payload.get("houseIds") != null) {
+      user.put("houseIds", normalizeStringList(payload.get("houseIds")));
+    }
+    if (payload.get("houseNos") != null) {
+      user.put("houseNos", normalizeStringList(payload.get("houseNos")));
     }
     user.put("updateTime", now());
     persistAll();
@@ -1653,13 +1685,21 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         : String.valueOf(payload.get("id"));
     String room = String.valueOf(payload.getOrDefault("room", ""));
     String houseNo = String.valueOf(payload.getOrDefault("houseNo", room));
+    double area = numericValue(payload.get("area"));
+    double unitPrice = numericValue(payload.get("unitPrice"));
+    double amount = numericValue(payload.get("amount"));
+    if ((!Double.isFinite(amount) || amount <= 0) && Double.isFinite(area) && Double.isFinite(unitPrice) && area > 0 && unitPrice > 0) {
+      amount = Math.round(area * unitPrice * 100.0) / 100.0;
+    }
     String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", currentCommunityName())));
     String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> bill = mapOf(
         "id", id,
         "type", String.valueOf(payload.getOrDefault("type", "property")),
         "title", String.valueOf(payload.getOrDefault("title", "")),
-        "amount", payload.getOrDefault("amount", 0),
+        "amount", Double.isFinite(amount) ? amount : payload.getOrDefault("amount", 0),
+        "area", Double.isFinite(area) ? area : payload.getOrDefault("area", ""),
+        "unitPrice", Double.isFinite(unitPrice) ? unitPrice : payload.getOrDefault("unitPrice", ""),
         "period", String.valueOf(payload.getOrDefault("period", "")),
         "dueDate", String.valueOf(payload.getOrDefault("dueDate", "")),
         "status", String.valueOf(payload.getOrDefault("status", "unpaid")),
@@ -4333,6 +4373,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       changed |= updateDemoRecord(demoUser, "room", "101室");
       changed |= updateDemoRecord(demoUser, "houseId", "1");
       changed |= updateDemoRecord(demoUser, "houseNo", "A栋 101室");
+      changed |= updateDemoRecord(demoUser, "houseIds", Arrays.asList("1"));
+      changed |= updateDemoRecord(demoUser, "houseNos", Arrays.asList("A栋 101室"));
       changed |= updateDemoRecord(demoUser, "relationship", "业主");
     }
     Map<String, Object> primaryHouse = houses.get("1");
@@ -4345,6 +4387,9 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       changed |= updateDemoRecord(primaryHouse, "boundUserId", DEMO_OPENID);
       changed |= updateDemoRecord(primaryHouse, "boundUserName", "业主");
       changed |= updateDemoRecord(primaryHouse, "boundUserPhone", "13800138000");
+      changed |= updateDemoRecord(primaryHouse, "boundUserIds", Arrays.asList(DEMO_OPENID));
+      changed |= updateDemoRecord(primaryHouse, "boundUserNames", Arrays.asList("业主"));
+      changed |= updateDemoRecord(primaryHouse, "boundUserPhones", Arrays.asList("13800138000"));
       changed |= updateDemoRecord(primaryHouse, "occupantName", "业主");
       changed |= updateDemoRecord(primaryHouse, "occupantPhone", "13800138000");
     }
@@ -4417,20 +4462,36 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if (!userOpenid.isEmpty() && userOpenid.equals(billOpenid)) {
       return true;
     }
+    List<String> userHouseIds = new ArrayList<>(normalizeStringList(user.get("houseIds")));
     String userHouseId = textValue(user.get("houseId"));
+    if (!userHouseId.isEmpty() && !userHouseIds.contains(userHouseId)) {
+      userHouseIds.add(userHouseId);
+    }
     String billHouseId = textValue(bill.get("houseId"));
-    if (!userHouseId.isEmpty() && userHouseId.equals(billHouseId)) {
+    if (!billHouseId.isEmpty() && userHouseIds.contains(billHouseId)) {
       return true;
     }
+    List<String> userHouseNos = new ArrayList<>(normalizeStringList(user.get("houseNos")));
+    String userHouseNo = textValue(user.get("houseNo"));
+    if (!userHouseNo.isEmpty() && !userHouseNos.contains(userHouseNo)) {
+      userHouseNos.add(userHouseNo);
+    }
     boolean userHasHouseBinding = !userHouseId.isEmpty()
-        || !textValue(user.get("houseNo")).isEmpty()
+        || !userHouseNos.isEmpty()
         || !textValue(user.get("room")).isEmpty()
         || !textValue(user.get("building")).isEmpty()
         || !textValue(user.get("unit")).isEmpty();
-    if (sameHouseLabel(bill.get("houseNo"), user.get("houseNo"))
-        || sameHouseLabel(bill.get("room"), user.get("room"))
-        || sameHouseLabel(bill.get("houseNo"), user.get("room"))
-        || sameHouseLabel(bill.get("room"), user.get("houseNo"))) {
+    String billHouseNo = textValue(bill.get("houseNo"));
+    String billRoom = textValue(bill.get("room"));
+    for (String candidate : userHouseNos) {
+      if (sameHouseLabel(billHouseNo, candidate) || sameHouseLabel(billRoom, candidate)) {
+        return true;
+      }
+    }
+    if (sameHouseLabel(billHouseNo, userHouseNo)
+        || sameHouseLabel(billRoom, userHouseNo)
+        || sameHouseLabel(billHouseNo, user.get("room"))
+        || sameHouseLabel(billRoom, user.get("room"))) {
       return true;
     }
     if (userHasHouseBinding) {
@@ -4439,8 +4500,6 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String userCommunity = textValue(user.get("community"));
     String billCommunity = textValue(bill.get("community"));
     if (!userCommunity.isEmpty() && userCommunity.equals(billCommunity)) {
-      String billHouseNo = textValue(bill.get("houseNo"));
-      String billRoom = textValue(bill.get("room"));
       if (billHouseNo.isEmpty() && billRoom.isEmpty()) {
         return true;
       }
@@ -4471,19 +4530,135 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return value == null ? "" : String.valueOf(value).trim();
   }
 
+  private double numericValue(Object value) {
+    if (value == null) {
+      return Double.NaN;
+    }
+    String text = String.valueOf(value).trim();
+    if (text.isEmpty()) {
+      return Double.NaN;
+    }
+    try {
+      double parsed = Double.parseDouble(text);
+      return Double.isFinite(parsed) ? parsed : Double.NaN;
+    } catch (Exception error) {
+      return Double.NaN;
+    }
+  }
+
   private Map<String, Object> findHouseForLogin(AuthLoginRequest request) {
-    if (request == null) {
+    List<Map<String, Object>> matches = findHouseMatchesForLogin(request);
+    if (matches.isEmpty()) {
       return null;
     }
-    String houseId = textValue(request.houseId);
-    if (!houseId.isEmpty() && houses.containsKey(houseId)) {
-      return cloneMap(houses.get(houseId));
+    return cloneMap(matches.get(0));
+  }
+
+  private List<Map<String, Object>> findHouseMatchesForLogin(AuthLoginRequest request) {
+    if (request == null) {
+      return new ArrayList<>();
     }
+    String houseId = textValue(request.houseId);
+    String phone = textValue(request.phone);
     String houseNo = textValue(request.houseNo);
     String communityName = textValue(request.community);
     String building = textValue(request.building);
     String unit = textValue(request.unit);
     String room = textValue(request.room);
+    Map<String, Map<String, Object>> phoneMatches = new LinkedHashMap<>();
+    if (!houseId.isEmpty() && houses.containsKey(houseId)) {
+      addHouseMatch(phoneMatches, houses.get(houseId));
+    }
+    for (Map<String, Object> user : users.values()) {
+      if (!phone.isEmpty() && phone.equals(textValue(user.get("phone")))) {
+        String userHouseId = textValue(user.get("houseId"));
+        if (!userHouseId.isEmpty() && houses.containsKey(userHouseId)) {
+          addHouseMatch(phoneMatches, houses.get(userHouseId));
+        }
+        for (String linkedHouseId : normalizeStringList(user.get("houseIds"))) {
+          if (!linkedHouseId.isEmpty() && houses.containsKey(linkedHouseId)) {
+            addHouseMatch(phoneMatches, houses.get(linkedHouseId));
+          }
+        }
+        for (String linkedHouseNo : normalizeStringList(user.get("houseNos"))) {
+          if (linkedHouseNo.isEmpty()) {
+            continue;
+          }
+          for (Map<String, Object> house : houses.values()) {
+            if (sameHouseLabel(linkedHouseNo, house.get("houseNo")) || sameHouseLabel(linkedHouseNo, house.get("room"))) {
+              addHouseMatch(phoneMatches, house);
+            }
+          }
+        }
+      }
+    }
+    for (Map<String, Object> house : houses.values()) {
+      if (phone.isEmpty()) {
+        continue;
+      }
+      if (phone.equals(textValue(house.get("ownerPhone")))
+          || phone.equals(textValue(house.get("occupantPhone")))
+          || phone.equals(textValue(house.get("boundUserPhone")))) {
+        addHouseMatch(phoneMatches, house);
+      }
+      for (String candidatePhone : normalizeStringList(house.get("ownerPhones"))) {
+        if (phone.equals(textValue(candidatePhone))) {
+          addHouseMatch(phoneMatches, house);
+          break;
+        }
+      }
+      for (String candidatePhone : normalizeStringList(house.get("occupantPhones"))) {
+        if (phone.equals(textValue(candidatePhone))) {
+          addHouseMatch(phoneMatches, house);
+          break;
+        }
+      }
+      for (String candidatePhone : normalizeStringList(house.get("boundUserPhones"))) {
+        if (phone.equals(textValue(candidatePhone))) {
+          addHouseMatch(phoneMatches, house);
+          break;
+        }
+      }
+      for (String candidatePhone : normalizeStringList(house.get("residentPhones"))) {
+        if (phone.equals(textValue(candidatePhone))) {
+          addHouseMatch(phoneMatches, house);
+          break;
+        }
+      }
+    }
+    List<Map<String, Object>> orderedMatches = new ArrayList<>(phoneMatches.values());
+    if (!orderedMatches.isEmpty()) {
+      if (!communityName.isEmpty()) {
+        Map<String, Object> preferred = null;
+        for (Map<String, Object> house : orderedMatches) {
+          if (communityName.equals(textValue(house.get("community")))) {
+            preferred = house;
+            break;
+          }
+        }
+        if (preferred != null) {
+          orderedMatches.remove(preferred);
+          orderedMatches.add(0, preferred);
+        }
+      }
+      String activeCommunity = currentCommunityName();
+      Map<String, Object> activePreferred = null;
+      for (Map<String, Object> house : orderedMatches) {
+        if (activeCommunity.equals(textValue(house.get("community")))) {
+          activePreferred = house;
+          break;
+        }
+      }
+      if (activePreferred != null) {
+        orderedMatches.remove(activePreferred);
+        orderedMatches.add(0, activePreferred);
+      }
+      return orderedMatches;
+    }
+    boolean hasExplicitHouseCriteria = !communityName.isEmpty() || !houseNo.isEmpty() || !building.isEmpty() || !unit.isEmpty() || !room.isEmpty();
+    if (!hasExplicitHouseCriteria) {
+      return new ArrayList<>();
+    }
     return houses.values().stream()
         .filter(house -> {
           if (!communityName.isEmpty() && !communityName.equals(textValue(house.get("community")))) {
@@ -4497,9 +4672,73 @@ public class InMemoryPropertyDataService implements PropertyDataService {
           boolean sameRoom = room.isEmpty() || sameHouseLabel(room, house.get("room"));
           return sameBuilding && sameUnit && sameRoom;
         })
-        .findFirst()
         .map(this::cloneMap)
-        .orElse(null);
+        .collect(Collectors.toList());
+  }
+
+  private void addHouseMatch(Map<String, Map<String, Object>> target, Map<String, Object> house) {
+    if (target == null || house == null) {
+      return;
+    }
+    String id = textValue(house.get("id"));
+    if (id.isEmpty() || target.containsKey(id)) {
+      return;
+    }
+    target.put(id, cloneMap(house));
+  }
+
+  private Map<String, Object> buildHouseLoginOption(Map<String, Object> house) {
+    Map<String, Object> option = new LinkedHashMap<>();
+    if (house == null) {
+      return option;
+    }
+    String houseNo = textValue(firstNonEmpty(house.get("houseNo"), house.get("room")));
+    String communityName = textValue(house.get("community"));
+    String building = textValue(house.get("building"));
+    String unit = textValue(house.get("unit"));
+    String room = textValue(house.get("room"));
+    String ownerName = textValue(house.get("ownerName"));
+    String occupantName = textValue(house.get("occupantName"));
+    String boundUserName = textValue(house.get("boundUserName"));
+    List<String> parts = new ArrayList<>();
+    if (!communityName.isEmpty()) {
+      parts.add(communityName);
+    }
+    if (!houseNo.isEmpty()) {
+      parts.add(houseNo);
+    } else {
+      String composed = Arrays.asList(building, unit, room).stream().filter(value -> value != null && !value.trim().isEmpty()).collect(Collectors.joining(""));
+      if (!composed.isEmpty()) {
+        parts.add(composed);
+      }
+    }
+    String household = textValue(firstNonEmpty(boundUserName, occupantName, ownerName, ""));
+    if (household != null && !String.valueOf(household).trim().isEmpty()) {
+      parts.add(String.valueOf(household).trim());
+    }
+    option.put("id", house.getOrDefault("id", ""));
+    option.put("value", house.getOrDefault("id", ""));
+    option.put("label", parts.isEmpty() ? String.valueOf(house.getOrDefault("id", "")) : String.join(" / ", parts));
+    option.put("detail", Arrays.asList(
+        !building.isEmpty() ? building : null,
+        !unit.isEmpty() ? unit : null,
+        !room.isEmpty() ? room : null,
+        !ownerName.isEmpty() ? "产权人：" + ownerName : null,
+        !occupantName.isEmpty() ? "入住人：" + occupantName : null,
+        !boundUserName.isEmpty() ? "绑定住户：" + boundUserName : null
+    ).stream().filter(value -> value != null && !String.valueOf(value).trim().isEmpty()).map(String::valueOf).collect(Collectors.joining("，")));
+    option.put("communityId", house.getOrDefault("communityId", ""));
+    option.put("community", communityName);
+    option.put("houseNo", houseNo);
+    option.put("building", building);
+    option.put("unit", unit);
+    option.put("room", room);
+    option.put("ownerName", ownerName);
+    option.put("occupantName", occupantName);
+    option.put("boundUserName", boundUserName);
+    option.put("ownershipStatus", house.getOrDefault("ownershipStatus", ""));
+    option.put("occupancyStatus", house.getOrDefault("occupancyStatus", ""));
+    return option;
   }
 
   @Override
@@ -4581,11 +4820,247 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return findById(users, id, "住户账号");
   }
 
+  private String normalizeReferenceText(Object value) {
+    return textValue(value).replaceAll("\\s+", "").trim();
+  }
+
+  private boolean houseReferenceMatches(Map<String, Object> house, String reference) {
+    String normalized = normalizeReferenceText(reference);
+    if (normalized.isEmpty()) {
+      return false;
+    }
+    String houseNo = normalizeReferenceText(firstNonEmpty(house.get("houseNo"), ""));
+    String buildingUnitRoom = normalizeReferenceText(
+        textValue(firstNonEmpty(house.get("building"), "")) + textValue(firstNonEmpty(house.get("unit"), "")) + textValue(firstNonEmpty(house.get("room"), "")));
+    String id = normalizeReferenceText(house.get("id"));
+    String houseId = normalizeReferenceText(firstNonEmpty(house.get("houseId"), ""));
+    return normalized.equals(id) || normalized.equals(houseId) || normalized.equals(houseNo) || normalized.equals(buildingUnitRoom);
+  }
+
+  private List<Map<String, Object>> resolveLinkedHouseRecords(Map<String, Object> payload) {
+    LinkedHashMap<String, Map<String, Object>> linked = new LinkedHashMap<>();
+    for (String id : normalizeStringList(firstNonEmpty(payload == null ? null : payload.get("houseIds"), payload == null ? null : payload.get("houseId")))) {
+      Map<String, Object> house = houses.get(id);
+      if (house != null) {
+        linked.put(textValue(house.get("id")), house);
+      }
+    }
+    for (String ref : normalizeStringList(firstNonEmpty(payload == null ? null : payload.get("houseNos"), payload == null ? null : payload.get("houseNo")))) {
+      for (Map<String, Object> house : houses.values()) {
+        if (houseReferenceMatches(house, ref)) {
+          linked.put(textValue(house.get("id")), house);
+        }
+      }
+    }
+    return new ArrayList<>(linked.values());
+  }
+
+  private List<Map<String, Object>> resolveLinkedUserRecords(Map<String, Object> payload) {
+    LinkedHashMap<String, Map<String, Object>> linked = new LinkedHashMap<>();
+    for (String id : normalizeStringList(firstNonEmpty(payload == null ? null : payload.get("boundUserIds"), payload == null ? null : payload.get("boundUserId")))) {
+      Map<String, Object> user = users.get(id);
+      if (user != null) {
+        linked.put(textValue(user.get("id")), user);
+      }
+    }
+    return new ArrayList<>(linked.values());
+  }
+
+  private void syncHouseAddUser(Map<String, Object> house, Map<String, Object> user) {
+    String userId = textValue(user.get("id"));
+    String userName = textValue(firstNonEmpty(user.get("name"), "业主"));
+    String userPhone = textValue(user.get("phone"));
+    List<String> boundUserIds = new ArrayList<>(normalizeStringList(house.get("boundUserIds")));
+    List<String> boundUserNames = new ArrayList<>(normalizeStringList(house.get("boundUserNames")));
+    List<String> boundUserPhones = new ArrayList<>(normalizeStringList(house.get("boundUserPhones")));
+    if (!boundUserIds.contains(userId)) {
+      boundUserIds.add(userId);
+    }
+    if (!userName.isEmpty() && !boundUserNames.contains(userName)) {
+      boundUserNames.add(userName);
+    }
+    if (!userPhone.isEmpty() && !boundUserPhones.contains(userPhone)) {
+      boundUserPhones.add(userPhone);
+    }
+    String primaryId = textValue(house.get("boundUserId"));
+    if (primaryId.isEmpty() || !boundUserIds.contains(primaryId)) {
+      primaryId = userId;
+    }
+    Map<String, Object> primaryUser = primaryId.isEmpty() ? null : users.get(primaryId);
+    if (primaryUser == null && !boundUserIds.isEmpty()) {
+      primaryUser = users.get(boundUserIds.get(0));
+    }
+    house.put("boundUserIds", boundUserIds);
+    house.put("boundUserNames", boundUserNames);
+    house.put("boundUserPhones", boundUserPhones);
+    house.put("boundUserId", primaryId);
+    house.put("boundUserName", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("name"), boundUserNames.isEmpty() ? "" : boundUserNames.get(0))));
+    house.put("boundUserPhone", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("phone"), boundUserPhones.isEmpty() ? "" : boundUserPhones.get(0))));
+    house.put("occupantName", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("name"), house.get("occupantName"), house.get("boundUserName"), userName)));
+    house.put("occupantPhone", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("phone"), house.get("occupantPhone"), house.get("boundUserPhone"), userPhone)));
+    if (boundUserIds.isEmpty()) {
+      house.put("occupancyStatus", "vacant");
+      house.put("status", "vacant");
+      house.put("statusText", "空置");
+    } else {
+      house.put("occupancyStatus", "occupied");
+      house.put("status", "occupied");
+      house.put("statusText", "已入住");
+    }
+  }
+
+  private void syncHouseRemoveUser(Map<String, Object> house, String userId) {
+    String targetUserId = textValue(userId);
+    List<String> boundUserIds = new ArrayList<>(normalizeStringList(house.get("boundUserIds")));
+    List<String> boundUserNames = new ArrayList<>(normalizeStringList(house.get("boundUserNames")));
+    List<String> boundUserPhones = new ArrayList<>(normalizeStringList(house.get("boundUserPhones")));
+    if (!targetUserId.isEmpty()) {
+      boundUserIds.removeIf(item -> targetUserId.equals(textValue(item)));
+    }
+    String targetName = "";
+    String targetPhone = "";
+    Map<String, Object> matchedUser = targetUserId.isEmpty() ? null : users.get(targetUserId);
+    if (matchedUser != null) {
+      targetName = textValue(matchedUser.get("name"));
+      targetPhone = textValue(matchedUser.get("phone"));
+    }
+    final String removeName = targetName;
+    final String removePhone = targetPhone;
+    if (!removeName.isEmpty()) {
+      boundUserNames.removeIf(item -> removeName.equals(textValue(item)));
+    }
+    if (!removePhone.isEmpty()) {
+      boundUserPhones.removeIf(item -> removePhone.equals(textValue(item)));
+    }
+    String primaryId = textValue(house.get("boundUserId"));
+    if (!boundUserIds.contains(primaryId)) {
+      primaryId = boundUserIds.isEmpty() ? "" : boundUserIds.get(0);
+    }
+    Map<String, Object> primaryUser = primaryId.isEmpty() ? null : users.get(primaryId);
+    house.put("boundUserIds", boundUserIds);
+    house.put("boundUserNames", boundUserNames);
+    house.put("boundUserPhones", boundUserPhones);
+    house.put("boundUserId", primaryId);
+    house.put("boundUserName", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("name"), boundUserNames.isEmpty() ? "" : boundUserNames.get(0))));
+    house.put("boundUserPhone", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("phone"), boundUserPhones.isEmpty() ? "" : boundUserPhones.get(0))));
+    if (boundUserIds.isEmpty()) {
+      house.put("occupantName", "");
+      house.put("occupantPhone", "");
+      house.put("occupancyStatus", "vacant");
+      house.put("status", "vacant");
+      house.put("statusText", "空置");
+    } else {
+      house.put("occupantName", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("name"), house.get("occupantName"), house.get("boundUserName"))));
+      house.put("occupantPhone", textValue(firstNonEmpty(primaryUser == null ? null : primaryUser.get("phone"), house.get("occupantPhone"), house.get("boundUserPhone"))));
+      house.put("occupancyStatus", "occupied");
+      house.put("status", "occupied");
+      house.put("statusText", "已入住");
+    }
+  }
+
+  private void syncUserAddHouse(Map<String, Object> user, Map<String, Object> house) {
+    String houseId = textValue(house.get("id"));
+    String houseNo = textValue(firstNonEmpty(house.get("houseNo"), ""));
+    if (houseNo.isEmpty()) {
+      houseNo = textValue(firstNonEmpty(house.get("building"), "")) + textValue(firstNonEmpty(house.get("unit"), "")) + textValue(firstNonEmpty(house.get("room"), ""));
+    }
+    List<String> houseIds = new ArrayList<>(normalizeStringList(user.get("houseIds")));
+    List<String> houseNos = new ArrayList<>(normalizeStringList(user.get("houseNos")));
+    if (!houseIds.contains(houseId)) {
+      houseIds.add(houseId);
+    }
+    if (!houseNo.isEmpty() && !houseNos.contains(houseNo)) {
+      houseNos.add(houseNo);
+    }
+    String primaryHouseId = textValue(user.get("houseId"));
+    if (primaryHouseId.isEmpty() || !houseIds.contains(primaryHouseId)) {
+      primaryHouseId = houseId;
+    }
+    Map<String, Object> primaryHouse = primaryHouseId.isEmpty() ? null : houses.get(primaryHouseId);
+    if (primaryHouse == null && !houseIds.isEmpty()) {
+      primaryHouse = houses.get(houseIds.get(0));
+    }
+    user.put("houseIds", houseIds);
+    user.put("houseNos", houseNos);
+    user.put("houseId", primaryHouseId);
+    user.put("houseNo", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("houseNo"), houseNos.isEmpty() ? "" : houseNos.get(0))));
+    user.put("building", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("building"), user.get("building"))));
+    user.put("unit", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("unit"), user.get("unit"))));
+    user.put("room", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("room"), user.get("room"))));
+  }
+
+  private void syncUserRemoveHouse(Map<String, Object> user, String houseId) {
+    String targetHouseId = textValue(houseId);
+    Map<String, Object> targetHouse = targetHouseId.isEmpty() ? null : houses.get(targetHouseId);
+    String targetHouseNo = textValue(firstNonEmpty(targetHouse == null ? null : targetHouse.get("houseNo"), ""));
+    if (targetHouseNo.isEmpty() && targetHouse != null) {
+      targetHouseNo = textValue(firstNonEmpty(targetHouse.get("building"), "")) + textValue(firstNonEmpty(targetHouse.get("unit"), "")) + textValue(firstNonEmpty(targetHouse.get("room"), ""));
+    }
+    List<String> houseIds = new ArrayList<>(normalizeStringList(user.get("houseIds")));
+    List<String> houseNos = new ArrayList<>(normalizeStringList(user.get("houseNos")));
+    if (!targetHouseId.isEmpty()) {
+      houseIds.removeIf(item -> targetHouseId.equals(textValue(item)));
+    }
+    if (!targetHouseNo.isEmpty()) {
+      String normalizedTarget = normalizeReferenceText(targetHouseNo);
+      houseNos.removeIf(item -> normalizedTarget.equals(normalizeReferenceText(item)));
+    }
+    String primaryHouseId = textValue(user.get("houseId"));
+    if (!houseIds.contains(primaryHouseId)) {
+      primaryHouseId = houseIds.isEmpty() ? "" : houseIds.get(0);
+    }
+    Map<String, Object> primaryHouse = primaryHouseId.isEmpty() ? null : houses.get(primaryHouseId);
+    user.put("houseIds", houseIds);
+    user.put("houseNos", houseNos);
+    user.put("houseId", primaryHouseId);
+    user.put("houseNo", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("houseNo"), houseNos.isEmpty() ? "" : houseNos.get(0))));
+    user.put("building", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("building"), "")));
+    user.put("unit", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("unit"), "")));
+    user.put("room", textValue(firstNonEmpty(primaryHouse == null ? null : primaryHouse.get("room"), "")));
+  }
+
+  private void syncHouseResidentRelations(Map<String, Object> house, Map<String, Object> previousHouse) {
+    List<Map<String, Object>> nextUsers = resolveLinkedUserRecords(house);
+    List<Map<String, Object>> previousUsers = previousHouse == null ? new ArrayList<>() : resolveLinkedUserRecords(previousHouse);
+    Set<String> nextIds = nextUsers.stream().map(item -> textValue(item.get("id"))).collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<String> previousIds = previousUsers.stream().map(item -> textValue(item.get("id"))).collect(Collectors.toCollection(LinkedHashSet::new));
+    for (Map<String, Object> user : nextUsers) {
+      syncUserAddHouse(user, house);
+    }
+    for (Map<String, Object> user : previousUsers) {
+      if (!nextIds.contains(textValue(user.get("id")))) {
+        syncUserRemoveHouse(user, textValue(house.get("id")));
+      }
+    }
+    if (nextIds.isEmpty() && !previousIds.isEmpty()) {
+      // keep previous removals already handled above
+    }
+  }
+
+  private void syncUserHouseRelations(Map<String, Object> user, Map<String, Object> previousUser) {
+    List<Map<String, Object>> nextHouses = resolveLinkedHouseRecords(user);
+    List<Map<String, Object>> previousHouses = previousUser == null ? new ArrayList<>() : resolveLinkedHouseRecords(previousUser);
+    Set<String> nextIds = nextHouses.stream().map(item -> textValue(item.get("id"))).collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<String> previousIds = previousHouses.stream().map(item -> textValue(item.get("id"))).collect(Collectors.toCollection(LinkedHashSet::new));
+    for (Map<String, Object> house : nextHouses) {
+      syncHouseAddUser(house, user);
+    }
+    for (Map<String, Object> house : previousHouses) {
+      if (!nextIds.contains(textValue(house.get("id")))) {
+        syncHouseRemoveUser(house, textValue(user.get("id")));
+      }
+    }
+    if (nextIds.isEmpty() && !previousIds.isEmpty()) {
+      // keep previous removals already handled above
+    }
+  }
+
   @Override
   public Map<String, Object> adminSaveUser(Map<String, Object> payload) {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    Map<String, Object> previousUser = users.containsKey(id) ? cloneMap(users.get(id)) : null;
     String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
     String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> user = mapOf(
@@ -4601,6 +5076,8 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "room", String.valueOf(payload.getOrDefault("room", "")),
         "houseId", String.valueOf(payload.getOrDefault("houseId", "")),
         "houseNo", String.valueOf(payload.getOrDefault("houseNo", String.valueOf(payload.getOrDefault("building", "")) + String.valueOf(payload.getOrDefault("unit", "")) + String.valueOf(payload.getOrDefault("room", "")))),
+        "houseIds", normalizeStringList(firstNonEmpty(payload.get("houseIds"), payload.get("houseId"))),
+        "houseNos", normalizeStringList(firstNonEmpty(payload.get("houseNos"), payload.get("houseNo"))),
         "relationship", String.valueOf(payload.getOrDefault("relationship", "业主")),
         "role", String.valueOf(payload.getOrDefault("role", "resident")),
         "status", String.valueOf(payload.getOrDefault("status", "active")),
@@ -4609,6 +5086,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "updateTime", now()
     );
     users.put(id, user);
+    syncUserHouseRelations(user, previousUser);
     persistAll();
     return cloneMap(user);
   }
@@ -4636,6 +5114,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = payload.get("id") == null || String.valueOf(payload.get("id")).isEmpty()
         ? newId()
         : String.valueOf(payload.get("id"));
+    Map<String, Object> previousHouse = houses.containsKey(id) ? cloneMap(houses.get(id)) : null;
     String communityId = communityIdByName(String.valueOf(payload.getOrDefault("community", community.getOrDefault("name", ""))));
     String communityName = String.valueOf(payload.getOrDefault("community", communityNameById(communityId)));
     Map<String, Object> house = mapOf(
@@ -4654,6 +5133,9 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "boundUserId", String.valueOf(payload.getOrDefault("boundUserId", "")),
         "boundUserName", String.valueOf(payload.getOrDefault("boundUserName", payload.getOrDefault("occupantName", ""))),
         "boundUserPhone", String.valueOf(payload.getOrDefault("boundUserPhone", payload.getOrDefault("occupantPhone", ""))),
+        "boundUserIds", normalizeStringList(firstNonEmpty(payload.get("boundUserIds"), payload.get("boundUserId"))),
+        "boundUserNames", normalizeStringList(firstNonEmpty(payload.get("boundUserNames"), payload.get("boundUserName"), payload.get("occupantName"))),
+        "boundUserPhones", normalizeStringList(firstNonEmpty(payload.get("boundUserPhones"), payload.get("boundUserPhone"), payload.get("occupantPhone"))),
         "ownershipStatus", String.valueOf(payload.getOrDefault("ownershipStatus", "self_owned")),
         "occupancyStatus", String.valueOf(payload.getOrDefault("occupancyStatus", payload.getOrDefault("status", "occupied"))),
         "status", String.valueOf(payload.getOrDefault("status", "occupied")),
@@ -4663,6 +5145,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "updateTime", now()
     );
     houses.put(id, house);
+    syncHouseResidentRelations(house, previousHouse);
     persistAll();
     return cloneMap(house);
   }

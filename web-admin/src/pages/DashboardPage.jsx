@@ -55,8 +55,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 const TABS = {
-  notice: { label: '公告', title: '公告管理', subtitle: '搜索、筛选、排序、分页和编辑都在这里完成。' },
-  bill: { label: '账单', title: '账单管理', subtitle: '账单查询、筛选、排序、编辑和批量状态变更都在这里。' },
+  notice: { label: '公告', title: '公告管理', subtitle: '搜索、筛选、分页和编辑都在这里完成。' },
+  bill: { label: '账单', title: '账单管理', subtitle: '这里配置物业费，支持按面积 × 单价录入。' },
   repair: { label: '报修', title: '报修管理', subtitle: '报修记录、审批流转、详情编辑和批量处理都能直接完成。' },
   community: { label: '小区', title: '小区管理', subtitle: '多小区配置、默认负责人、负责人列表和启用状态都能统一维护。' },
   resident: { label: '住户', title: '住户账号管理', subtitle: '住户账号、绑定信息、入住状态和备注都能直接维护。' },
@@ -102,6 +102,18 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value || {}));
 }
 
+function toFiniteNumber(value) {
+  if (value === null || value === undefined) {
+    return NaN;
+  }
+  const text = String(value).trim();
+  if (!text) {
+    return NaN;
+  }
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
 function communityDisplayName(community) {
   if (!community) return '未命名项目';
   return String(community.projectName || community.name || '未命名项目').trim() || '未命名项目';
@@ -131,16 +143,16 @@ function communityVisibleGroups(community) {
 
 function defaultDraftFor(type) {
   if (type === 'resident') {
-    return { id: '', openid: '', name: '', avatar: '', phone: '', community: '', building: '', unit: '', room: '', houseId: '', houseNo: '', relationship: '业主', role: 'resident', status: 'active', remark: '', createTime: '' };
+    return { id: '', openid: '', name: '', avatar: '', phone: '', community: '', building: '', unit: '', room: '', houseId: '', houseNo: '', houseIds: [], houseNos: [], relationship: '业主', role: 'resident', status: 'active', remark: '', createTime: '' };
   }
   if (type === 'house') {
-    return { id: '', community: '', houseNo: '', building: '', unit: '', room: '', area: '', ownerName: '', ownerPhone: '', occupantName: '', occupantPhone: '', boundUserId: '', boundUserName: '', boundUserPhone: '', ownershipStatus: 'self_owned', occupancyStatus: 'occupied', status: 'occupied', statusText: '已入住', remark: '', createTime: '' };
+    return { id: '', community: '', houseNo: '', building: '', unit: '', room: '', area: '', ownerName: '', ownerPhone: '', occupantName: '', occupantPhone: '', boundUserId: '', boundUserName: '', boundUserPhone: '', boundUserIds: [], boundUserNames: [], boundUserPhones: [], ownershipStatus: 'self_owned', occupancyStatus: 'occupied', status: 'occupied', statusText: '已入住', remark: '', createTime: '' };
   }
   if (type === 'staff') {
     return { id: '', community: '', name: '', feishuUserId: '', role: '物业人员', position: '', department: '', phone: '', status: 'active', statusText: '在岗', skill: '', shift: '白班', scope: '', remark: '', createTime: '' };
   }
   if (type === 'bill') {
-    return { id: '', type: 'property', title: '', amount: '', period: '', dueDate: '', status: 'unpaid', paidDate: '', room: '', openid: '' };
+    return { id: '', type: 'property', title: '', houseId: '', houseNo: '', community: '', amount: '', area: '', unitPrice: '', period: '', dueDate: '', status: 'unpaid', paidDate: '', room: '', openid: '' };
   }
   if (type === 'repair') {
     return { id: '', title: '', category: 'other', categoryName: '', description: '', status: 'pending', statusName: '待处理', handler: '', handlerPhone: '', phone: '', houseId: '', houseNo: '', building: '', unit: '', room: '', dispatchTime: '', dispatchRemark: '', dispatchShift: '', dispatchBuilding: '', appointmentTime: '', completionTime: '', openid: '' };
@@ -319,116 +331,6 @@ function filterOptions(tab) {
     { value: 'all', label: '全部' },
     { value: 'important', label: '重要' },
     { value: 'normal', label: '普通' }
-  ];
-}
-
-function sortOptions(tab) {
-  if (tab === 'community') {
-    return [
-      { field: 'name', label: '小区名称' },
-      { field: 'propertyPhone', label: '电话' },
-      { field: 'updateTime', label: '更新时间' }
-    ];
-  }
-  if (tab === 'resident') {
-    return [
-      { field: 'room', label: '房号' },
-      { field: 'relationship', label: '关系' },
-      { field: 'name', label: '姓名' },
-      { field: 'createTime', label: '创建时间' }
-    ];
-  }
-  if (tab === 'house') {
-    return [
-      { field: 'houseNo', label: '房号' },
-      { field: 'area', label: '面积' },
-      { field: 'ownershipStatus', label: '产权' },
-      { field: 'occupancyStatus', label: '入住' }
-    ];
-  }
-  if (tab === 'staff') {
-    return [
-      { field: 'name', label: '姓名' },
-      { field: 'role', label: '角色' },
-      { field: 'shift', label: '班次' },
-      { field: 'scope', label: '区域' },
-      { field: 'createTime', label: '创建时间' }
-    ];
-  }
-  if (tab === 'bill') {
-    return [
-      { field: 'dueDate', label: '到期日' },
-      { field: 'amount', label: '金额' },
-      { field: 'status', label: '状态' }
-    ];
-  }
-  if (tab === 'repair') {
-    return [
-      { field: 'createTime', label: '时间' },
-      { field: 'status', label: '状态' },
-      { field: 'handler', label: '处理人' }
-    ];
-  }
-  if (tab === 'feedback') {
-    return [
-      { field: 'createTime', label: '时间' },
-      { field: 'type', label: '类型' },
-      { field: 'status', label: '状态' }
-    ];
-  }
-  if (tab === 'complaintQueue') {
-    return [
-      { field: 'createTime', label: '时间' },
-      { field: 'severity', label: '等级' },
-      { field: 'pushStatus', label: '推送' }
-    ];
-  }
-  if (tab === 'complaintRule') {
-    return [
-      { field: 'priority', label: '优先级' },
-      { field: 'severity', label: '等级' },
-      { field: 'createTime', label: '创建时间' }
-    ];
-  }
-  if (tab === 'visitor') {
-    return [
-      { field: 'visitTime', label: '访问时间' },
-      { field: 'expireTime', label: '到期时间' },
-      { field: 'status', label: '状态' }
-    ];
-  }
-  if (tab === 'decoration') {
-    return [
-      { field: 'applyDate', label: '申请时间' },
-      { field: 'startDate', label: '开始时间' },
-      { field: 'status', label: '状态' }
-    ];
-  }
-  if (tab === 'express') {
-    return [
-      { field: 'createTime', label: '创建时间' },
-      { field: 'arriveTime', label: '到件时间' },
-      { field: 'status', label: '状态' }
-    ];
-  }
-  if (tab === 'product') {
-    return [
-      { field: 'price', label: '价格' },
-      { field: 'stock', label: '库存' },
-      { field: 'name', label: '名称' }
-    ];
-  }
-  if (tab === 'order') {
-    return [
-      { field: 'createTime', label: '时间' },
-      { field: 'totalAmount', label: '金额' },
-      { field: 'status', label: '状态' }
-    ];
-  }
-  return [
-    { field: 'time', label: '时间' },
-    { field: 'title', label: '标题' },
-    { field: 'important', label: '重要性' }
   ];
 }
 
@@ -654,6 +556,8 @@ function fieldLabel(field) {
     status: '状态',
     statusText: '状态文案',
     statusName: '状态名称',
+    visitorName: '访客姓名',
+    visitorPhone: '访客电话',
     important: '重要公告',
     time: '时间',
     type: '类型',
@@ -661,6 +565,8 @@ function fieldLabel(field) {
     dueDate: '到期日',
     paidDate: '缴费时间',
     amount: '金额',
+    area: '面积',
+    unitPrice: '每平米单价',
     price: '价格',
     stock: '库存',
     spec: '规格',
@@ -680,14 +586,21 @@ function fieldLabel(field) {
     location: '位置',
     reply: '回复',
     remark: '备注',
-    area: '面积',
     ownerName: '产权人',
     ownerPhone: '产权电话',
     occupantName: '入住人',
     occupantPhone: '入住电话',
+    ownerPhones: '产权电话列表',
+    occupantPhones: '入住电话列表',
+    residentPhones: '住户电话列表',
     boundUserId: '绑定住户ID',
     boundUserName: '绑定住户',
     boundUserPhone: '绑定电话',
+    boundUserIds: '绑定住户列表',
+    boundUserNames: '绑定住户姓名列表',
+    boundUserPhones: '绑定电话列表',
+    houseIds: '房屋列表',
+    houseNos: '房号列表',
     ownershipStatus: '产权状态',
     occupancyStatus: '入住状态',
     position: '岗位',
@@ -819,6 +732,14 @@ function formatHouseNo(house = {}) {
   return house.houseNo || [house.building, house.unit, house.room].filter(Boolean).join(' ') || '';
 }
 
+function currentResidentHouseLabel(item = {}) {
+  return item.houseNo || [item.building, item.unit, item.room].filter(Boolean).join(' ') || '-';
+}
+
+function currentHouseResidentLabel(item = {}) {
+  return item.boundUserName || item.occupantName || item.ownerName || '-';
+}
+
 function normalizeShift(value) {
   const text = String(value || '').trim();
   if (!text) return '';
@@ -922,21 +843,25 @@ function rowsFor(type, item) {
     ];
   }
   if (type === 'resident') {
+    const linkedHouseCount = Array.isArray(item.houseIds) && item.houseIds.length
+      ? item.houseIds.length
+      : (item.houseId ? 1 : 0);
     return [
       ['姓名', item.name],
       ['电话', item.phone],
       ['小区', item.community],
-      ['房屋', item.houseNo || `${item.building || ''}${item.unit || ''}${item.room || ''}`],
-      ['绑定房屋ID', item.houseId],
+      ['关联房屋数', linkedHouseCount],
+      ['当前主关联', currentResidentHouseLabel(item)],
+      ['关联房屋列表', Array.isArray(item.houseNos) ? item.houseNos.join('、') : ''],
       ['绑定关系', item.relationship],
-      ['状态', staffStatusLabel(item.status)],
-      ['角色', item.role],
-      ['房屋号', item.houseNo],
       ['创建时间', item.createTime],
       ['备注', item.remark]
     ];
   }
   if (type === 'house') {
+    const linkedUserCount = Array.isArray(item.boundUserIds) && item.boundUserIds.length
+      ? item.boundUserIds.length
+      : (item.boundUserId ? 1 : 0);
     return [
       ['小区', item.community],
       ['房号', item.houseNo],
@@ -946,9 +871,12 @@ function rowsFor(type, item) {
       ['面积', item.area],
       ['产权状态', houseOwnershipLabel(item.ownershipStatus)],
       ['入住状态', occupancyLabel(item.occupancyStatus || item.status)],
+      ['关联住户数', linkedUserCount],
+      ['当前主关联', currentHouseResidentLabel(item)],
       ['业主', item.ownerName],
       ['电话', item.ownerPhone],
       ['绑定住户', item.boundUserName],
+      ['绑定住户列表', Array.isArray(item.boundUserNames) ? item.boundUserNames.join('、') : ''],
       ['绑定电话', item.boundUserPhone],
       ['状态', item.statusText || staffStatusLabel(item.status)],
       ['备注', item.remark]
@@ -976,6 +904,8 @@ function rowsFor(type, item) {
     return [
       ['标题', item.title],
       ['类型', item.type],
+      ['面积', item.area],
+      ['每平米单价', item.unitPrice == null ? '' : `¥${item.unitPrice}`],
       ['金额', item.amount == null ? '' : `¥${item.amount}`],
       ['周期', item.period],
       ['到期', item.dueDate],
@@ -988,13 +918,7 @@ function rowsFor(type, item) {
     return [
       ['标题', item.title],
       ['类别', item.categoryName || item.category],
-      ['状态', item.statusName || item.status],
-      ['楼栋', item.building || '-'],
       ['房屋', item.houseNo || '-'],
-      ['目标班次', item.dispatchShift || '-'],
-      ['分派时间', item.dispatchTime || '-'],
-      ['分派楼栋', item.dispatchBuilding || '-'],
-      ['分派备注', item.dispatchRemark || '-'],
       ['描述', item.description],
       ['处理人', item.handler],
       ['电话', item.handlerPhone || item.phone],
@@ -1057,7 +981,6 @@ function rowsFor(type, item) {
       ['电话', item.visitorPhone],
       ['用途', item.visitPurpose],
       ['通行码', item.passCode],
-      ['状态', item.statusText || item.status],
       ['访问时间', item.visitTime],
       ['到期时间', item.expireTime]
     ];
@@ -1144,6 +1067,20 @@ function renderField(item, field, type, onChange, onToggle, options = {}) {
       </label>
     );
   }
+  if (type === 'datetime-local') {
+    return (
+      <label className="form-field">
+        <span className="field-label">{fieldLabel(field)}</span>
+        <input
+          className="field"
+          type="datetime-local"
+          value={typeof value === 'string' ? value.replace(' ', 'T').slice(0, 16) : ''}
+          onChange={onChange(field)}
+          readOnly={readOnly}
+        />
+      </label>
+    );
+  }
   return (
     <label className="form-field">
       <span className="field-label">{fieldLabel(field)}</span>
@@ -1217,25 +1154,34 @@ function SelectField({ label, value, options, onChange }) {
   );
 }
 
-function FormFields({
-  type,
-  item,
-  onChange,
-  onToggle,
-  communityOptions = [],
-  residentOptions = [],
-  houseOptions = [],
-  buildingOptions = [],
-  staffMentionOptions = [],
+  function FormFields({
+    type,
+    item,
+    onChange,
+    onToggle,
+    communityOptions = [],
+    residentOptions = [],
+    residentNameOptions = [],
+    houseOptions = [],
+    buildingOptions = [],
+    staffMentionOptions = [],
   currentCommunityStaffOptions = [],
   currentCommunityStaffSummary = '',
   staffSupervisorOptions = [],
   currentDefaultSupervisor = '',
   onResidentHouseChange,
+  onResidentHouseMultiChange,
+  onResidentHouseSelectAll,
+  onResidentHouseClear,
   onHouseResidentChange,
+  onHouseResidentMultiChange,
+  onHouseResidentSelectAll,
+  onHouseResidentClear,
   onHouseOwnerChange,
   onHouseOccupantChange,
   onRepairHouseChange,
+  onBillHouseChange,
+  onBillFieldChange,
   onStaffBuildingsChange,
   onCommunitySupervisorsChange,
   onRepairHandlerChange,
@@ -1321,11 +1267,8 @@ function FormFields({
           onChange={onChange('community')}
           placeholder="输入小区名称搜索"
         />
-        {renderField(item, 'building', 'text', onChange, onToggle)}
-        {renderField(item, 'unit', 'text', onChange, onToggle)}
-        {renderField(item, 'room', 'text', onChange, onToggle)}
         <label className="form-field">
-          <span className="field-label">{fieldLabel('houseId')}</span>
+          <span className="field-label">房屋</span>
           <select className="field" value={item.houseId || ''} onChange={(event) => onResidentHouseChange(event.target.value)}>
             <option value="">请选择房屋</option>
             {houseOptions.map((option) => (
@@ -1333,11 +1276,16 @@ function FormFields({
             ))}
           </select>
         </label>
-        {renderField(item, 'houseNo', 'text', onChange, onToggle)}
+        <MultiSelectField
+          label="关联房屋（可多选）"
+          options={houseOptions}
+          value={item.houseIds || []}
+          onToggleValue={onResidentHouseMultiChange}
+          onSelectAll={onResidentHouseSelectAll}
+          onClear={onResidentHouseClear}
+          showActions
+        />
         {renderField(item, 'relationship', 'text', onChange, onToggle)}
-        {renderField(item, 'role', 'text', onChange, onToggle)}
-        {renderField(item, 'status', 'text', onChange, onToggle)}
-        {renderField(item, 'avatar', 'text', onChange, onToggle)}
         {renderField(item, 'remark', 'textarea', onChange, onToggle)}
       </div>
     );
@@ -1363,29 +1311,25 @@ function FormFields({
           options={residentNameOptions}
           onChange={(event) => onHouseOwnerChange(event.target.value)}
         />
-        {renderField(item, 'ownerPhone', 'text', onChange, onToggle)}
         <SelectField
           label={fieldLabel('occupantName')}
           value={item.occupantName || ''}
           options={residentNameOptions}
           onChange={(event) => onHouseOccupantChange(event.target.value)}
         />
-        {renderField(item, 'occupantPhone', 'text', onChange, onToggle)}
-        <label className="form-field">
-          <span className="field-label">{fieldLabel('boundUserId')}</span>
-          <select className="field" value={item.boundUserId || ''} onChange={(event) => onHouseResidentChange(event.target.value)}>
-            <option value="">请选择住户</option>
-            {residentOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        {renderField(item, 'boundUserName', 'text', onChange, onToggle, { readOnly: true })}
-        {renderField(item, 'boundUserPhone', 'text', onChange, onToggle, { readOnly: true })}
-        {renderField(item, 'ownershipStatus', 'text', onChange, onToggle)}
-        {renderField(item, 'occupancyStatus', 'text', onChange, onToggle)}
-        {renderField(item, 'status', 'text', onChange, onToggle)}
-        {renderField(item, 'statusText', 'text', onChange, onToggle)}
+        <MultiSelectField
+          label="关联住户（可多选）"
+          options={residentOptions}
+          value={item.boundUserIds || []}
+          onToggleValue={onHouseResidentMultiChange}
+          onSelectAll={onHouseResidentSelectAll}
+          onClear={onHouseResidentClear}
+          showActions
+        />
+        <div className="form-field form-field-span">
+          <span className="field-label">状态说明</span>
+          <div className="hint">电话、主住户和入住状态会根据关联住户自动维护。</div>
+        </div>
         {renderField(item, 'remark', 'textarea', onChange, onToggle)}
       </div>
     );
@@ -1422,16 +1366,51 @@ function FormFields({
     );
   }
   if (type === 'bill') {
+    const billTypeOptions = [
+      { value: 'property', label: '物业费' },
+      { value: 'water', label: '水费' },
+      { value: 'electricity', label: '电费' },
+      { value: 'other', label: '其他缴费' }
+    ];
+    const isPropertyFee = String(item.type || 'property') === 'property';
     return (
       <div className="form-grid two">
         {renderField(item, 'title', 'text', onChange, onToggle)}
-        {renderField(item, 'type', 'text', onChange, onToggle)}
-        {renderField(item, 'amount', 'number', onChange, onToggle)}
-        {renderField(item, 'period', 'text', onChange, onToggle)}
-        {renderField(item, 'dueDate', 'text', onChange, onToggle)}
-        {renderField(item, 'status', 'text', onChange, onToggle)}
-        {renderField(item, 'room', 'text', onChange, onToggle)}
-        {renderField(item, 'paidDate', 'text', onChange, onToggle)}
+        <SelectField
+          label={fieldLabel('type')}
+          value={String(item.type || 'property')}
+          options={billTypeOptions}
+          onChange={onBillFieldChange('type')}
+        />
+        <label className="form-field">
+          <span className="field-label">房屋</span>
+          <select className="field" value={item.houseId || ''} onChange={(event) => onBillHouseChange(event.target.value)}>
+            <option value="">请选择房屋</option>
+            {houseOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        <div className="form-field">
+          <span className="field-label">说明</span>
+          <div className="hint">
+            {isPropertyFee
+              ? '物业费会按房屋面积和每平米单价自动计算金额。'
+              : '其他缴费直接填写金额即可。'}
+          </div>
+        </div>
+        {isPropertyFee ? (
+          <>
+            {renderField(item, 'unitPrice', 'number', onBillFieldChange, onToggle)}
+            {renderField(item, 'amount', 'number', onBillFieldChange, onToggle, { readOnly: true })}
+          </>
+        ) : (
+          renderField(item, 'amount', 'number', onBillFieldChange, onToggle)
+        )}
+        {renderField(item, 'period', 'text', onBillFieldChange, onToggle)}
+        {renderField(item, 'dueDate', 'text', onBillFieldChange, onToggle)}
+        {renderField(item, 'status', 'text', onBillFieldChange, onToggle)}
+        {renderField(item, 'paidDate', 'text', onBillFieldChange, onToggle)}
       </div>
     );
   }
@@ -1452,13 +1431,8 @@ function FormFields({
         {renderField(item, 'categoryName', 'text', onChange, onToggle)}
         {renderField(item, 'houseNo', 'text', onChange, onToggle)}
         {renderField(item, 'building', 'text', onChange, onToggle)}
-        {renderField(item, 'appointmentTime', 'text', onChange, onToggle)}
-        {renderField(item, 'dispatchTime', 'text', onChange, onToggle)}
-        {renderField(item, 'dispatchShift', 'text', onChange, onToggle)}
-        {renderField(item, 'dispatchBuilding', 'text', onChange, onToggle)}
-        {renderField(item, 'dispatchRemark', 'textarea', onChange, onToggle)}
-        {renderField(item, 'status', 'text', onChange, onToggle)}
-        {renderField(item, 'statusName', 'text', onChange, onToggle)}
+        {renderField(item, 'appointmentTime', 'datetime-local', onChange, onToggle)}
+        {renderField(item, 'completionTime', 'datetime-local', onChange, onToggle)}
         <SearchSelectField
           label={fieldLabel('handler')}
           value={item.handler || ''}
@@ -1659,8 +1633,6 @@ function FormFields({
         {renderField(item, 'visitorPhone', 'text', onChange, onToggle)}
         {renderField(item, 'visitPurpose', 'text', onChange, onToggle)}
         {renderField(item, 'passCode', 'text', onChange, onToggle)}
-        {renderField(item, 'status', 'text', onChange, onToggle)}
-        {renderField(item, 'statusText', 'text', onChange, onToggle)}
         {renderField(item, 'visitTime', 'text', onChange, onToggle)}
         {renderField(item, 'expireTime', 'text', onChange, onToggle)}
       </div>
@@ -1742,8 +1714,6 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState({ notice: 'all', bill: 'all', repair: 'all', community: 'all', resident: 'all', house: 'all', staff: 'all' });
   const [extraFilters, setExtraFilters] = useState({ notice: 'all', bill: 'all', repair: 'all', community: 'all', resident: 'all', house: 'all', staff: 'all', feedback: 'all' });
   const [communityFilters, setCommunityFilters] = useState({ resident: 'all', house: 'all', feedback: 'all', complaintQueue: 'all' });
-  const [sortField, setSortField] = useState('time');
-  const [sortOrder, setSortOrder] = useState('desc');
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
@@ -1991,6 +1961,332 @@ export default function DashboardPage() {
   }, [activeTab, currentRows]);
   const currentBatchOptions = useMemo(() => batchOptions(activeTab), [activeTab]);
 
+  const toggleListValue = (setDraft, field, value) => {
+    const itemValue = String(value || '').trim();
+    if (!itemValue) {
+      return;
+    }
+    setDraft((prev) => {
+      const current = splitTextList(prev[field]);
+      const next = current.includes(itemValue)
+        ? current.filter((entry) => entry !== itemValue)
+        : current.concat(itemValue);
+      return { ...prev, [field]: next };
+    });
+  };
+
+  const setResidentHouseLinks = (setDraft) => (houseId) => {
+    const house = houseById[houseId];
+    if (!houseId) {
+      setDraft((prev) => ({ ...prev, houseId: '', houseNo: '', building: '', unit: '', room: '' }));
+      return;
+    }
+    const houseNo = formatHouseNo(house || {});
+    setDraft((prev) => {
+      const houseIds = splitTextList(prev.houseIds);
+      const houseNos = splitTextList(prev.houseNos);
+      const nextHouseIds = houseIds.includes(houseId) ? houseIds : houseIds.concat(houseId);
+      const nextHouseNos = houseNo && !houseNos.includes(houseNo) ? houseNos.concat(houseNo) : houseNos;
+      return {
+        ...prev,
+        houseId,
+        houseNo,
+        houseIds: nextHouseIds,
+        houseNos: nextHouseNos,
+        building: house?.building || prev.building || '',
+        unit: house?.unit || prev.unit || '',
+        room: house?.room || prev.room || '',
+        community: house?.community || prev.community || ''
+      };
+    });
+  };
+
+  const toggleResidentHouseLink = (setDraft) => (houseId) => {
+    const house = houseById[houseId];
+    const houseNo = formatHouseNo(house || {});
+    setDraft((prev) => {
+      const houseIds = splitTextList(prev.houseIds);
+      const houseNos = splitTextList(prev.houseNos);
+      const hasSelected = houseIds.includes(houseId);
+      const nextHouseIds = hasSelected
+        ? houseIds.filter((item) => item !== houseId)
+        : houseIds.concat(houseId);
+      const nextHouseNos = hasSelected && houseNo
+        ? houseNos.filter((item) => item !== houseNo)
+        : (!hasSelected && houseNo && !houseNos.includes(houseNo) ? houseNos.concat(houseNo) : houseNos);
+      const nextPrimaryId = nextHouseIds.includes(prev.houseId) ? prev.houseId : (nextHouseIds[0] || '');
+      const nextPrimaryHouse = nextPrimaryId ? houseById[nextPrimaryId] : null;
+      return {
+        ...prev,
+        houseId: nextPrimaryId,
+        houseNo: nextPrimaryHouse?.houseNo || prev.houseNo || houseNo || '',
+        houseIds: nextHouseIds,
+        houseNos: nextHouseNos,
+        building: nextPrimaryHouse?.building || prev.building || house?.building || '',
+        unit: nextPrimaryHouse?.unit || prev.unit || house?.unit || '',
+        room: nextPrimaryHouse?.room || prev.room || house?.room || '',
+        community: nextPrimaryHouse?.community || prev.community || house?.community || ''
+      };
+    });
+  };
+
+  const clearResidentHouseLinks = (setDraft) => {
+    setDraft((prev) => ({
+      ...prev,
+      houseId: '',
+      houseNo: '',
+      houseIds: [],
+      houseNos: []
+    }));
+  };
+
+  const selectAllResidentHouseLinks = (setDraft) => {
+    setDraft((prev) => {
+      const ids = houseOptions.map((option) => option.value).filter(Boolean);
+      const nos = ids.map((id) => formatHouseNo(houseById[id] || {})).filter(Boolean);
+      return {
+        ...prev,
+        houseIds: Array.from(new Set(ids)),
+        houseNos: Array.from(new Set(nos)),
+        houseId: prev.houseId && ids.includes(prev.houseId) ? prev.houseId : (ids[0] || prev.houseId || ''),
+        houseNo: prev.houseNo || (ids[0] ? formatHouseNo(houseById[ids[0]] || {}) : '')
+      };
+    });
+  };
+
+  const setHouseResidentLinks = (setDraft) => (userId) => {
+    const user = userById[userId];
+    if (!userId) {
+      setDraft((prev) => ({
+        ...prev,
+        boundUserId: '',
+        boundUserName: '',
+        boundUserPhone: '',
+        occupantName: '',
+        occupantPhone: ''
+      }));
+      return;
+    }
+    setDraft((prev) => {
+      const boundUserIds = splitTextList(prev.boundUserIds);
+      const boundUserNames = splitTextList(prev.boundUserNames);
+      const boundUserPhones = splitTextList(prev.boundUserPhones);
+      const nextBoundUserIds = boundUserIds.includes(userId) ? boundUserIds : boundUserIds.concat(userId);
+      const nextBoundUserNames = user?.name && !boundUserNames.includes(user.name) ? boundUserNames.concat(user.name) : boundUserNames;
+      const nextBoundUserPhones = user?.phone && !boundUserPhones.includes(user.phone) ? boundUserPhones.concat(user.phone) : boundUserPhones;
+      return {
+        ...prev,
+        boundUserId: userId,
+        boundUserName: user?.name || prev.boundUserName || '',
+        boundUserPhone: user?.phone || prev.boundUserPhone || '',
+        occupantName: user?.name || prev.occupantName || '',
+        occupantPhone: user?.phone || prev.occupantPhone || '',
+        boundUserIds: nextBoundUserIds,
+        boundUserNames: nextBoundUserNames,
+        boundUserPhones: nextBoundUserPhones,
+        community: user?.community || prev.community || '',
+        building: user?.building || prev.building || '',
+        unit: user?.unit || prev.unit || '',
+        room: user?.room || prev.room || '',
+        houseNo: user?.houseNo || prev.houseNo || `${user?.building || prev.building || ''}${user?.unit || prev.unit || ''}${user?.room || prev.room || ''}`
+      };
+    });
+  };
+
+  const toggleHouseResidentLink = (setDraft) => (userId) => {
+    const user = userById[userId];
+    setDraft((prev) => {
+      const boundUserIds = splitTextList(prev.boundUserIds);
+      const boundUserNames = splitTextList(prev.boundUserNames);
+      const boundUserPhones = splitTextList(prev.boundUserPhones);
+      const hasSelected = boundUserIds.includes(userId);
+      const nextBoundUserIds = hasSelected
+        ? boundUserIds.filter((item) => item !== userId)
+        : boundUserIds.concat(userId);
+      const nextBoundUserNames = hasSelected && user?.name
+        ? boundUserNames.filter((item) => item !== user.name)
+        : (!hasSelected && user?.name && !boundUserNames.includes(user.name) ? boundUserNames.concat(user.name) : boundUserNames);
+      const nextBoundUserPhones = hasSelected && user?.phone
+        ? boundUserPhones.filter((item) => item !== user.phone)
+        : (!hasSelected && user?.phone && !boundUserPhones.includes(user.phone) ? boundUserPhones.concat(user.phone) : boundUserPhones);
+      const nextPrimaryId = nextBoundUserIds.includes(prev.boundUserId) ? prev.boundUserId : (nextBoundUserIds[0] || '');
+      const nextPrimaryUser = nextPrimaryId ? userById[nextPrimaryId] : null;
+      return {
+        ...prev,
+        boundUserId: nextPrimaryId,
+        boundUserName: nextPrimaryUser?.name || prev.boundUserName || '',
+        boundUserPhone: nextPrimaryUser?.phone || prev.boundUserPhone || '',
+        occupantName: nextPrimaryUser?.name || prev.occupantName || '',
+        occupantPhone: nextPrimaryUser?.phone || prev.occupantPhone || '',
+        boundUserIds: nextBoundUserIds,
+        boundUserNames: nextBoundUserNames,
+        boundUserPhones: nextBoundUserPhones
+      };
+    });
+  };
+
+  const clearHouseResidentLinks = (setDraft) => {
+    setDraft((prev) => ({
+      ...prev,
+      boundUserId: '',
+      boundUserName: '',
+      boundUserPhone: '',
+      boundUserIds: [],
+      boundUserNames: [],
+      boundUserPhones: [],
+      occupantName: '',
+      occupantPhone: ''
+    }));
+  };
+
+  const selectAllHouseResidentLinks = (setDraft) => {
+    setDraft((prev) => {
+      const ids = residentOptions.map((option) => option.value).filter(Boolean);
+      const names = ids.map((id) => userById[id]?.name).filter(Boolean);
+      const phones = ids.map((id) => userById[id]?.phone).filter(Boolean);
+      return {
+        ...prev,
+        boundUserIds: Array.from(new Set(ids)),
+        boundUserNames: Array.from(new Set(names)),
+        boundUserPhones: Array.from(new Set(phones)),
+        boundUserId: prev.boundUserId && ids.includes(prev.boundUserId) ? prev.boundUserId : (ids[0] || prev.boundUserId || ''),
+        boundUserName: prev.boundUserName || (ids[0] ? userById[ids[0]]?.name || '' : ''),
+        boundUserPhone: prev.boundUserPhone || (ids[0] ? userById[ids[0]]?.phone || '' : ''),
+        occupantName: prev.occupantName || (ids[0] ? userById[ids[0]]?.name || '' : ''),
+        occupantPhone: prev.occupantPhone || (ids[0] ? userById[ids[0]]?.phone || '' : '')
+      };
+    });
+  };
+
+  const uniqueTextItems = (...values) => Array.from(new Set(values.flatMap((value) => splitTextList(value)).filter(Boolean)));
+
+  const normalizeReferenceText = (value) => String(value || '').replace(/\s+/g, '').trim();
+
+  const houseMatchesReference = (house = {}, reference) => {
+    const ref = normalizeReferenceText(reference);
+    if (!ref) {
+      return false;
+    }
+    const candidates = [
+      house.id,
+      house.houseId,
+      house.houseNo,
+      formatHouseNo(house),
+      [house.building, house.unit, house.room].filter(Boolean).join(''),
+      [house.building, house.unit, house.room].filter(Boolean).join(' ')
+    ];
+    return candidates.some((candidate) => normalizeReferenceText(candidate) === ref);
+  };
+
+  const resolveResidentHouseRecords = (data = {}) => {
+    const ids = uniqueTextItems(data.houseIds, data.houseId);
+    const nos = uniqueTextItems(data.houseNos, data.houseNo);
+    const byId = ids.map((id) => houseById[id]).filter(Boolean);
+    const byNo = nos
+      .map((no) => houses.find((house) => houseMatchesReference(house, no)))
+      .filter(Boolean);
+    return Array.from(new Map([...byId, ...byNo].map((house) => [String(house.id), house])).values());
+  };
+
+  const resolveHouseResidentRecords = (data = {}) => {
+    const ids = uniqueTextItems(data.boundUserIds, data.boundUserId);
+    const byId = ids.map((id) => userById[id]).filter(Boolean);
+    return Array.from(new Map(byId.map((user) => [String(user.id), user])).values());
+  };
+
+  const persistResidentHouseLinks = async (residentSnapshot, previousResident = null) => {
+    const nextHouseRecords = resolveResidentHouseRecords(residentSnapshot);
+    const prevHouseRecords = previousResident ? resolveResidentHouseRecords(previousResident) : [];
+    const nextHouseIds = new Set(nextHouseRecords.map((item) => String(item.id)));
+    const prevHouseIds = new Set(prevHouseRecords.map((item) => String(item.id)));
+    const residentId = String(residentSnapshot.id || '').trim();
+    const residentName = String(residentSnapshot.name || '').trim();
+    const residentPhone = String(residentSnapshot.phone || '').trim();
+
+    const upsertResidentToHouse = async (house, add) => {
+      const boundUserIds = splitTextList(house.boundUserIds);
+      const boundUserNames = splitTextList(house.boundUserNames);
+      const boundUserPhones = splitTextList(house.boundUserPhones);
+      const nextBoundUserIds = add
+        ? Array.from(new Set(boundUserIds.concat(residentId).filter(Boolean)))
+        : boundUserIds.filter((item) => item !== residentId);
+      const nextBoundUserNames = add
+        ? Array.from(new Set(boundUserNames.concat(residentName).filter(Boolean)))
+        : boundUserNames.filter((item) => item !== residentName);
+      const nextBoundUserPhones = add
+        ? Array.from(new Set(boundUserPhones.concat(residentPhone).filter(Boolean)))
+        : boundUserPhones.filter((item) => item !== residentPhone);
+      const currentPrimaryId = String(house.boundUserId || '').trim();
+      const nextPrimaryId = nextBoundUserIds.includes(currentPrimaryId) ? currentPrimaryId : (nextBoundUserIds[0] || '');
+      const nextPrimaryUser = nextPrimaryId ? userById[nextPrimaryId] : null;
+      await saveHouse(apiBase, token, stripUiFields({
+        ...house,
+        boundUserId: nextPrimaryId,
+        boundUserName: nextPrimaryUser?.name || (nextBoundUserNames[0] || ''),
+        boundUserPhone: nextPrimaryUser?.phone || (nextBoundUserPhones[0] || ''),
+        occupantName: nextPrimaryUser?.name || (nextBoundUserNames[0] || ''),
+        occupantPhone: nextPrimaryUser?.phone || (nextBoundUserPhones[0] || ''),
+        boundUserIds: nextBoundUserIds,
+        boundUserNames: nextBoundUserNames,
+        boundUserPhones: nextBoundUserPhones,
+        occupancyStatus: nextBoundUserIds.length ? (house.occupancyStatus || 'occupied') : 'vacant',
+        status: nextBoundUserIds.length ? (house.status || 'occupied') : 'vacant',
+        statusText: nextBoundUserIds.length ? (house.statusText || '已入住') : '空置'
+      }));
+    };
+
+    for (const house of nextHouseRecords) {
+      await upsertResidentToHouse(house, true);
+    }
+    for (const house of prevHouseRecords) {
+      if (!nextHouseIds.has(String(house.id))) {
+        await upsertResidentToHouse(house, false);
+      }
+    }
+  };
+
+  const persistHouseResidentLinks = async (houseSnapshot, previousHouse = null) => {
+    const nextResidentRecords = resolveHouseResidentRecords(houseSnapshot);
+    const prevResidentRecords = previousHouse ? resolveHouseResidentRecords(previousHouse) : [];
+    const nextResidentIds = new Set(nextResidentRecords.map((item) => String(item.id)));
+    const prevResidentIds = new Set(prevResidentRecords.map((item) => String(item.id)));
+    const houseId = String(houseSnapshot.id || '').trim();
+    const houseNo = formatHouseNo(houseSnapshot);
+
+    const upsertHouseToResident = async (user, add) => {
+      const houseIds = splitTextList(user.houseIds);
+      const houseNos = splitTextList(user.houseNos);
+      const nextHouseIds = add
+        ? Array.from(new Set(houseIds.concat(houseId).filter(Boolean)))
+        : houseIds.filter((item) => item !== houseId);
+      const nextHouseNos = add
+        ? Array.from(new Set(houseNos.concat(houseNo).filter(Boolean)))
+        : houseNos.filter((item) => item !== houseNo);
+      const currentPrimaryId = String(user.houseId || '').trim();
+      const nextPrimaryId = nextHouseIds.includes(currentPrimaryId) ? currentPrimaryId : (nextHouseIds[0] || '');
+      const nextPrimaryHouse = nextPrimaryId ? houseById[nextPrimaryId] : null;
+      await saveUser(apiBase, token, stripUiFields({
+        ...user,
+        houseId: nextPrimaryId,
+        houseNo: nextPrimaryHouse?.houseNo || (nextHouseNos[0] || ''),
+        houseIds: nextHouseIds,
+        houseNos: nextHouseNos,
+        building: nextPrimaryHouse?.building || '',
+        unit: nextPrimaryHouse?.unit || '',
+        room: nextPrimaryHouse?.room || ''
+      }));
+    };
+
+    for (const user of nextResidentRecords) {
+      await upsertHouseToResident(user, true);
+    }
+    for (const user of prevResidentRecords) {
+      if (!nextResidentIds.has(String(user.id))) {
+        await upsertHouseToResident(user, false);
+      }
+    }
+  };
+
   const buildRepairAuditEntry = (baseRepair, patch, action, reason) => {
     const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
     return {
@@ -2098,28 +2394,8 @@ export default function DashboardPage() {
       const passSearch = !query || Object.values(item).some((value) => String(value == null ? '' : value).toLowerCase().includes(query));
       return passCommunity && passFilter && passExtra && passSearch;
     });
-
-    list.sort((a, b) => {
-      if (activeTab === 'complaintQueue') {
-        const communityLeft = String(a.community || '').localeCompare(String(b.community || ''));
-        if (communityLeft !== 0) return communityLeft;
-      }
-      let left = a[sortField];
-      let right = b[sortField];
-      if (sortField === 'amount') {
-        left = Number(left || 0);
-        right = Number(right || 0);
-      }
-      if (sortField === 'important') {
-        left = a.important ? 1 : 0;
-        right = b.important ? 1 : 0;
-      }
-      if (left === right) return 0;
-      const order = sortOrder === 'asc' ? 1 : -1;
-      return left > right ? order : -order;
-    });
     return list;
-  }, [currentRows, activeTab, filters, extraFilters, searchText, sortField, sortOrder, communityFilters]);
+  }, [currentRows, activeTab, filters, extraFilters, searchText, communityFilters]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const pageItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item) => ({
@@ -2199,24 +2475,6 @@ export default function DashboardPage() {
     setSearchText('');
     setSelectedIds([]);
     setCurrentPage(1);
-    const defaults =
-      tab === 'community' ? { field: 'updateTime', order: 'desc' } :
-      tab === 'resident' ? { field: 'room', order: 'asc' } :
-      tab === 'house' ? { field: 'houseNo', order: 'asc' } :
-      tab === 'staff' ? { field: 'name', order: 'asc' } :
-      tab === 'bill' ? { field: 'dueDate', order: 'asc' } :
-      tab === 'repair' ? { field: 'createTime', order: 'desc' } :
-      tab === 'feedback' ? { field: 'createTime', order: 'desc' } :
-      tab === 'complaintQueue' ? { field: 'createTime', order: 'desc' } :
-      tab === 'complaintRule' ? { field: 'priority', order: 'desc' } :
-      tab === 'visitor' ? { field: 'visitTime', order: 'desc' } :
-      tab === 'decoration' ? { field: 'applyDate', order: 'desc' } :
-      tab === 'express' ? { field: 'createTime', order: 'desc' } :
-      tab === 'product' ? { field: 'price', order: 'desc' } :
-      tab === 'order' ? { field: 'createTime', order: 'desc' } :
-      { field: 'time', order: 'desc' };
-    setSortField(defaults.field);
-    setSortOrder(defaults.order);
     setFilters((prev) => ({ ...prev, [tab]: 'all' }));
     setExtraFilters((prev) => ({ ...prev, [tab]: 'all' }));
     setCommunityFilters((prev) => ({ ...prev, [tab]: 'all' }));
@@ -2349,8 +2607,34 @@ export default function DashboardPage() {
     const payload = stripUiFields(draft);
     const originalResident = drawer?.type === 'resident' ? drawer.item : null;
     const originalHouse = drawer?.type === 'house' ? drawer.item : null;
-    if (type === 'bill' && payload.amount !== '' && payload.amount != null) {
-      payload.amount = Number(payload.amount);
+    if (type === 'bill') {
+      const firstTextValue = (...values) => values.find((value) => String(value == null ? '' : value).trim()) ?? '';
+      const matchedHouse = payload.houseId ? houseById[payload.houseId] : null;
+      if (matchedHouse) {
+        payload.community = String(firstTextValue(matchedHouse.community, payload.community) || '').trim();
+        payload.houseNo = String(firstTextValue(payload.houseNo, formatHouseNo(matchedHouse), matchedHouse.houseNo, '')).trim();
+        payload.room = String(firstTextValue(payload.room, matchedHouse.houseNo, payload.houseNo, '')).trim();
+        payload.area = firstTextValue(payload.area, matchedHouse.area, '');
+        payload.building = String(firstTextValue(payload.building, matchedHouse.building, '')).trim();
+        payload.unit = String(firstTextValue(payload.unit, matchedHouse.unit, '')).trim();
+      }
+      const areaValue = toFiniteNumber(payload.area);
+      const unitPriceValue = toFiniteNumber(payload.unitPrice);
+      const amountValue = toFiniteNumber(payload.amount);
+      if (Number.isFinite(areaValue)) {
+        payload.area = Number(areaValue.toFixed(2));
+      }
+      if (Number.isFinite(unitPriceValue)) {
+        payload.unitPrice = Number(unitPriceValue.toFixed(2));
+      }
+      if (Number.isFinite(amountValue) && amountValue > 0) {
+        payload.amount = Number(amountValue.toFixed(2));
+      } else if (Number.isFinite(areaValue) && Number.isFinite(unitPriceValue) && areaValue > 0 && unitPriceValue > 0) {
+        payload.amount = Number((areaValue * unitPriceValue).toFixed(2));
+      }
+      if (String(payload.type || 'property') === 'property' && (!Number.isFinite(amountValue) || amountValue <= 0) && Number.isFinite(areaValue) && Number.isFinite(unitPriceValue) && areaValue > 0 && unitPriceValue > 0) {
+        payload.amount = Number((areaValue * unitPriceValue).toFixed(2));
+      }
     }
     if (type === 'product') {
       if (payload.price !== '' && payload.price != null) {
@@ -2460,80 +2744,8 @@ export default function DashboardPage() {
         await saveCommunityById(apiBase, token, payload);
       } else if (type === 'resident') {
         const savedUser = await saveUser(apiBase, token, payload);
-        const residentId = savedUser?.id || payload.id;
-        if (payload.houseId && houseById[payload.houseId]) {
-          const linkedHouse = houseById[payload.houseId];
-          const relatedCommunity = String(payload.community || linkedHouse.community || communityDisplayName(activeCommunity) || '').trim();
-          const relatedCommunityId = String(payload.communityId || linkedHouse.communityId || activeCommunity?.id || '').trim();
-          await saveHouse(apiBase, token, stripUiFields({
-            ...linkedHouse,
-            community: relatedCommunity || linkedHouse.community || '',
-            communityId: relatedCommunityId || linkedHouse.communityId || '',
-            houseNo: payload.houseNo || formatHouseNo(linkedHouse),
-            building: payload.building || linkedHouse.building || '',
-            unit: payload.unit || linkedHouse.unit || '',
-            room: payload.room || linkedHouse.room || '',
-            boundUserId: residentId || linkedHouse.boundUserId || '',
-            boundUserName: payload.name || linkedHouse.boundUserName || '',
-            boundUserPhone: payload.phone || linkedHouse.boundUserPhone || '',
-            occupantName: payload.name || linkedHouse.occupantName || '',
-            occupantPhone: payload.phone || linkedHouse.occupantPhone || '',
-            ownershipStatus: linkedHouse.ownershipStatus || 'self_owned',
-            occupancyStatus: payload.status === 'inactive' ? 'vacant' : 'occupied',
-            status: payload.status === 'inactive' ? 'vacant' : 'occupied',
-            statusText: payload.status === 'inactive' ? '空置' : '已入住'
-          }));
-        }
-        if (originalResident?.houseId && String(originalResident.houseId) !== String(payload.houseId || '')) {
-          const previousHouse = houseById[originalResident.houseId];
-          if (previousHouse) {
-            await saveHouse(apiBase, token, stripUiFields({
-              ...previousHouse,
-              boundUserId: '',
-              boundUserName: '',
-              boundUserPhone: '',
-              occupantName: '',
-              occupantPhone: '',
-              occupancyStatus: 'vacant',
-              status: 'vacant',
-              statusText: '空置'
-            }));
-          }
-        }
       } else if (type === 'house') {
         const savedHouse = await saveHouse(apiBase, token, payload);
-        const houseId = savedHouse?.id || payload.id;
-        if (payload.boundUserId && userById[payload.boundUserId]) {
-          const linkedUser = userById[payload.boundUserId];
-          const relatedCommunity = String(payload.community || linkedUser.community || communityDisplayName(activeCommunity) || '').trim();
-          const relatedCommunityId = String(payload.communityId || linkedUser.communityId || activeCommunity?.id || '').trim();
-          await saveUser(apiBase, token, stripUiFields({
-            ...linkedUser,
-            community: relatedCommunity || linkedUser.community || '',
-            communityId: relatedCommunityId || linkedUser.communityId || '',
-            houseId: houseId || linkedUser.houseId || '',
-            houseNo: payload.houseNo || formatHouseNo(payload),
-            building: payload.building || linkedUser.building || '',
-            unit: payload.unit || linkedUser.unit || '',
-            room: payload.room || linkedUser.room || '',
-            relationship: payload.relationship || linkedUser.relationship || '业主',
-            status: linkedUser.status || 'active',
-            role: linkedUser.role || 'resident'
-          }));
-        }
-        if (originalHouse?.boundUserId && String(originalHouse.boundUserId) !== String(payload.boundUserId || '')) {
-          const previousUser = userById[originalHouse.boundUserId];
-          if (previousUser) {
-            await saveUser(apiBase, token, stripUiFields({
-              ...previousUser,
-              houseId: '',
-              houseNo: '',
-              building: '',
-              unit: '',
-              room: ''
-            }));
-          }
-        }
       } else if (type === 'staff') {
         await saveStaff(apiBase, token, payload);
       } else if (type === 'feedback') {
@@ -2804,6 +3016,55 @@ export default function DashboardPage() {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
+  const syncBillDraft = (draft) => {
+    const next = { ...draft };
+    const house = next.houseId ? houseById[next.houseId] : null;
+    if (house) {
+      const houseNo = formatHouseNo(house || {});
+      next.community = house.community || next.community || '';
+      next.houseNo = houseNo || next.houseNo || '';
+      next.room = house.houseNo || next.room || '';
+      next.building = house.building || next.building || '';
+      next.unit = house.unit || next.unit || '';
+      if (next.area === '' || next.area == null) {
+        next.area = house.area || '';
+      }
+    }
+    if (String(next.type || 'property') === 'property') {
+      const areaValue = toFiniteNumber(next.area);
+      const unitPriceValue = toFiniteNumber(next.unitPrice);
+      if (Number.isFinite(areaValue) && areaValue > 0) {
+        next.area = Number(areaValue.toFixed(2));
+      }
+      if (Number.isFinite(unitPriceValue) && unitPriceValue > 0) {
+        next.unitPrice = Number(unitPriceValue.toFixed(2));
+      }
+      if (Number.isFinite(areaValue) && Number.isFinite(unitPriceValue) && areaValue > 0 && unitPriceValue > 0) {
+        next.amount = Number((areaValue * unitPriceValue).toFixed(2));
+      }
+    }
+    return next;
+  };
+
+  const onBillFieldChange = (setDraft) => (field) => (event) => {
+    const value = event.target.value;
+    setDraft((prev) => syncBillDraft({ ...prev, [field]: value }));
+  };
+
+  const onBillHouseChange = (setDraft) => (houseId) => {
+    const house = houseById[houseId];
+    setDraft((prev) => syncBillDraft({
+      ...prev,
+      houseId,
+      houseNo: house?.houseNo || formatHouseNo(house || {}),
+      area: house?.area || prev.area || '',
+      room: house?.houseNo || prev.room || '',
+      building: house?.building || prev.building || '',
+      unit: house?.unit || prev.unit || '',
+      community: house?.community || prev.community || ''
+    }));
+  };
+
   const onToggleSwitch = (setDraft) => (field) => {
     setDraft((prev) => ({ ...prev, [field]: !prev[field] }));
   };
@@ -2905,6 +3166,8 @@ export default function DashboardPage() {
       ...prev,
       houseId,
       houseNo: house?.houseNo || '',
+      houseIds: houseId ? Array.from(new Set([...(splitTextList(prev.houseIds)), houseId])) : splitTextList(prev.houseIds),
+      houseNos: house?.houseNo ? Array.from(new Set([...(splitTextList(prev.houseNos)), house.houseNo])) : splitTextList(prev.houseNos),
       building: house?.building || prev.building || '',
       unit: house?.unit || prev.unit || '',
       room: house?.room || prev.room || '',
@@ -2921,6 +3184,9 @@ export default function DashboardPage() {
       boundUserId: userId,
       boundUserName: user?.name || '',
       boundUserPhone: user?.phone || '',
+      boundUserIds: userId ? Array.from(new Set([...(splitTextList(prev.boundUserIds)), userId])) : splitTextList(prev.boundUserIds),
+      boundUserNames: user?.name ? Array.from(new Set([...(splitTextList(prev.boundUserNames)), user.name])) : splitTextList(prev.boundUserNames),
+      boundUserPhones: user?.phone ? Array.from(new Set([...(splitTextList(prev.boundUserPhones)), user.phone])) : splitTextList(prev.boundUserPhones),
       occupantName: user?.name || '',
       occupantPhone: user?.phone || '',
       community: user?.community || prev.community || '',
@@ -2972,6 +3238,21 @@ export default function DashboardPage() {
       unit: house?.unit || prev.unit || '',
       room: house?.room || prev.room || '',
       phone: house?.boundUserPhone || prev.phone || ''
+    }));
+  };
+
+  const linkBillHouse = (setDraft) => (houseId) => {
+    const house = houseById[houseId];
+    const houseNo = formatHouseNo(house || {});
+    setDraft((prev) => syncBillDraft({
+      ...prev,
+      houseId,
+      houseNo,
+      room: house?.houseNo || prev.room || houseNo || '',
+      building: house?.building || prev.building || '',
+      unit: house?.unit || prev.unit || '',
+      area: house?.area || prev.area || '',
+      community: house?.community || prev.community || ''
     }));
   };
 
@@ -3171,6 +3452,14 @@ export default function DashboardPage() {
             <div className="eyebrow">物业管理控制台</div>
             <h1>{TABS[activeTab].title}</h1>
             <p>{TABS[activeTab].subtitle}</p>
+            {activeTab === 'bill' ? (
+              <div className="topbar-note bill-note">
+                <span className="badge emphasis">这里配置物业费</span>
+                <span className="badge">支持按面积 × 单价录入金额</span>
+                <span className="badge">房屋面积在“房屋档案”里维护</span>
+                <span className="badge">住户登录后会按手机号自动关联小区 / 楼栋 / 单元 / 房号</span>
+              </div>
+            ) : null}
             {activeTab === 'complaintRule' ? (
               <div className="topbar-note">
                 <span className="badge">当前小区：{communityDisplayName(activeCommunity) || '未选择'}</span>
@@ -3280,26 +3569,6 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-          <div className="toolbar-group">
-            <div className="toolbar-title">排序</div>
-            <div className="chip-row">
-              {sortOptions(activeTab).map((item) => (
-                <button
-                  key={item.field}
-                  type="button"
-                  className={`chip ${sortField === item.field ? 'active' : ''}`}
-                  onClick={() => {
-                    setSortOrder(sortField === item.field && sortOrder === 'desc' ? 'asc' : 'desc');
-                    setSortField(item.field);
-                    setCurrentPage(1);
-                  }}
-                >
-                  {item.label}
-                  {sortField === item.field ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
-                </button>
-              ))}
-            </div>
-          </div>
           {communityFilterItems.length ? (
             <div className="toolbar-group">
               <div className="toolbar-title">小区筛选</div>
@@ -3392,8 +3661,8 @@ export default function DashboardPage() {
                     </div>
                     <div className="row-sub">
                       {activeTab === 'community' ? `${item.propertyCompany || '物业公司'} · ${item.address || '地址未填写'}` :
-                       activeTab === 'resident' ? `${item.community || '未归属小区'} · ${item.houseNo || `${item.building || ''}${item.unit || ''}${item.room || ''}`} · ${item.relationship || '住户'}` :
-                       activeTab === 'house' ? `${item.community || '未归属小区'} · ${houseOwnershipLabel(item.ownershipStatus)} / ${occupancyLabel(item.occupancyStatus || item.status)}` :
+                       activeTab === 'resident' ? `${item.community || '未归属小区'} · 关联房屋 ${Array.isArray(item.houseIds) ? item.houseIds.length : (item.houseId ? 1 : 0)} · 当前主关联 ${currentResidentHouseLabel(item)}` :
+                       activeTab === 'house' ? `${item.community || '未归属小区'} · 关联住户 ${Array.isArray(item.boundUserIds) ? item.boundUserIds.length : (item.boundUserId ? 1 : 0)} · 当前主关联 ${currentHouseResidentLabel(item)}` :
                        activeTab === 'staff' ? `${item.community || '未归属小区'} · ${item.shift || ''} · ${item.scope || ''}` :
                        activeTab === 'repair' ? (item.categoryName || item.category || '') :
                        activeTab === 'bill' ? (item.room || '') :
@@ -3455,7 +3724,7 @@ export default function DashboardPage() {
                             openDrawer(item, 'edit');
                           }}
                         >
-                          编辑
+                          模块设置
                         </button>
                         <button
                           type="button"
@@ -3788,24 +4057,33 @@ export default function DashboardPage() {
             ) : (
               <>
                 <FormFields
-                  type={drawer.type}
-                  item={drawerDraft}
-                  onChange={onFieldChange(setDrawerDraft)}
-                  onToggle={onToggleSwitch(setDrawerDraft)}
-                  communityOptions={communityOptions}
-                  residentOptions={residentOptions}
-                  houseOptions={houseOptions}
-                  buildingOptions={buildingOptions}
-                  staffMentionOptions={staffMentionOptions}
+                    type={drawer.type}
+                    item={drawerDraft}
+                    onChange={onFieldChange(setDrawerDraft)}
+                    onToggle={onToggleSwitch(setDrawerDraft)}
+                    communityOptions={communityOptions}
+                    residentOptions={residentOptions}
+                    residentNameOptions={residentNameOptions}
+                    houseOptions={houseOptions}
+                    buildingOptions={buildingOptions}
+                    staffMentionOptions={staffMentionOptions}
                   currentCommunityStaffOptions={currentCommunityStaffOptions}
                   currentCommunityStaffSummary={currentCommunityStaffSummary}
                   staffSupervisorOptions={staffSupervisorOptions}
                   currentDefaultSupervisor={defaultSupervisorName}
                   onResidentHouseChange={linkResidentHouse(setDrawerDraft)}
+                  onResidentHouseMultiChange={toggleResidentHouseLink(setDrawerDraft)}
+                  onResidentHouseSelectAll={() => selectAllResidentHouseLinks(setDrawerDraft)}
+                  onResidentHouseClear={() => clearResidentHouseLinks(setDrawerDraft)}
                   onHouseResidentChange={linkHouseResident(setDrawerDraft)}
+                  onHouseResidentMultiChange={toggleHouseResidentLink(setDrawerDraft)}
+                  onHouseResidentSelectAll={() => selectAllHouseResidentLinks(setDrawerDraft)}
+                  onHouseResidentClear={() => clearHouseResidentLinks(setDrawerDraft)}
                   onHouseOwnerChange={linkHouseOwner(setDrawerDraft)}
                   onHouseOccupantChange={linkHouseOccupant(setDrawerDraft)}
                   onRepairHouseChange={linkRepairHouse(setDrawerDraft)}
+                  onBillHouseChange={linkBillHouse(setDrawerDraft)}
+                  onBillFieldChange={onBillFieldChange(setDrawerDraft)}
                   onStaffBuildingsChange={toggleStaffBuilding(setDrawerDraft)}
                   onCommunitySupervisorsChange={toggleCommunitySupervisors(setDrawerDraft)}
                   onRepairHandlerChange={linkRepairHandler(setDrawerDraft)}
@@ -3848,24 +4126,33 @@ export default function DashboardPage() {
               </div>
             </div>
             <FormFields
-              type={modal.type}
-              item={modalDraft}
-              onChange={onFieldChange(setModalDraft)}
-              onToggle={onToggleSwitch(setModalDraft)}
-              communityOptions={communityOptions}
-              residentOptions={residentOptions}
-              houseOptions={houseOptions}
-              buildingOptions={buildingOptions}
-              staffMentionOptions={staffMentionOptions}
+                type={modal.type}
+                item={modalDraft}
+                onChange={onFieldChange(setModalDraft)}
+                onToggle={onToggleSwitch(setModalDraft)}
+                communityOptions={communityOptions}
+                residentOptions={residentOptions}
+                residentNameOptions={residentNameOptions}
+                houseOptions={houseOptions}
+                buildingOptions={buildingOptions}
+                staffMentionOptions={staffMentionOptions}
               currentCommunityStaffOptions={currentCommunityStaffOptions}
               currentCommunityStaffSummary={currentCommunityStaffSummary}
               staffSupervisorOptions={staffSupervisorOptions}
               currentDefaultSupervisor={defaultSupervisorName}
               onResidentHouseChange={linkResidentHouse(setModalDraft)}
+              onResidentHouseMultiChange={toggleResidentHouseLink(setModalDraft)}
+              onResidentHouseSelectAll={() => selectAllResidentHouseLinks(setModalDraft)}
+              onResidentHouseClear={() => clearResidentHouseLinks(setModalDraft)}
               onHouseResidentChange={linkHouseResident(setModalDraft)}
+              onHouseResidentMultiChange={toggleHouseResidentLink(setModalDraft)}
+              onHouseResidentSelectAll={() => selectAllHouseResidentLinks(setModalDraft)}
+              onHouseResidentClear={() => clearHouseResidentLinks(setModalDraft)}
               onHouseOwnerChange={linkHouseOwner(setModalDraft)}
               onHouseOccupantChange={linkHouseOccupant(setModalDraft)}
               onRepairHouseChange={linkRepairHouse(setModalDraft)}
+              onBillHouseChange={linkBillHouse(setModalDraft)}
+              onBillFieldChange={onBillFieldChange(setModalDraft)}
               onStaffBuildingsChange={toggleStaffBuilding(setModalDraft)}
               onCommunitySupervisorsChange={toggleCommunitySupervisors(setModalDraft)}
               onRepairHandlerChange={linkRepairHandler(setModalDraft)}

@@ -89,6 +89,29 @@
   margin-bottom: 36rpx;
 }
 
+.auto-match-tip {
+  margin-top: 8rpx;
+  padding: 24rpx 22rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(22, 119, 255, 0.04) 100%);
+  border: 1rpx solid rgba(24, 144, 255, 0.12);
+}
+
+.auto-match-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+
+.auto-match-text {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #64748b;
+}
+
 .form-label {
   display: flex;
   align-items: center;
@@ -350,6 +373,10 @@
   overflow: hidden;
 }
 
+.house-modal {
+  max-height: 78vh;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -403,6 +430,62 @@
   font-size: 30rpx;
   color: #fff;
   font-weight: bold;
+}
+
+.modal-btn.ghost {
+  background: #f4f7fb;
+}
+
+.modal-btn.ghost text {
+  color: #333;
+}
+
+.house-hint {
+  padding: 0 30rpx 18rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.house-list {
+  max-height: 460rpx;
+  padding: 0 24rpx 20rpx;
+}
+
+.house-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 20rpx;
+  margin-bottom: 16rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+  border: 1rpx solid rgba(24, 144, 255, 0.12);
+}
+
+.house-option-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.house-option-title {
+  font-size: 30rpx;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.house-option-detail {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.house-option-arrow {
+  font-size: 40rpx;
+  color: #94a3b8;
+  padding-left: 16rpx;
 }
 
 /* 选择器弹窗 */

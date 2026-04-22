@@ -1,61 +1,30 @@
 <view class="container assistant-page">
-  <view class="assistant-head">
-    <text class="assistant-head-title">智能助手</text>
-    <text class="assistant-head-subtitle">优先回答当前小区和当前房屋的问题，涉及报修和投诉时先生成草稿再确认。</text>
+  <view class="assistant-hero card">
+    <image class="assistant-hero-image" src="/assets/images/assistant-hero.png" mode="aspectFill" />
+    <view class="assistant-hero-overlay">
+      <view class="assistant-hero-copy">
+        <text class="assistant-hero-title">智能助手</text>
+        <text class="assistant-hero-subtitle">查物业费、查报修、提报修、提投诉，先给结论，再办事。</text>
+      </view>
+      <view class="assistant-hero-tags">
+        <text class="assistant-hero-tag">{{contextCard.communityName}}</text>
+        <text class="assistant-hero-tag">{{contextCard.houseNo}}</text>
+      </view>
+    </view>
   </view>
 
-  <scroll-view class="chat-panel card" scroll-y>
-    <block wx:for="{{messages}}" wx:key="time">
-      <view class="message {{item.messageClass}}">
-        <view class="message-avatar {{item.avatarClass}}" wx:if="{{item.showUser || item.showAssistant}}">
+  <scroll-view class="chat-panel card" scroll-y scroll-with-animation scroll-into-view="{{scrollIntoView}}">
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="message {{item.messageClass}}" id="{{item.id}}">
+        <view class="message-avatar {{item.avatarClass}}" wx:if="{{item.showAvatar}}">
           <text class="message-avatar-text">{{item.avatarText}}</text>
         </view>
         <view class="message-bubble">
-          <view class="message-meta">
-            <text class="message-role">{{item.roleLabel}}</text>
-            <text class="message-time">{{item.time}}</text>
-          </view>
           <text class="message-text">{{item.text}}</text>
-          <view class="message-card" wx:if="{{item.showCard}}">
-            <text class="card-title">{{item.card.title}}</text>
-            <text class="card-line" wx:if="{{item.showAmount}}">金额：¥{{item.card.amount}}</text>
-            <text class="card-line" wx:if="{{item.showPeriod}}">周期：{{item.card.period}}</text>
-            <text class="card-line" wx:if="{{item.showStatus}}">状态：{{item.card.status}}</text>
-            <text class="card-line" wx:if="{{item.showStatusName}}">状态：{{item.card.statusName}}</text>
-            <text class="card-line" wx:if="{{item.showHandler}}">处理人：{{item.card.handler}}</text>
-            <text class="card-line" wx:if="{{item.showSuggestion}}">建议：{{item.card.suggestion}}</text>
-          </view>
         </view>
       </view>
     </block>
   </scroll-view>
-
-  <view class="assistant-loading card" wx:if="{{loading}}">
-    <view class="assistant-loading-head">
-      <view class="assistant-loading-dot-group">
-        <view class="assistant-loading-dot"></view>
-        <view class="assistant-loading-dot assistant-loading-dot-delay"></view>
-        <view class="assistant-loading-dot assistant-loading-dot-delay-2"></view>
-      </view>
-      <view class="assistant-loading-head-texts">
-        <text class="assistant-loading-title">{{loadingStageTitle}}</text>
-        <text class="assistant-loading-subtitle">{{loadingStageHint}}</text>
-      </view>
-    </view>
-    <view class="assistant-loading-texts">
-      <block wx:for="{{loadingSteps}}" wx:key="id">
-        <view class="assistant-loading-step {{item.stateClass}}">
-          <text class="assistant-loading-step-index">{{item.index}}</text>
-          <view class="assistant-loading-step-texts">
-            <text class="assistant-loading-step-title">{{item.label}}</text>
-            <text class="assistant-loading-step-subtitle">{{item.hint}}</text>
-          </view>
-          <text class="assistant-loading-step-status" wx:if="{{item.active}}">进行中</text>
-          <text class="assistant-loading-step-status" wx:if="{{item.done}}">已完成</text>
-        </view>
-      </block>
-    </view>
-  </view>
 
   <view class="draft-card card" wx:if="{{draftCard}}">
     <view class="section-header">
@@ -90,13 +59,15 @@
       <text class="section-title">快捷服务</text>
       <text class="section-more">一键办理</text>
     </view>
-    <view class="service-grid compact-service-grid">
-      <block wx:for="{{serviceCards}}" wx:key="id">
-        <view class="service-card compact-service-card tone-{{item.tone}}" bindtap="tapServiceCard" data-text="{{item.text}}">
-          <text class="service-card-title">{{item.title}}</text>
-          <text class="service-card-subtitle">{{item.subtitle}}</text>
-        </view>
-      </block>
-    </view>
+    <scroll-view class="quick-service-scroll" scroll-x="true">
+      <view class="quick-service-row">
+        <block wx:for="{{serviceCards}}" wx:key="id">
+          <view class="service-card compact-service-card tone-{{item.tone}}" bindtap="tapServiceCard" data-text="{{item.text}}">
+            <text class="service-card-title">{{item.title}}</text>
+            <text class="service-card-subtitle">{{item.subtitle}}</text>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
   </view>
 </view>
