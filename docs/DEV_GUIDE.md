@@ -56,6 +56,7 @@ npm run dev
 - 住户端登录页现在只保留手机号和验证码，房屋归属由后端按手机号自动匹配
 - 真机联调时把 `devApiBaseUrl` 改成电脑局域网 IP
 - `pages/assistant/assistant` 是智能助手页，报修/投诉草稿会先缓存到本地再跳转到对应业务页
+- 报修推飞书时会带上预约时间，前端如果填了预约时间，后端通知里也要一起展示
 - `web-admin/src/pages/AssistantSessionsPage.jsx` 里可以切换 `格式化 / 原始` 数据。
 - 提示词页支持 `恢复上一次保存`。
 - 技能库页支持按项目、标签、启用状态和当前负责人筛选；记录里建议保留 `responsibleSupervisor`、`synonyms`、`keywords` 和 `pinned` 字段。

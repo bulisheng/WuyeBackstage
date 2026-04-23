@@ -3358,6 +3358,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     builder.append("标题: ").append(repair.getOrDefault("title", "-")).append("\n");
     builder.append("分类: ").append(repair.getOrDefault("categoryName", repair.getOrDefault("category", "-"))).append("\n");
     builder.append("状态: ").append(repair.getOrDefault("statusName", repair.getOrDefault("status", "-"))).append("\n");
+    builder.append("预约时间: ").append(firstNonEmpty(repair.get("appointmentTime"), "-")).append("\n");
     builder.append("描述: ").append(repair.getOrDefault("description", "-")).append("\n");
     builder.append("处理人: ").append(firstNonEmpty(repair.get("handler"), repair.get("handlerName"), "未分派"));
     postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
