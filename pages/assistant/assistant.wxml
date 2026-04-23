@@ -53,21 +53,4 @@
     />
     <button class="send-btn" type="primary" bindtap="sendMessage" loading="{{loading}}">发送</button>
   </view>
-
-  <view class="section quick-service-section">
-    <view class="section-header">
-      <text class="section-title">快捷服务</text>
-      <text class="section-more">一键办理</text>
-    </view>
-    <scroll-view class="quick-service-scroll" scroll-x="true">
-      <view class="quick-service-row">
-        <block wx:for="{{serviceCards}}" wx:key="id">
-          <view class="service-card compact-service-card tone-{{item.tone}}" bindtap="tapServiceCard" data-text="{{item.text}}">
-            <text class="service-card-title">{{item.title}}</text>
-            <text class="service-card-subtitle">{{item.subtitle}}</text>
-          </view>
-        </block>
-      </view>
-    </scroll-view>
-  </view>
 </view>

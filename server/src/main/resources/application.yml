@@ -19,6 +19,22 @@ openclaw:
   complaint-analysis-path: ${OPENCLAW_COMPLAINT_ANALYSIS_PATH:/api/v1/assistant/complaint/analyze}
   analysis-timeout-ms: ${OPENCLAW_ANALYSIS_TIMEOUT_MS:5000}
 
+app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://127.0.0.1:8080}
+
+repair:
+  ack-secret: ${REPAIR_ACK_SECRET:property-repair-ack-secret}
+
+complaint:
+  ack-secret: ${COMPLAINT_ACK_SECRET:${REPAIR_ACK_SECRET:property-repair-ack-secret}}
+  default-supervisor: ${COMPLAINT_DEFAULT_SUPERVISOR:卜立胜}
+
+visitor:
+  ack-secret: ${VISITOR_ACK_SECRET:${REPAIR_ACK_SECRET:property-repair-ack-secret}}
+
+decoration:
+  review-secret: ${DECORATION_REVIEW_SECRET:${REPAIR_ACK_SECRET:property-repair-ack-secret}}
+
 assistant:
   provider: ${ASSISTANT_PROVIDER:deepseek}
 
@@ -36,9 +52,6 @@ feishu:
   customer-webhook-url: ${FEISHU_CUSTOMER_WEBHOOK_URL:https://open.feishu.cn/open-apis/bot/v2/hook/3151f64f-bbbe-4ea2-a2cd-abae45822947}
   repair-webhook-url: ${FEISHU_REPAIR_WEBHOOK_URL:https://open.feishu.cn/open-apis/bot/v2/hook/fa44ef03-9edf-404f-97a0-c8745b45d380}
   life-webhook-url: ${FEISHU_LIFE_WEBHOOK_URL:https://open.feishu.cn/open-apis/bot/v2/hook/9e81812c-50e9-4eca-ab11-8a5e9c403f5f}
-
-complaint:
-  default-supervisor: ${COMPLAINT_DEFAULT_SUPERVISOR:卜立胜}
 
 admin:
   api-key: ${ADMIN_API_KEY:dev-admin-123456}

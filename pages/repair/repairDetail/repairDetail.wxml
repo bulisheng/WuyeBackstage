@@ -18,9 +18,11 @@
       </view>
       <view class="status-info">
         <text class="status-text">{{repair.statusName}}</text>
-        <text class="status-desc" wx:if="{{repair.status === 'pending'}}">工作人员将尽快处理您的报修申请</text>
-        <text class="status-desc" wx:elif="{{repair.status === 'processing'}}">维修人员已接单，正在准备上门服务</text>
-        <text class="status-desc" wx:else>感谢您的使用，如有其他问题可再次报修</text>
+        <view class="status-tags" wx:if="{{repair.ackLabel}}">
+          <text class="status-tag ack">{{repair.ackLabel}}</text>
+          <text class="status-tag muted">{{repair.ackBy}}</text>
+        </view>
+        <text class="status-desc">{{repair.statusTip}}</text>
       </view>
     </view>
 
@@ -53,6 +55,10 @@
         <view class="info-item">
           <text class="info-label">报修时间</text>
           <text class="info-value">{{repair.createTime}}</text>
+        </view>
+        <view class="info-item" wx:if="{{repair.ackTime}}">
+          <text class="info-label">签收时间</text>
+          <text class="info-value">{{repair.ackTime}}</text>
         </view>
       </view>
     </view>

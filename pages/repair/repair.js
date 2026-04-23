@@ -1,4 +1,5 @@
 const app = getApp();
+const api = require('../../utils/api');
 
 const STORAGE_REPAIR_DRAFT = 'assistantPendingRepairDraft';
 
@@ -30,6 +31,21 @@ function resolveSlotValue(slotLabel, timeSlots) {
   }
   const matched = timeSlots.find((item) => normalizeText(item.name).includes(source) || source.includes(normalizeText(item.name)));
   return matched ? matched.value : '';
+}
+
+function mapRepairStatus(repair = {}) {
+  const status = String(repair.status || '').trim() || 'pending';
+  const statusName = String(repair.statusName || '').trim() || (status === 'completed' ? '已完成' : status === 'processing' ? '处理中' : '待处理');
+  const ackTime = String(repair.ackTime || '').trim();
+  const ackBy = String(repair.ackBy || '').trim();
+  return Object.assign({}, repair, {
+    status,
+    statusName,
+    ackTime,
+    ackBy,
+    ackLabel: ackTime ? '已签收' : '',
+    statusTip: ackTime ? `师傅已签收${ackBy ? ` · ${ackBy}` : ''}` : (status === 'processing' ? '维修人员已接单' : status === 'completed' ? '报修已完成' : '工作人员将尽快处理')
+  });
 }
 
 Page({
@@ -142,9 +158,18 @@ Page({
   },
 
   // 加载报修记录
-  loadRepairs() {
-    const repairs = app.globalData.repairs || app.globalData.repairList || [];
-    this.setData({ repairs });
+  async loadRepairs() {
+    try {
+      const res = await api.getRepairs();
+      const repairs = ((res && res.data) || []).map(mapRepairStatus);
+      app.globalData.repairs = repairs;
+      app.globalData.repairList = repairs;
+      this.setData({ repairs });
+      return;
+    } catch (error) {
+      const repairs = (app.globalData.repairs || app.globalData.repairList || []).map(mapRepairStatus);
+      this.setData({ repairs });
+    }
   },
 
   // 选择报修类型
@@ -195,6 +220,7 @@ Page({
     }
 
     const { selectedType, description, selectedDate, selectedSlot, phone, repairTypes, timeSlots } = this.data;
+    const userInfo = app.globalData.userInfo || {};
     
     // 获取类型名称和图标
     const typeInfo = repairTypes.find(t => t.value === selectedType) || {};
@@ -207,12 +233,19 @@ Page({
     wx.showLoading({ title: '提交中...', mask: true });
 
     try {
-      const newRepair = await app.services.createRepair({
+      let newRepair = await app.services.createRepair({
         type: selectedType,
         description: description,
         appointmentDate: selectedDate,
         appointmentSlot: slotInfo.name || '',
-        phone: phone
+        phone: phone,
+        communityId: userInfo.communityId || '',
+        community: userInfo.community || '',
+        houseId: userInfo.houseId || userInfo.selectedHouseId || '',
+        houseNo: userInfo.houseNo || userInfo.selectedHouseNo || '',
+        building: userInfo.building || '',
+        unit: userInfo.unit || '',
+        room: userInfo.room || ''
       });
 
       if (!newRepair.categoryName) {
@@ -224,6 +257,7 @@ Page({
       if (!newRepair.appointmentTime) {
         newRepair.appointmentTime = appointmentTime;
       }
+      newRepair = mapRepairStatus(newRepair);
 
       app.globalData.repairs = [newRepair].concat(this.data.repairs || []);
       app.globalData.repairList = app.globalData.repairs;

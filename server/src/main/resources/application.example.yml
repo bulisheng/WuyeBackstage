@@ -19,6 +19,22 @@ openclaw:
   complaint-analysis-path: /api/v1/assistant/complaint/analyze
   analysis-timeout-ms: 5000
 
+app:
+  public-base-url: http://127.0.0.1:8080
+
+repair:
+  ack-secret: property-repair-ack-secret
+
+complaint:
+  ack-secret: property-complaint-ack-secret
+  default-supervisor: 卜立胜
+
+visitor:
+  ack-secret: property-visitor-ack-secret
+
+decoration:
+  review-secret: property-decoration-review-secret
+
 assistant:
   provider: deepseek
 
@@ -36,9 +52,6 @@ feishu:
   customer-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/3151f64f-bbbe-4ea2-a2cd-abae45822947
   repair-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/fa44ef03-9edf-404f-97a0-c8745b45d380
   life-webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/9e81812c-50e9-4eca-ab11-8a5e9c403f5f
-
-complaint:
-  default-supervisor: 卜立胜
 
 admin:
   api-key: dev-admin-123456

@@ -708,6 +708,13 @@ function complaintPushLabel(value) {
   return value || '-';
 }
 
+function complaintServiceLabel(value) {
+  if (value === 'pending') return '待受理';
+  if (value === 'processing') return '处理中';
+  if (value === 'completed') return '已处理';
+  return value || '-';
+}
+
 function splitBuildings(value) {
   if (Array.isArray(value)) {
     return value.filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
@@ -946,6 +953,11 @@ function rowsFor(type, item) {
       ['内容', item.content],
       ['位置', item.location],
       ['严重等级', severityLabel(item.severity)],
+      ['受理状态', complaintServiceLabel(item.serviceStatus)],
+      ['受理时间', item.serviceAckTime],
+      ['受理人', item.serviceAckBy],
+      ['处理时间', item.serviceCompleteTime],
+      ['处理人', item.serviceCompleteBy],
       ['分析状态', complaintAnalysisLabel(item.analysisStatus)],
       ['分析时间', item.analysisTime],
       ['推送状态', complaintPushLabel(item.pushStatus)],
@@ -3667,7 +3679,7 @@ export default function DashboardPage() {
                        activeTab === 'repair' ? (item.categoryName || item.category || '') :
                        activeTab === 'bill' ? (item.room || '') :
                        activeTab === 'feedback' ? `${item.community || '未归属小区'} · ${item.category || item.type || ''}` :
-                       activeTab === 'complaintQueue' ? `${item.community || '未归属小区'} · ${severityLabel(item.severity)}` :
+                       activeTab === 'complaintQueue' ? `${item.community || '未归属小区'} · ${severityLabel(item.severity)} · ${complaintServiceLabel(item.serviceStatus)}` :
                        activeTab === 'visitor' ? (item.visitPurpose || '') :
                        activeTab === 'decoration' ? (item.area || '') :
                        activeTab === 'express' ? (item.company || '') :
@@ -3688,6 +3700,7 @@ export default function DashboardPage() {
                      activeTab === 'decoration' ? (item.statusText || item.status || '-') :
                      activeTab === 'express' ? (item.statusText || item.status || '-') :
                      activeTab === 'product' ? (item.statusText || item.status || '-') :
+                     activeTab === 'complaintQueue' ? complaintServiceLabel(item.serviceStatus) :
                      (item.statusText || item.status || '-')}
                   </span>
                 </div>
@@ -3700,6 +3713,8 @@ export default function DashboardPage() {
                       ? `${item.createTime || '-'} / ${item.handler || '-'}`
                       : activeTab === 'feedback'
                         ? `${item.createTime || '-'} / ${item.phone || '-'}`
+                        : activeTab === 'complaintQueue'
+                          ? `${item.serviceAckTime || '-'} / ${item.serviceCompleteTime || '-'}`
                         : activeTab === 'visitor'
                           ? `${item.visitTime || '-'} / ${item.expireTime || '-'}`
                           : activeTab === 'decoration'

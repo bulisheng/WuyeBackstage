@@ -12,4 +12,11 @@ public class CreateRepairRequest {
   public String appointmentDate;
   public String appointmentSlot;
   public String phone;
+  public String communityId;
+  public String community;
+  public String houseId;
+  public String houseNo;
+  public String building;
+  public String unit;
+  public String room;
 }

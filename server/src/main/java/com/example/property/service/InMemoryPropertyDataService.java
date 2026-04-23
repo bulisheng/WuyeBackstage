@@ -18,10 +18,14 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.net.URLEncoder;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -29,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -105,6 +110,21 @@ public class InMemoryPropertyDataService implements PropertyDataService {
 
   @Value("${openclaw.analysis-timeout-ms:5000}")
   private long openclawAnalysisTimeoutMs;
+
+  @Value("${app.public-base-url:http://127.0.0.1:8080}")
+  private String publicBaseUrl;
+
+  @Value("${repair.ack-secret:property-repair-ack-secret}")
+  private String repairAckSecret;
+
+  @Value("${complaint.ack-secret:${repair.ack-secret:property-repair-ack-secret}}")
+  private String complaintAckSecret;
+
+  @Value("${visitor.ack-secret:${repair.ack-secret:property-repair-ack-secret}}")
+  private String visitorAckSecret;
+
+  @Value("${decoration.review-secret:${repair.ack-secret:property-repair-ack-secret}}")
+  private String decorationReviewSecret;
 
   @Value("${assistant.provider:openclaw}")
   private String assistantProvider;
@@ -1256,6 +1276,29 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return LocalDateTime.now().format(DATE);
   }
 
+  private String inferShiftFromTime(Object value) {
+    if (value == null) {
+      return "";
+    }
+    String text = String.valueOf(value).trim();
+    if (text.isEmpty()) {
+      return "";
+    }
+    String normalized = text.toLowerCase();
+    if (normalized.contains("晚上") || normalized.contains("18:") || normalized.contains("19:") || normalized.contains("20:")) {
+      return "晚班";
+    }
+    if (normalized.contains("下午") || normalized.contains("13:") || normalized.contains("14:") || normalized.contains("15:") || normalized.contains("16:") || normalized.contains("17:")) {
+      return "白班";
+    }
+    if (normalized.contains("早上") || normalized.contains("上午") || normalized.contains("00:") || normalized.contains("01:") || normalized.contains("02:")
+        || normalized.contains("03:") || normalized.contains("04:") || normalized.contains("05:") || normalized.contains("06:") || normalized.contains("07:")
+        || normalized.contains("08:") || normalized.contains("09:") || normalized.contains("10:") || normalized.contains("11:")) {
+      return "早班";
+    }
+    return "白班";
+  }
+
   private String newId() {
     return UUID.randomUUID().toString().replace("-", "");
   }
@@ -1744,28 +1787,61 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     String id = newId();
     String currentCommunityId = String.valueOf(current.getOrDefault("communityId", communityIdByName(String.valueOf(current.getOrDefault("community", currentCommunityName())))));
     String currentCommunityName = String.valueOf(current.getOrDefault("community", communityNameById(currentCommunityId)));
-    Map<String, Object> repair = mapOf(
-        "id", id,
-        "title", repairTypeName(request.type),
-        "category", request.type,
-        "categoryName", repairTypeName(request.type),
-        "icon", repairIcon(request.type),
-        "description", request.description,
-        "status", "pending",
-        "statusName", "待处理",
-        "createTime", now(),
-        "appointmentTime", (request.appointmentDate == null ? "" : request.appointmentDate) + (request.appointmentSlot == null ? "" : " " + request.appointmentSlot),
-        "appointmentDate", request.appointmentDate,
-        "appointmentSlot", request.appointmentSlot,
-        "phone", request.phone == null || request.phone.isEmpty() ? String.valueOf(current.get("phone")) : request.phone,
-        "handler", "",
-        "handlerPhone", "",
-        "dispatchTime", "",
-        "dispatchRemark", "",
-        "dispatchShift", "",
-        "dispatchBuilding", "",
-        "communityId", currentCommunityId,
-        "community", currentCommunityName,
+    String resolvedHouseId = textValue(firstNonEmpty(request == null ? null : request.houseId, current == null ? null : current.get("houseId"), current == null ? null : current.get("selectedHouseId")));
+    String resolvedHouseNo = textValue(firstNonEmpty(request == null ? null : request.houseNo, current == null ? null : current.get("houseNo"), current == null ? null : current.get("selectedHouseNo")));
+    String resolvedBuilding = textValue(firstNonEmpty(request == null ? null : request.building, current == null ? null : current.get("building")));
+    String resolvedUnit = textValue(firstNonEmpty(request == null ? null : request.unit, current == null ? null : current.get("unit")));
+    String resolvedRoom = textValue(firstNonEmpty(request == null ? null : request.room, current == null ? null : current.get("room")));
+    String resolvedCommunityId = textValue(firstNonEmpty(request == null ? null : request.communityId, current == null ? null : current.get("communityId"), currentCommunityId));
+    String resolvedCommunityName = String.valueOf(firstNonEmpty(request == null ? null : request.community, current == null ? null : current.get("community"), currentCommunityName));
+    Map<String, Object> assignedStaff = autoAssignRepairHandler(current, request);
+    String assignedHandler = textValue(firstNonEmpty(
+        assignedStaff == null ? null : assignedStaff.get("name"),
+        currentSupervisorName(),
+        "物业值班"));
+    String assignedHandlerPhone = textValue(firstNonEmpty(
+        assignedStaff == null ? null : assignedStaff.get("phone"),
+        ""));
+    String assignedBuilding = textValue(firstNonEmpty(
+        assignedStaff == null ? null : assignedStaff.get("dispatchBuilding"),
+        assignedStaff == null ? null : assignedStaff.get("building"),
+        assignedStaff == null ? null : assignedStaff.get("scope"),
+        ""));
+      String assignedDispatchRemark = assignedStaff == null
+          ? ""
+          : "自动分派到" + assignedHandler + "，优先匹配" + (assignedBuilding.isEmpty() ? "当前报修" : assignedBuilding) + "。";
+      String appointmentTime = (request.appointmentDate == null ? "" : request.appointmentDate)
+          + (request.appointmentSlot == null ? "" : " " + request.appointmentSlot);
+      Map<String, Object> repair = mapOf(
+          "id", id,
+          "title", repairTypeName(request.type),
+          "category", request.type,
+          "categoryName", repairTypeName(request.type),
+          "icon", repairIcon(request.type),
+          "description", request.description,
+          "status", "pending",
+          "statusName", "待处理",
+          "createTime", now(),
+          "appointmentTime", appointmentTime,
+          "appointmentDate", request.appointmentDate,
+          "appointmentSlot", request.appointmentSlot,
+          "phone", request.phone == null || request.phone.isEmpty() ? String.valueOf(current.get("phone")) : request.phone,
+          "houseId", resolvedHouseId,
+          "houseNo", resolvedHouseNo,
+          "building", resolvedBuilding,
+          "unit", resolvedUnit,
+          "room", resolvedRoom,
+          "handler", assignedHandler,
+          "handlerPhone", assignedHandlerPhone,
+          "dispatchTime", now(),
+          "dispatchRemark", assignedDispatchRemark,
+          "dispatchShift", textValue(firstNonEmpty(request.appointmentSlot, inferShiftFromTime(firstNonEmpty(request.appointmentDate, now())))),
+          "dispatchBuilding", assignedBuilding,
+          "ackTime", "",
+          "ackBy", "",
+          "ackSource", "",
+          "communityId", resolvedCommunityId,
+          "community", resolvedCommunityName,
         "comments", new ArrayList<>(),
         "dispatchHistory", new ArrayList<>(),
         "lastModifiedBy", current.getOrDefault("name", "业主"),
@@ -1844,6 +1920,123 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   }
 
   @Override
+  public Map<String, Object> acknowledgeRepair(String repairId, String ts, String sign) {
+    return applyRepairStatusTransition(repairId, ts, sign, "processing", "处理中", "师傅已收到", "ack", "飞书签收");
+  }
+
+  @Override
+  public Map<String, Object> completeRepair(String repairId, String ts, String sign) {
+    return applyRepairStatusTransition(repairId, ts, sign, "completed", "已完成", "师傅已完成", "complete", "飞书完工");
+  }
+
+  @Override
+  public Map<String, Object> acknowledgeComplaintQueue(String complaintId, String ts, String sign) {
+    return applyComplaintStatusTransition(complaintId, ts, sign, "processing", "处理中", "客服已受理", "ack", "飞书受理");
+  }
+
+  @Override
+  public Map<String, Object> completeComplaintQueue(String complaintId, String ts, String sign) {
+    return applyComplaintStatusTransition(complaintId, ts, sign, "completed", "已处理", "客服已处理", "complete", "飞书完结");
+  }
+
+  private Map<String, Object> applyRepairStatusTransition(String repairId,
+                                                          String ts,
+                                                          String sign,
+                                                          String targetStatus,
+                                                          String targetStatusName,
+                                                          String remark,
+                                                          String action,
+                                                          String source) {
+    Map<String, Object> repair = repairs.get(repairId);
+    if (repair == null) {
+      throw new BusinessException(404, "报修不存在");
+    }
+    if (!verifyRepairAckSignature(repairId, ts, sign)) {
+      throw new BusinessException(400, "签收链接无效或已过期");
+    }
+    String actionTime = now();
+    String actor = textValue(firstNonEmpty(repair.get("handler"), repair.get("handlerName"), currentSupervisorName(), "物业值班"));
+    repair.put("status", targetStatus);
+    repair.put("statusName", targetStatusName);
+    if ("completed".equals(targetStatus)) {
+      repair.put("completionTime", firstNonEmpty(repair.get("completionTime"), actionTime));
+    } else {
+      repair.put("ackTime", actionTime);
+      repair.put("ackBy", actor);
+      repair.put("ackSource", source);
+      repair.put("dispatchTime", firstNonEmpty(repair.get("dispatchTime"), actionTime));
+    }
+    if (repair.get("dispatchRemark") == null || String.valueOf(repair.get("dispatchRemark")).isEmpty()) {
+      repair.put("dispatchRemark", remark);
+    }
+    List<Map<String, Object>> history = repair.get("dispatchHistory") instanceof List
+        ? new ArrayList<>((List<Map<String, Object>>) repair.get("dispatchHistory"))
+        : new ArrayList<>();
+    history.add(mapOf(
+        "time", actionTime,
+        "action", action,
+        "actor", actor,
+        "remark", remark,
+        "source", source
+    ));
+    repair.put("dispatchHistory", history);
+    repair.put("lastModifiedBy", actor);
+    repair.put("lastModifiedAt", actionTime);
+    repair.put("updateTime", actionTime);
+    persistAll();
+    return cloneMap(repair);
+  }
+
+  private Map<String, Object> applyComplaintStatusTransition(String complaintId,
+                                                              String ts,
+                                                              String sign,
+                                                              String targetStatus,
+                                                              String targetStatusName,
+                                                              String remark,
+                                                              String action,
+                                                              String source) {
+    Map<String, Object> complaint = complaintQueue.get(complaintId);
+    if (complaint == null) {
+      throw new BusinessException(404, "投诉队列不存在");
+    }
+    if (!verifyComplaintAckSignature(complaintId, ts, sign)) {
+      throw new BusinessException(400, "签收链接无效或已过期");
+    }
+    String actionTime = now();
+    String actor = textValue(firstNonEmpty(complaint.get("supervisorName"), currentSupervisorName(), "客服值班"));
+    complaint.put("serviceStatus", targetStatus);
+    complaint.put("serviceStatusName", targetStatusName);
+    if ("completed".equals(targetStatus)) {
+      complaint.put("serviceCompleteTime", actionTime);
+      complaint.put("serviceCompleteBy", actor);
+    } else {
+      complaint.put("serviceAckTime", actionTime);
+      complaint.put("serviceAckBy", actor);
+      complaint.put("serviceAckSource", source);
+    }
+    if (complaint.get("serviceRemark") == null || String.valueOf(complaint.get("serviceRemark")).isEmpty()) {
+      complaint.put("serviceRemark", remark);
+    }
+    List<Map<String, Object>> history = complaint.get("serviceHistory") instanceof List
+        ? new ArrayList<>((List<Map<String, Object>>) complaint.get("serviceHistory"))
+        : new ArrayList<>();
+    history.add(mapOf(
+        "time", actionTime,
+        "action", action,
+        "actor", actor,
+        "remark", remark,
+        "source", source
+    ));
+    complaint.put("serviceHistory", history);
+    complaint.put("updateTime", actionTime);
+    complaint.put("lastModifiedBy", actor);
+    complaint.put("lastModifiedAt", actionTime);
+    complaintQueue.put(complaintId, complaint);
+    persistAll();
+    return cloneMap(complaint);
+  }
+
+  @Override
   public List<Map<String, Object>> adminListRepairs() {
     return listRepairs(null, null);
   }
@@ -1873,12 +2066,15 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "handler", payload.getOrDefault("handler", ""),
         "handlerPhone", payload.getOrDefault("handlerPhone", ""),
         "phone", payload.getOrDefault("phone", ""),
-        "dispatchTime", payload.getOrDefault("dispatchTime", ""),
-        "dispatchRemark", payload.getOrDefault("dispatchRemark", ""),
-        "dispatchShift", payload.getOrDefault("dispatchShift", ""),
-        "dispatchBuilding", payload.getOrDefault("dispatchBuilding", ""),
-        "communityId", communityId,
-        "community", communityName,
+          "dispatchTime", payload.getOrDefault("dispatchTime", ""),
+          "dispatchRemark", payload.getOrDefault("dispatchRemark", ""),
+          "dispatchShift", payload.getOrDefault("dispatchShift", ""),
+          "dispatchBuilding", payload.getOrDefault("dispatchBuilding", ""),
+          "ackTime", payload.getOrDefault("ackTime", ""),
+          "ackBy", payload.getOrDefault("ackBy", ""),
+          "ackSource", payload.getOrDefault("ackSource", ""),
+          "communityId", communityId,
+          "community", communityName,
         "dispatchHistory", payload.get("dispatchHistory") instanceof List ? payload.get("dispatchHistory") : new ArrayList<>(),
         "lastModifiedBy", payload.getOrDefault("lastModifiedBy", ""),
         "lastModifiedAt", payload.getOrDefault("lastModifiedAt", ""),
@@ -2154,12 +2350,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   }
 
   private String summarizeBillsForAssistant(String token) {
-    List<Map<String, Object>> billsList = listBills(token, null);
+    List<Map<String, Object>> billsList = listPropertyFeeBills(token);
     long unpaid = billsList.stream().filter(item -> "unpaid".equals(String.valueOf(item.get("status")))).count();
     if (billsList.isEmpty()) {
-      return "当前暂无账单";
+      return "当前暂无物业费账单";
     }
-    return "共" + billsList.size() + "条，其中待缴" + unpaid + "条";
+    return "共" + billsList.size() + "条物业费账单，其中待缴" + unpaid + "条";
   }
 
   private String summarizeRepairsForAssistant(String token) {
@@ -3134,20 +3330,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     response.put("quickReplies", Arrays.asList("查物业费", "查报修", "提交报修", "提交投诉", "转人工"));
     response.put("reason", "本地规则回退");
     if ("query_bill".equals(intent) || input.contains("物业费") || input.contains("缴费")) {
-      List<Map<String, Object>> billsList = listBills(token, null);
-      List<Map<String, Object>> unpaid = billsList.stream()
-          .filter(item -> "unpaid".equals(String.valueOf(item.get("status"))))
-          .collect(Collectors.toList());
-      response.put("replyText", unpaid.isEmpty()
-          ? "当前没有找到待缴账单。"
-          : "你当前有 " + unpaid.size() + " 条待缴账单。");
-      response.put("action", mapOf("type", "query_bill", "params", mapOf(
-          "communityId", context.getOrDefault("communityId", ""),
-          "houseId", context.getOrDefault("houseId", "")
-      )));
-      response.put("quickReplies", Arrays.asList("查看账单", "去缴费", "查报修", "提交报修", "转人工"));
-      response.put("reason", "账单查询");
-      return response;
+      return buildPropertyFeeAssistantResponse(token, mapOf("inputText", input), context, session);
     }
     if ("query_repair".equals(intent) || input.contains("报修")) {
       List<Map<String, Object>> repairList = listRepairs(token, null);
@@ -3360,8 +3543,183 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     builder.append("状态: ").append(repair.getOrDefault("statusName", repair.getOrDefault("status", "-"))).append("\n");
     builder.append("预约时间: ").append(firstNonEmpty(repair.get("appointmentTime"), "-")).append("\n");
     builder.append("描述: ").append(repair.getOrDefault("description", "-")).append("\n");
-    builder.append("处理人: ").append(firstNonEmpty(repair.get("handler"), repair.get("handlerName"), "未分派"));
+    String handlerName = textValue(firstNonEmpty(repair.get("handler"), repair.get("handlerName"), "未分派"));
+    String handlerDisplay = handlerName;
+    Map<String, Object> handlerStaff = findStaffByNameForCommunity(handlerName, textValue(repair.get("community")));
+    if (handlerStaff != null) {
+      String userId = textValue(handlerStaff.get("feishuUserId"));
+      String displayName = textValue(firstNonEmpty(handlerStaff.get("feishuDisplayName"), handlerStaff.get("name"), handlerName));
+      if (!userId.isEmpty()) {
+        handlerDisplay = "<at user_id=\"" + escapeXml(userId) + "\">" + escapeXml(displayName.isEmpty() ? handlerName : displayName) + "</at>";
+      } else {
+        handlerDisplay = (displayName.isEmpty() ? handlerName : displayName) + "（未绑定飞书）";
+      }
+    }
+    if (handlerStaff == null) {
+      handlerDisplay = handlerName;
+    }
+    builder.append("处理人: ").append(handlerDisplay);
+    String ackUrl = repairAckUrl(repair);
+    if (!ackUrl.isEmpty()) {
+      builder.append("\n师傅已收到请点击: ").append(ackUrl);
+    }
+    String completeUrl = repairCompleteUrl(repair);
+    if (!completeUrl.isEmpty()) {
+      builder.append("\n师傅已完成请点击: ").append(completeUrl);
+    }
     postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
+  }
+
+  private String repairAckUrl(Map<String, Object> repair) {
+    return repairStatusUrl(repair, "/ack");
+  }
+
+  private String repairCompleteUrl(Map<String, Object> repair) {
+    return repairStatusUrl(repair, "/complete");
+  }
+
+  private String repairStatusUrl(Map<String, Object> repair, String suffix) {
+    if (repair == null) {
+      return "";
+    }
+    String baseUrl = String.valueOf(firstNonEmpty(publicBaseUrl, "")).trim();
+    if (baseUrl.isEmpty()) {
+      return "";
+    }
+    String repairId = textValue(repair.get("id"));
+    if (repairId.isEmpty()) {
+      return "";
+    }
+    String ts = String.valueOf(System.currentTimeMillis());
+    String sign = signRepairAck(repairId, ts);
+    String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    return normalizedBase + "/api/v1/repairs/"
+        + URLEncoder.encode(repairId, StandardCharsets.UTF_8)
+        + suffix + "?ts=" + ts + "&sign=" + sign;
+  }
+
+  private String signRepairAck(String repairId, String ts) {
+    String secret = repairAckSecret == null ? "" : repairAckSecret.trim();
+    String source = String.valueOf(firstNonEmpty(repairId, "")) + "|" + String.valueOf(firstNonEmpty(ts, "")) + "|" + secret;
+    return sha256Hex(source);
+  }
+
+  private boolean verifyRepairAckSignature(String repairId, String ts, String sign) {
+    if (repairId == null || repairId.trim().isEmpty() || ts == null || ts.trim().isEmpty() || sign == null || sign.trim().isEmpty()) {
+      return false;
+    }
+    long timestamp;
+    try {
+      timestamp = Long.parseLong(ts.trim());
+    } catch (NumberFormatException error) {
+      return false;
+    }
+    long age = Math.abs(System.currentTimeMillis() - timestamp);
+    if (age > Duration.ofDays(7).toMillis()) {
+      return false;
+    }
+    String expected = signRepairAck(repairId, ts);
+    return expected.equalsIgnoreCase(sign.trim());
+  }
+
+  private String sha256Hex(String source) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] bytes = digest.digest((source == null ? "" : source).getBytes(StandardCharsets.UTF_8));
+      StringBuilder builder = new StringBuilder(bytes.length * 2);
+      for (byte aByte : bytes) {
+        builder.append(String.format("%02x", aByte));
+      }
+      return builder.toString();
+    } catch (NoSuchAlgorithmException error) {
+      throw new IllegalStateException("SHA-256不可用", error);
+    }
+  }
+
+  private Map<String, Object> autoAssignRepairHandler(Map<String, Object> currentUser, CreateRepairRequest request) {
+    List<Map<String, Object>> linkedHouses = resolveLinkedHouseRecords(currentUser);
+    Map<String, Object> primaryHouse = linkedHouses.isEmpty() ? null : linkedHouses.get(0);
+    String building = textValue(firstNonEmpty(
+        primaryHouse == null ? null : primaryHouse.get("building"),
+        primaryHouse == null ? null : primaryHouse.get("dispatchBuilding"),
+        primaryHouse == null ? null : primaryHouse.get("houseNo"),
+        ""));
+    String targetShift = inferShiftFromTime(firstNonEmpty(request == null ? null : request.appointmentDate, now()));
+    Map<String, Object> best = null;
+    int bestScore = Integer.MIN_VALUE;
+    for (Map<String, Object> staff : staffs.values()) {
+      if (!isRepairAssignableStaff(staff)) {
+        continue;
+      }
+      int score = 0;
+      String staffCommunity = textValue(staff.get("community"));
+      if (!staffCommunity.isEmpty() && staffCommunity.equals(currentCommunityName())) {
+        score += 8;
+      }
+      if (!building.isEmpty()) {
+        List<String> responsibleBuildings = normalizeStringList(staff.get("responsibleBuildings"));
+        if (responsibleBuildings.contains(building)) {
+          score += 60;
+        }
+        String scope = textValue(staff.get("scope"));
+        if (!scope.isEmpty() && scope.contains(building)) {
+          score += 20;
+        }
+      }
+      String role = textValue(staff.get("role"));
+      String position = textValue(staff.get("position"));
+      String skill = textValue(staff.get("skill"));
+      if (containsAny(role, "维修", "工程", "物业")) {
+        score += 18;
+      }
+      if (containsAny(position, "维修", "工程", "水电")) {
+        score += 18;
+      }
+      if (containsAny(skill, "维修", "工程", "水电")) {
+        score += 14;
+      }
+      if (!targetShift.isEmpty() && targetShift.equals(textValue(staff.get("shift")))) {
+        score += 12;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = staff;
+      }
+    }
+    if (best == null) {
+      for (Map<String, Object> staff : staffs.values()) {
+        if (isRepairAssignableStaff(staff)) {
+          best = staff;
+          break;
+        }
+      }
+    }
+    return best == null ? null : cloneMap(best);
+  }
+
+  private boolean isRepairAssignableStaff(Map<String, Object> staff) {
+    if (staff == null) {
+      return false;
+    }
+    String status = textValue(firstNonEmpty(staff.get("status"), staff.get("statusText"), ""));
+    String role = textValue(staff.get("role"));
+    String position = textValue(staff.get("position"));
+    String skill = textValue(staff.get("skill"));
+    boolean active = status.isEmpty()
+        || "active".equalsIgnoreCase(status)
+        || "在岗".equals(status)
+        || status.contains("在岗");
+    return active && (containsAny(role, "维修", "物业") || containsAny(position, "维修", "工程", "水电") || containsAny(skill, "维修", "工程", "水电"));
+  }
+
+  private boolean containsAny(String value, String... keywords) {
+    String text = value == null ? "" : value;
+    for (String keyword : keywords) {
+      if (keyword != null && !keyword.isEmpty() && text.contains(keyword)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void notifyLifeServiceFeishu(String title, Map<String, Object> payload, String scene) throws Exception {
@@ -3385,6 +3743,146 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       builder.append("状态: ").append(payload.getOrDefault("statusText", payload.getOrDefault("status", "-"))).append("\n");
     }
     postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
+  }
+
+  private void notifyCustomerServiceFeishu(String title, Map<String, Object> payload, String scene) throws Exception {
+    String webhook = resolveFeishuWebhook("customer");
+    if (webhook.isEmpty()) {
+      return;
+    }
+    StringBuilder builder = new StringBuilder();
+    builder.append("【").append(title == null || title.isEmpty() ? "客服通知" : title).append("】\n");
+    builder.append("小区: ").append(payload.getOrDefault("community", "-")).append("\n");
+    builder.append("场景: ").append(scene == null || scene.isEmpty() ? "-" : scene).append("\n");
+    if (payload.containsKey("visitorName")) {
+      builder.append("访客姓名: ").append(payload.getOrDefault("visitorName", "-")).append("\n");
+      builder.append("访客电话: ").append(payload.getOrDefault("visitorPhone", "-")).append("\n");
+      builder.append("访问目的: ").append(payload.getOrDefault("visitPurpose", "-")).append("\n");
+      builder.append("通行码: ").append(payload.getOrDefault("passCode", "-")).append("\n");
+      builder.append("状态: ").append(payload.getOrDefault("statusText", payload.getOrDefault("status", "-"))).append("\n");
+    }
+    if (payload.containsKey("decorationType")) {
+      builder.append("装修类型: ").append(payload.getOrDefault("decorationType", "-")).append("\n");
+      builder.append("区域: ").append(payload.getOrDefault("area", "-")).append("\n");
+      builder.append("状态: ").append(payload.getOrDefault("statusText", payload.getOrDefault("status", "-"))).append("\n");
+      builder.append("说明: ").append(payload.getOrDefault("description", "-")).append("\n");
+      builder.append("施工时间: ").append(firstNonEmpty(payload.get("startDate"), "-"))
+          .append(" 至 ").append(firstNonEmpty(payload.get("endDate"), "-")).append("\n");
+      String decorationMentionLine = formatFeishuMentionLine(payload, resolveDecorationMentionTargets(payload));
+      if (!decorationMentionLine.isEmpty()) {
+        builder.append(decorationMentionLine).append("\n");
+      }
+      String approveUrl = decorationReviewUrl(payload, "approve");
+      if (!approveUrl.isEmpty()) {
+        builder.append("装修已通过请点击: ").append(approveUrl).append("\n");
+      }
+      String rejectUrl = decorationReviewUrl(payload, "reject");
+      if (!rejectUrl.isEmpty()) {
+        builder.append("装修已驳回请点击: ").append(rejectUrl).append("\n");
+      }
+    }
+    postJson(webhook, mapOf("msg_type", "text", "content", mapOf("text", builder.toString())));
+  }
+
+  private String visitorInvalidateUrl(Map<String, Object> visitor) {
+    if (visitor == null) {
+      return "";
+    }
+    String baseUrl = String.valueOf(firstNonEmpty(publicBaseUrl, "")).trim();
+    String visitorId = textValue(visitor.get("id"));
+    if (baseUrl.isEmpty() || visitorId.isEmpty()) {
+      return "";
+    }
+    String ts = String.valueOf(System.currentTimeMillis());
+    String sign = signVisitorAck(visitorId, ts);
+    String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    return normalizedBase + "/api/v1/visitors/" + URLEncoder.encode(visitorId, StandardCharsets.UTF_8)
+        + "/invalidate?ts=" + ts + "&sign=" + sign;
+  }
+
+  private String decorationReviewUrl(Map<String, Object> decoration, String action) {
+    if (decoration == null) {
+      return "";
+    }
+    String baseUrl = String.valueOf(firstNonEmpty(publicBaseUrl, "")).trim();
+    String decorationId = textValue(decoration.get("id"));
+    if (baseUrl.isEmpty() || decorationId.isEmpty()) {
+      return "";
+    }
+    String normalizedAction = "reject".equalsIgnoreCase(action) || "rejected".equalsIgnoreCase(action)
+        ? "reject"
+        : "approve";
+    String ts = String.valueOf(System.currentTimeMillis());
+    String sign = signDecorationReview(decorationId, normalizedAction, ts);
+    String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    return normalizedBase + "/api/v1/decorations/" + URLEncoder.encode(decorationId, StandardCharsets.UTF_8)
+        + "/review/" + normalizedAction + "?ts=" + ts + "&sign=" + sign;
+  }
+
+  private List<String> resolveDecorationMentionTargets(Map<String, Object> decoration) {
+    List<String> targets = new ArrayList<>();
+    Map<String, Object> communityRecord = communityRecordById(textValue(decoration == null ? null : decoration.get("communityId")));
+    String defaultName = textValue(communityRecord.getOrDefault("defaultSupervisor", currentSupervisorName()));
+    if (!defaultName.isEmpty()) {
+      targets.add(defaultName);
+    }
+    for (String name : normalizeStringList(communityRecord.get("supervisors"))) {
+      if (!name.isEmpty() && !targets.contains(name)) {
+        targets.add(name);
+      }
+    }
+    return targets;
+  }
+
+  private String signVisitorAck(String visitorId, String ts) {
+    String secret = visitorAckSecret == null ? "" : visitorAckSecret.trim();
+    String source = String.valueOf(firstNonEmpty(visitorId, "")) + "|" + String.valueOf(firstNonEmpty(ts, "")) + "|" + secret;
+    return sha256Hex(source);
+  }
+
+  private boolean verifyVisitorAckSignature(String visitorId, String ts, String sign) {
+    if (visitorId == null || visitorId.trim().isEmpty() || ts == null || ts.trim().isEmpty() || sign == null || sign.trim().isEmpty()) {
+      return false;
+    }
+    long timestamp;
+    try {
+      timestamp = Long.parseLong(ts.trim());
+    } catch (NumberFormatException error) {
+      return false;
+    }
+    long age = Math.abs(System.currentTimeMillis() - timestamp);
+    if (age > Duration.ofHours(48).toMillis()) {
+      return false;
+    }
+    String expected = signVisitorAck(visitorId.trim(), ts.trim());
+    return expected.equalsIgnoreCase(sign.trim());
+  }
+
+  private String signDecorationReview(String decorationId, String action, String ts) {
+    String secret = decorationReviewSecret == null ? "" : decorationReviewSecret.trim();
+    String source = String.valueOf(firstNonEmpty(decorationId, "")) + "|" + String.valueOf(firstNonEmpty(action, "")) + "|" + String.valueOf(firstNonEmpty(ts, "")) + "|" + secret;
+    return sha256Hex(source);
+  }
+
+  private boolean verifyDecorationReviewSignature(String decorationId, String action, String ts, String sign) {
+    if (decorationId == null || decorationId.trim().isEmpty() || ts == null || ts.trim().isEmpty() || sign == null || sign.trim().isEmpty()) {
+      return false;
+    }
+    long timestamp;
+    try {
+      timestamp = Long.parseLong(ts.trim());
+    } catch (NumberFormatException error) {
+      return false;
+    }
+    long age = Math.abs(System.currentTimeMillis() - timestamp);
+    if (age > Duration.ofHours(48).toMillis()) {
+      return false;
+    }
+    String normalizedAction = "reject".equalsIgnoreCase(action) || "rejected".equalsIgnoreCase(action)
+        ? "reject"
+        : "approve";
+    String expected = signDecorationReview(decorationId.trim(), normalizedAction, ts.trim());
+    return expected.equalsIgnoreCase(sign.trim());
   }
 
   private List<String> resolveAssistantHandoffMentionTargets(Map<String, Object> session) {
@@ -3414,9 +3912,9 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     builder.append("用户: ").append(firstNonEmpty(session == null ? null : session.get("userName"), "-")).append("\n");
     builder.append("原因: ").append(firstNonEmpty(result == null ? null : result.get("reason"), "用户请求转人工")).append("\n");
     builder.append("工单号: ").append(firstNonEmpty(result == null ? null : result.get("ticketId"), "-")).append("\n");
-    List<String> mentions = resolveFeishuMentionTags(session, resolveAssistantHandoffMentionTargets(session));
-    if (!mentions.isEmpty()) {
-      builder.append("提醒对象: ").append(String.join(" ", mentions)).append("\n");
+    String mentionLine = formatFeishuMentionLine(session, resolveAssistantHandoffMentionTargets(session));
+    if (!mentionLine.isEmpty()) {
+      builder.append(mentionLine).append("\n");
     }
     builder.append("会话: ").append(firstNonEmpty(session == null ? null : session.get("id"), "-"));
     return builder.toString().trim();
@@ -3523,6 +4021,12 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     queueItem.put("feedbackReply", feedback.getOrDefault("reply", ""));
     queueItem.put("analysisStatus", "pending");
     queueItem.put("pushStatus", "pending");
+    queueItem.put("serviceStatus", "pending");
+    queueItem.put("serviceStatusName", "待受理");
+    queueItem.put("serviceAckTime", "");
+    queueItem.put("serviceAckBy", "");
+    queueItem.put("serviceCompleteTime", "");
+    queueItem.put("serviceCompleteBy", "");
     queueItem.put("summary", buildComplaintSummary(feedback));
     queueItem.put("severity", severityForComplaint(String.valueOf(feedback.getOrDefault("content", "")), null));
     queueItem.put("keywords", complaintKeywords(String.valueOf(feedback.getOrDefault("content", ""))));
@@ -3557,6 +4061,10 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if ("replied".equals(String.valueOf(feedback.get("status")))) {
       queueItem.put("analysisStatus", queueItem.getOrDefault("analysisStatus", "done"));
       queueItem.put("pushStatus", queueItem.getOrDefault("pushStatus", "sent"));
+      queueItem.put("serviceStatus", "completed");
+      queueItem.put("serviceStatusName", "已处理");
+      queueItem.put("serviceCompleteTime", firstNonEmpty(feedback.get("replyTime"), now()));
+      queueItem.put("serviceCompleteBy", firstNonEmpty(feedback.get("replyBy"), currentSupervisorName()));
     }
     complaintQueue.put(id, queueItem);
     persistAll();
@@ -3692,10 +4200,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
   private String buildFeishuComplaintMessage(Map<String, Object> complaint, Map<String, Object> payload) {
     String severity = severityDisplayLabel(String.valueOf(complaint.getOrDefault("severity", "medium")));
     List<String> mentionTargets = normalizeMentionTargets(complaint.get("mentionTargets"));
-    List<String> mentionTags = resolveFeishuMentionTags(complaint, mentionTargets);
-    String mentionLine = mentionTargets.isEmpty()
-        ? ""
-        : "提醒对象: " + (mentionTags.isEmpty() ? String.join("、", mentionTargets) : String.join(" ", mentionTags));
+    String mentionLine = formatFeishuMentionLine(complaint, mentionTargets);
     StringBuilder builder = new StringBuilder();
     builder.append("【投诉待处理】");
     builder.append(String.valueOf(complaint.getOrDefault("title", complaint.getOrDefault("category", "投诉"))));
@@ -3706,6 +4211,17 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     builder.append("严重等级: ").append(severity).append("\n");
     builder.append("摘要: ").append(complaint.getOrDefault("summary", "")).append("\n");
     builder.append("详情: ").append(complaint.getOrDefault("content", "")).append("\n");
+    builder.append("受理状态: ").append(complaint.getOrDefault("serviceStatusName", "待受理")).append("\n");
+    builder.append("受理时间: ").append(firstNonEmpty(complaint.get("serviceAckTime"), "-")).append("\n");
+    builder.append("处理时间: ").append(firstNonEmpty(complaint.get("serviceCompleteTime"), "-")).append("\n");
+    String ackUrl = complaintAckUrl(complaint);
+    if (!ackUrl.isEmpty()) {
+      builder.append("客服已受理请点击: ").append(ackUrl).append("\n");
+    }
+    String completeUrl = complaintCompleteUrl(complaint);
+    if (!completeUrl.isEmpty()) {
+      builder.append("客服已处理请点击: ").append(completeUrl).append("\n");
+    }
     if (!mentionLine.isEmpty()) {
       builder.append(mentionLine).append("\n");
     }
@@ -3714,6 +4230,58 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       builder.append("备注: ").append(extraRemark).append("\n");
     }
     return builder.toString().trim();
+  }
+
+  private String complaintAckUrl(Map<String, Object> complaint) {
+    return complaintStatusUrl(complaint, "/ack");
+  }
+
+  private String complaintCompleteUrl(Map<String, Object> complaint) {
+    return complaintStatusUrl(complaint, "/complete");
+  }
+
+  private String complaintStatusUrl(Map<String, Object> complaint, String suffix) {
+    if (complaint == null) {
+      return "";
+    }
+    String baseUrl = String.valueOf(firstNonEmpty(publicBaseUrl, "")).trim();
+    if (baseUrl.isEmpty()) {
+      return "";
+    }
+    String complaintId = textValue(complaint.get("id"));
+    if (complaintId.isEmpty()) {
+      return "";
+    }
+    String ts = String.valueOf(System.currentTimeMillis());
+    String sign = signComplaintAck(complaintId, ts);
+    String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    return normalizedBase + "/api/v1/complaints/"
+        + URLEncoder.encode(complaintId, StandardCharsets.UTF_8)
+        + suffix + "?ts=" + ts + "&sign=" + sign;
+  }
+
+  private String signComplaintAck(String complaintId, String ts) {
+    String secret = complaintAckSecret == null ? "" : complaintAckSecret.trim();
+    String source = String.valueOf(firstNonEmpty(complaintId, "")) + "|" + String.valueOf(firstNonEmpty(ts, "")) + "|" + secret;
+    return sha256Hex(source);
+  }
+
+  private boolean verifyComplaintAckSignature(String complaintId, String ts, String sign) {
+    if (complaintId == null || complaintId.trim().isEmpty() || ts == null || ts.trim().isEmpty() || sign == null || sign.trim().isEmpty()) {
+      return false;
+    }
+    long timestamp;
+    try {
+      timestamp = Long.parseLong(ts.trim());
+    } catch (NumberFormatException error) {
+      return false;
+    }
+    long age = Math.abs(System.currentTimeMillis() - timestamp);
+    if (age > Duration.ofHours(48).toMillis()) {
+      return false;
+    }
+    String expected = signComplaintAck(complaintId.trim(), ts.trim());
+    return expected.equalsIgnoreCase(sign.trim());
   }
 
   private String severityDisplayLabel(String severity) {
@@ -3747,6 +4315,36 @@ public class InMemoryPropertyDataService implements PropertyDataService {
       }
     }
     return tags;
+  }
+
+  private String formatFeishuMentionLine(Map<String, Object> payload, List<String> mentionTargets) {
+    if (mentionTargets == null || mentionTargets.isEmpty()) {
+      return "";
+    }
+    String communityName = String.valueOf(payload == null ? "" : payload.getOrDefault("community", ""));
+    List<String> parts = new ArrayList<>();
+    for (String target : mentionTargets) {
+      String trimmedTarget = textValue(target);
+      if (trimmedTarget.isEmpty()) {
+        continue;
+      }
+      Map<String, Object> staff = findStaffByNameForCommunity(trimmedTarget, communityName);
+      if (staff == null) {
+        parts.add(trimmedTarget + "（未绑定飞书）");
+        continue;
+      }
+      String displayName = String.valueOf(firstNonEmpty(staff.get("feishuDisplayName"), staff.get("name"), trimmedTarget)).trim();
+      String userId = textValue(staff.get("feishuUserId"));
+      if (!userId.isEmpty()) {
+        parts.add("<at user_id=\"" + escapeXml(userId) + "\">" + escapeXml(displayName.isEmpty() ? trimmedTarget : displayName) + "</at>");
+      } else {
+        parts.add((displayName.isEmpty() ? trimmedTarget : displayName) + "（未绑定飞书）");
+      }
+    }
+    if (parts.isEmpty()) {
+      return "";
+    }
+    return "提醒对象: " + String.join(" ", parts);
   }
 
   private Map<String, Object> findStaffByNameForCommunity(String name, String communityName) {
@@ -4508,6 +5106,94 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     return false;
   }
 
+  private List<Map<String, Object>> listPropertyFeeBills(String token) {
+    return listBills(token, null).stream()
+        .filter(this::isPropertyFeeBill)
+        .collect(Collectors.toList());
+  }
+
+  private Map<String, Object> buildPropertyFeeAssistantResponse(String token, Map<String, Object> requestBody, Map<String, Object> context, Map<String, Object> session) {
+    List<Map<String, Object>> billsList = listPropertyFeeBills(token);
+    List<Map<String, Object>> unpaid = billsList.stream()
+        .filter(item -> "unpaid".equals(String.valueOf(item.get("status"))))
+        .collect(Collectors.toList());
+    double totalAmount = unpaid.stream()
+        .mapToDouble(item -> numericValue(item.get("amount")))
+        .sum();
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("replyText", unpaid.isEmpty()
+        ? "当前没有找到待缴物业费。"
+        : "你当前有 " + unpaid.size() + " 条物业费待缴，合计 ¥" + formatMoney(totalAmount) + "。");
+    response.put("intent", "query_bill");
+    response.put("confidence", 1.0);
+    response.put("needConfirm", false);
+    response.put("handoff", false);
+    response.put("slots", new LinkedHashMap<>());
+    response.put("action", mapOf("type", "query_bill", "params", mapOf(
+        "communityId", context == null ? "" : context.getOrDefault("communityId", ""),
+        "houseId", context == null ? "" : context.getOrDefault("houseId", "")
+    )));
+    response.put("quickReplies", Arrays.asList("查看账单", "去缴费", "查报修", "提交报修", "转人工"));
+    response.put("reason", "物业费查询");
+    response.put("sessionId", session == null ? "" : session.getOrDefault("id", ""));
+    response.put("communityId", session == null ? "" : session.getOrDefault("communityId", ""));
+    response.put("community", session == null ? "" : session.getOrDefault("community", ""));
+    response.put("openclawUrl", session == null ? "" : session.getOrDefault("openclawUrl", ""));
+    response.put("updateTime", now());
+    return response;
+  }
+
+  private boolean isPropertyFeeQuery(String content, Map<String, Object> requestBody) {
+    String text = textValue(content);
+    String scene = textValue(requestBody == null ? null : requestBody.get("scene"));
+    String intent = textValue(requestBody == null ? null : requestBody.get("intent"));
+    return "query_bill".equals(scene)
+        || "query_bill".equals(intent)
+        || looksLikePropertyFeeQuery(text);
+  }
+
+  private boolean looksLikePropertyFeeQuery(String text) {
+    String value = textValue(text);
+    if (value.isEmpty()) {
+      return false;
+    }
+    String normalized = value.replaceAll("\\s+", "");
+    if (normalized.contains("查物业费") || normalized.contains("查询物业费") || normalized.contains("本月物业费")) {
+      return true;
+    }
+    if (!normalized.contains("物业费")) {
+      return false;
+    }
+    return normalized.contains("查")
+        || normalized.contains("查询")
+        || normalized.contains("查看")
+        || normalized.contains("多少")
+        || normalized.contains("金额")
+        || normalized.contains("待缴")
+        || normalized.contains("账单")
+        || normalized.contains("缴纳")
+        || normalized.contains("怎么缴")
+        || normalized.contains("如何缴")
+        || normalized.contains("本月");
+  }
+
+  private boolean isPropertyFeeBill(Map<String, Object> bill) {
+    if (bill == null) {
+      return false;
+    }
+    String type = textValue(bill.get("type")).toLowerCase(Locale.ROOT);
+    String title = textValue(bill.get("title"));
+    String category = textValue(bill.get("category"));
+    String name = textValue(bill.get("name"));
+    String text = (type + " " + title + " " + category + " " + name).toLowerCase(Locale.ROOT);
+    return text.contains("property")
+        || text.contains("物业费")
+        || text.contains("物业缴费")
+        || text.contains("物业管理费")
+        || text.contains("wuyefei")
+        || "物业费".equals(title);
+  }
+
   private boolean sameHouseLabel(Object left, Object right) {
     String leftText = textValue(left);
     String rightText = textValue(right);
@@ -4545,6 +5231,13 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     } catch (Exception error) {
       return Double.NaN;
     }
+  }
+
+  private String formatMoney(double amount) {
+    if (!Double.isFinite(amount)) {
+      return "0.00";
+    }
+    return String.format(Locale.ROOT, "%.2f", amount);
   }
 
   private Map<String, Object> findHouseForLogin(AuthLoginRequest request) {
@@ -5603,17 +6296,33 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     visitors.put(String.valueOf(visitor.get("id")), visitor);
     persistAll();
+    try {
+      notifyCustomerServiceFeishu("访客通知", visitor, "create_visitor");
+    } catch (Exception ignored) {
+      // 通知失败不影响访客记录保存
+    }
     return cloneMap(visitor);
   }
 
   @Override
   public Map<String, Object> invalidateVisitor(String token, String id) {
+    return invalidateVisitor(id, null, null);
+  }
+
+  @Override
+  public Map<String, Object> invalidateVisitor(String id, String ts, String sign) {
     Map<String, Object> visitor = visitors.get(id);
     if (visitor == null) {
       throw new BusinessException(404, "访客记录不存在");
     }
+    if (ts != null || sign != null) {
+      if (!verifyVisitorAckSignature(id, ts, sign)) {
+        throw new BusinessException(400, "签收链接无效或已过期");
+      }
+    }
     visitor.put("status", "invalid");
     visitor.put("statusText", "已失效");
+    visitor.put("invalidateTime", now());
     visitor.put("updateTime", now());
     persistAll();
     return cloneMap(visitor);
@@ -5647,6 +6356,11 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     );
     decorations.put(String.valueOf(decoration.get("id")), decoration);
     persistAll();
+    try {
+      notifyCustomerServiceFeishu("装修申请", decoration, "create_decoration");
+    } catch (Exception ignored) {
+      // 通知失败不影响装修申请保存
+    }
     return cloneMap(decoration);
   }
 
@@ -5660,6 +6374,27 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     decoration.put("statusText", payload.getOrDefault("statusText", "已审核"));
     decoration.put("reviewTime", now());
     decoration.put("reviewRemark", payload.getOrDefault("remark", ""));
+    persistAll();
+    return cloneMap(decoration);
+  }
+
+  @Override
+  public Map<String, Object> reviewDecoration(String id, String action, String ts, String sign) {
+    Map<String, Object> decoration = decorations.get(id);
+    if (decoration == null) {
+      throw new BusinessException(404, "装修申请不存在");
+    }
+    if (!verifyDecorationReviewSignature(id, action, ts, sign)) {
+      throw new BusinessException(400, "签收链接无效或已过期");
+    }
+    String normalizedAction = "reject".equalsIgnoreCase(action) || "rejected".equalsIgnoreCase(action)
+        ? "rejected"
+        : "approved";
+    String statusText = "rejected".equals(normalizedAction) ? "已驳回" : "已通过";
+    decoration.put("status", normalizedAction);
+    decoration.put("statusText", statusText);
+    decoration.put("reviewTime", now());
+    decoration.put("reviewRemark", "飞书链接操作");
     persistAll();
     return cloneMap(decoration);
   }
@@ -6270,6 +7005,18 @@ public class InMemoryPropertyDataService implements PropertyDataService {
         "prompt", String.valueOf(firstNonEmpty(safeRequest.prompt, session.get("prompt"), settings.get("promptTemplate"), "")),
         "inputText", content
     );
+    if (isPropertyFeeQuery(content, requestBody)) {
+      Map<String, Object> fixed = buildPropertyFeeAssistantResponse(token, requestBody, context, session);
+      appendAssistantSessionMessage(session, "user", content, mapOf("contentType", String.valueOf(firstNonEmpty(safeRequest.contentType, "text")), "scene", requestBody.get("scene")));
+      appendAssistantSessionMessage(session, "assistant", String.valueOf(fixed.getOrDefault("replyText", "")), fixed);
+      session.put("status", Boolean.TRUE.equals(fixed.get("handoff")) ? "handoff" : "active");
+      session.put("lastMessageAt", now());
+      session.put("messageCount", assistantSessionMessages(session).size());
+      session.put("updateTime", now());
+      assistantSessions.put(sessionId, session);
+      persistAll();
+      return cloneMap(fixed);
+    }
     Map<String, Object> normalized = matchAssistantFaq(token, safeRequest, session, settings, context, content);
     if (normalized == null) {
       normalized = invokeAssistantEngine(token, settings, requestBody);
@@ -6446,7 +7193,7 @@ public class InMemoryPropertyDataService implements PropertyDataService {
     if (text.contains("投诉") || text.contains("表扬")) {
       return "feedback";
     }
-    if (text.contains("缴费") || text.contains("物业费")) {
+    if (looksLikePropertyFeeQuery(text)) {
       return "payment";
     }
     if (text.contains("访客")) {

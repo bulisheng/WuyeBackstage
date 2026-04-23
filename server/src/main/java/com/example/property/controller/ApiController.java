@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -160,6 +162,178 @@ public class ApiController {
                                                            @PathVariable String id,
                                                            @RequestBody Map<String, Object> payload) {
     return ApiResponse.ok(service.addRepairComment(token(authorization), id, payload));
+  }
+
+  @GetMapping(value = "/repairs/{id}/ack", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> ackRepair(@PathVariable String id,
+                                          @RequestParam(value = "ts", required = false) String ts,
+                                          @RequestParam(value = "sign", required = false) String sign) {
+    try {
+      Map<String, Object> repair = service.acknowledgeRepair(id, ts, sign);
+      return ResponseEntity.ok()
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("签收成功", repair));
+    } catch (BusinessException error) {
+      return ResponseEntity.status(error.getCode())
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("签收失败", error.getMessage()));
+    } catch (Exception error) {
+      return ResponseEntity.status(500)
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("签收失败", error.getMessage() == null ? "系统异常" : error.getMessage()));
+    }
+  }
+
+  @GetMapping(value = "/repairs/{id}/complete", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> completeRepair(@PathVariable String id,
+                                               @RequestParam(value = "ts", required = false) String ts,
+                                               @RequestParam(value = "sign", required = false) String sign) {
+    try {
+      Map<String, Object> repair = service.completeRepair(id, ts, sign);
+      return ResponseEntity.ok()
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("完成成功", repair));
+    } catch (BusinessException error) {
+      return ResponseEntity.status(error.getCode())
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("完成失败", error.getMessage()));
+    } catch (Exception error) {
+      return ResponseEntity.status(500)
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("完成失败", error.getMessage() == null ? "系统异常" : error.getMessage()));
+    }
+  }
+
+  @GetMapping(value = "/complaints/{id}/ack", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> ackComplaint(@PathVariable String id,
+                                             @RequestParam(value = "ts", required = false) String ts,
+                                             @RequestParam(value = "sign", required = false) String sign) {
+    try {
+      Map<String, Object> complaint = service.acknowledgeComplaintQueue(id, ts, sign);
+      return ResponseEntity.ok()
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("受理成功", complaint));
+    } catch (BusinessException error) {
+      return ResponseEntity.status(error.getCode())
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("受理失败", error.getMessage()));
+    } catch (Exception error) {
+      return ResponseEntity.status(500)
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("受理失败", error.getMessage() == null ? "系统异常" : error.getMessage()));
+    }
+  }
+
+  @GetMapping(value = "/complaints/{id}/complete", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> completeComplaint(@PathVariable String id,
+                                                  @RequestParam(value = "ts", required = false) String ts,
+                                                  @RequestParam(value = "sign", required = false) String sign) {
+    try {
+      Map<String, Object> complaint = service.completeComplaintQueue(id, ts, sign);
+      return ResponseEntity.ok()
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("处理成功", complaint));
+    } catch (BusinessException error) {
+      return ResponseEntity.status(error.getCode())
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("处理失败", error.getMessage()));
+    } catch (Exception error) {
+      return ResponseEntity.status(500)
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("处理失败", error.getMessage() == null ? "系统异常" : error.getMessage()));
+    }
+  }
+
+  @GetMapping(value = "/visitors/{id}/invalidate", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> invalidateVisitorLink(@PathVariable String id,
+                                                     @RequestParam(value = "ts", required = false) String ts,
+                                                     @RequestParam(value = "sign", required = false) String sign) {
+    try {
+      Map<String, Object> visitor = service.invalidateVisitor(id, ts, sign);
+      return ResponseEntity.ok()
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("访客已失效", visitor));
+    } catch (BusinessException error) {
+      return ResponseEntity.status(error.getCode())
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("失效失败", error.getMessage()));
+    } catch (Exception error) {
+      return ResponseEntity.status(500)
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("失效失败", error.getMessage() == null ? "系统异常" : error.getMessage()));
+    }
+  }
+
+  @GetMapping(value = "/decorations/{id}/review/{action}", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> reviewDecorationLink(@PathVariable String id,
+                                                     @PathVariable String action,
+                                                     @RequestParam(value = "ts", required = false) String ts,
+                                                     @RequestParam(value = "sign", required = false) String sign) {
+    try {
+      Map<String, Object> decoration = service.reviewDecoration(id, action, ts, sign);
+      String title = "reject".equalsIgnoreCase(action) || "rejected".equalsIgnoreCase(action) ? "装修已驳回" : "装修已通过";
+      return ResponseEntity.ok()
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml(title, decoration));
+    } catch (BusinessException error) {
+      return ResponseEntity.status(error.getCode())
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("审核失败", error.getMessage()));
+    } catch (Exception error) {
+      return ResponseEntity.status(500)
+          .contentType(MediaType.TEXT_HTML)
+          .body(buildRepairAckHtml("审核失败", error.getMessage() == null ? "系统异常" : error.getMessage()));
+    }
+  }
+
+  private String buildRepairAckHtml(String title, Object content) {
+    String safeTitle = escapeHtml(title == null ? "签收结果" : String.valueOf(title));
+    String safeContent;
+    if (content instanceof Map) {
+      try {
+        safeContent = escapeHtml(new com.fasterxml.jackson.databind.ObjectMapper()
+            .writerWithDefaultPrettyPrinter()
+            .writeValueAsString(content));
+      } catch (Exception error) {
+        safeContent = escapeHtml(String.valueOf(content));
+      }
+    } else {
+      safeContent = escapeHtml(String.valueOf(content));
+    }
+    String text = String.join("\n",
+        "<!doctype html>",
+        "<html lang=\"zh-CN\">",
+        "<head>",
+        "<meta charset=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<title>" + safeTitle + "</title>",
+        "<style>",
+        "body{font-family:Arial,'Microsoft YaHei',sans-serif;background:#f5f7fb;color:#1f2937;margin:0;padding:24px;}",
+        ".card{max-width:720px;margin:0 auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(15,23,42,.08);}",
+        ".title{font-size:28px;font-weight:700;margin:0 0 12px;}",
+        ".desc{font-size:16px;line-height:1.8;white-space:pre-wrap;word-break:break-word;background:#f8fafc;border-radius:14px;padding:16px;}",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<div class=\"card\">",
+        "<div class=\"title\">" + safeTitle + "</div>",
+        "<div class=\"desc\">" + safeContent + "</div>",
+        "</div>",
+        "</body>",
+        "</html>");
+    return text;
+  }
+
+  private String escapeHtml(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;");
   }
 
   @PostMapping("/repairs/{id}/assign")

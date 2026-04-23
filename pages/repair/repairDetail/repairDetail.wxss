@@ -95,6 +95,33 @@
   display: block;
 }
 
+.status-tags {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 10rpx 0 8rpx;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.status-tag.ack {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.status-tag.muted {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+}
+
 /* 信息卡片 */
 .info-card {
   background: #fff;

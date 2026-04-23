@@ -65,6 +65,10 @@ public interface PropertyDataService {
 
   Map<String, Object> assignRepair(String token, String id, Map<String, Object> payload);
 
+  Map<String, Object> acknowledgeRepair(String id, String ts, String sign);
+
+  Map<String, Object> completeRepair(String id, String ts, String sign);
+
   List<Map<String, Object>> adminListRepairs();
 
   Map<String, Object> adminSaveRepair(Map<String, Object> payload);
@@ -82,6 +86,10 @@ public interface PropertyDataService {
   Map<String, Object> adminGetComplaintQueue(String id);
 
   Map<String, Object> adminAnalyzeComplaintQueue(String id, Map<String, Object> payload);
+
+  Map<String, Object> acknowledgeComplaintQueue(String id, String ts, String sign);
+
+  Map<String, Object> completeComplaintQueue(String id, String ts, String sign);
 
   Map<String, Object> adminPushComplaintQueueToFeishu(String id, Map<String, Object> payload);
 
@@ -193,6 +201,8 @@ public interface PropertyDataService {
 
   Map<String, Object> invalidateVisitor(String token, String id);
 
+  Map<String, Object> invalidateVisitor(String id, String ts, String sign);
+
   List<Map<String, Object>> listDecorations(String token);
 
   Map<String, Object> getDecoration(String token, String id);
@@ -200,6 +210,8 @@ public interface PropertyDataService {
   Map<String, Object> createDecoration(String token, CreateDecorationRequest request);
 
   Map<String, Object> reviewDecoration(String token, String id, Map<String, Object> payload);
+
+  Map<String, Object> reviewDecoration(String id, String action, String ts, String sign);
 
   List<Map<String, Object>> listFeedbacks(String token, String type);
 

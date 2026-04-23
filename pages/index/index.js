@@ -79,7 +79,7 @@ Page({
       communityInfo: appData.communityInfo || {},
       notices: appData.notices || [],
       unpaidBills: visibleBills.filter(bill => bill.status === 'unpaid').slice(0, 2),
-      processingRepairs: (appData.repairs || []).filter(repair => repair.status === 'processing'),
+      processingRepairs: (appData.repairs || []).filter((repair) => repair.status === 'pending' || repair.status === 'processing').slice(0, 3),
       quickEntries,
       serviceEntries,
       featureFlags,
@@ -108,10 +108,22 @@ Page({
     });
   },
 
+  goToPayment() {
+    wx.navigateTo({
+      url: '/pages/payment/payment'
+    });
+  },
+
   goToRepairDetail(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: '/pages/repair/repairDetail/repairDetail?id=' + id
+    });
+  },
+
+  goToRepair() {
+    wx.navigateTo({
+      url: '/pages/repair/repair'
     });
   },
 

@@ -57,6 +57,9 @@ npm run dev
 - 真机联调时把 `devApiBaseUrl` 改成电脑局域网 IP
 - `pages/assistant/assistant` 是智能助手页，报修/投诉草稿会先缓存到本地再跳转到对应业务页
 - 报修推飞书时会带上预约时间，前端如果填了预约时间，后端通知里也要一起展示
+- 报修飞书消息里还会带“师傅已收到”和“师傅已完成”两个链接；师傅点击后，后端会分别把报修状态改成“处理中”或“已完成”，并写入签收时间、签收人和完工时间
+- 投诉队列也走同样的链接式状态流转；客服通知机器人里的“客服已受理 / 客服已处理”链接会分别把投诉状态改成“处理中 / 已处理”，并写入受理时间、受理人和处理时间
+- 访客和装修不要一概强制飞书；更合理的做法是：报修、投诉、转人工属于“工单协同”必须通知并可点链接改状态，装修属于“审批协同”可通知可链接，访客、快递、蔬菜订单属于“提醒或台账”通常只提醒或只后台改状态即可，默认不要在飞书里要求点链接处理。
 - `web-admin/src/pages/AssistantSessionsPage.jsx` 里可以切换 `格式化 / 原始` 数据。
 - 提示词页支持 `恢复上一次保存`。
 - 技能库页支持按项目、标签、启用状态和当前负责人筛选；记录里建议保留 `responsibleSupervisor`、`synonyms`、`keywords` 和 `pinned` 字段。
@@ -241,6 +244,20 @@ npm run dev
 - `GET /api/v1/admin/complaint-queue`
 - `POST /api/v1/admin/complaint-queue/{id}/analyze`
 - `POST /api/v1/admin/complaint-queue/{id}/push-feishu`
+
+## 模块通知规范表
+
+这张表用来定哪些模块要飞书、哪些模块只后台改状态，避免整套系统都强上通知。
+
+| 模块 | 是否飞书通知 | 是否链接改状态 | 后端状态字段 | 前端展示字段 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| 账单、住户、房屋、小区、物业人员、智能配置、FAQ | 否 | 否 | 只做配置或台账字段 | 列表、详情、配置页 | 纯配置或基础资料，不需要飞书通知 |
+| 报修 | 是 | 是 | `status`、`statusName`、`ackTime`、`ackBy`、`completionTime` | `已签收`、`处理中`、`已完成` | 标准工单协同，师傅点链接后改状态 |
+| 投诉 / 客服 | 是 | 是 | `serviceStatus`、`serviceStatusName`、`serviceAckTime`、`serviceAckBy`、`serviceCompleteTime`、`serviceCompleteBy` | `待受理`、`处理中`、`已处理` | 客服协同工单，通知和状态流转要一起做 |
+| 智能助手转人工 | 是 | 视情况 | `status`、`ticketId`、`handoffTime` | `接人工中`、`已转人工` | 需要飞书通知，是否点链接接单按场景决定 |
+| 装修 | 建议是 | 可选 | `status`、`statusText`、`reviewTime` | `待审核`、`已通过`、`已驳回` | 审批协同，通知可以有，若要审批也可保留链接；但不是所有小区都必须启用链接 |
+| 访客 | 可选 | 否 | `status`、`statusText`、`invalidateTime` | `有效`、`已失效` | 默认只做提醒，不强制飞书点链接处理 |
+| 快递 / 蔬菜订单 | 可选 | 否 | `status`、`statusText`、`pickupTime` / `completeTime` | `待取件`、`已取件`、`待处理`、`已完成` | 更适合后台按钮改状态，飞书只做提醒即可 |
 
 ## 真机联调
 
