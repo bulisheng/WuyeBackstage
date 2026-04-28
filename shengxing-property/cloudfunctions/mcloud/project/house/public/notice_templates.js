@@ -35,6 +35,21 @@ const NOTICE_TEMPLATES = {
 请及时处理`
 	},
 
+	'repair.closed': {
+		title: '报修已办结',
+		scene: 'repair',
+		content:
+`【报修已办结】
+
+小区：{communityName}
+房号：{houseName}
+
+处理结果：
+{replyContent}
+
+办结时间：{time}`
+	},
+
 	'repair.appointmentChanged': {
 		title: '报修预约变更',
 		scene: 'repair',
@@ -147,6 +162,22 @@ const NOTICE_TEMPLATES = {
 支付时间：{payTime}`
 	},
 
+	'fee.refunded': {
+		title: '账单退款',
+		scene: 'fee',
+		content:
+`【账单退款】
+
+小区：{communityName}
+房号：{houseName}
+
+账单：{billName}
+退款金额：¥{amount}
+退款原因：{reason}
+
+退款时间：{time}`
+	},
+
 	'fee.overdue': {
 		title: '缴费逾期提醒',
 		scene: 'fee',
@@ -213,6 +244,37 @@ const NOTICE_TEMPLATES = {
 金额：¥{amount}
 
 支付时间：{payTime}`
+	},
+
+	'mall.orderShipped': {
+		title: '订单已发货',
+		scene: 'mall',
+		content:
+`【订单已发货】
+
+小区：{communityName}
+用户：{userName}
+
+商品：{productNames}
+物流单号：{shippingNo}
+
+发货时间：{time}`
+	},
+
+	'mall.orderRefunded': {
+		title: '订单已退款',
+		scene: 'mall',
+		content:
+`【订单已退款】
+
+小区：{communityName}
+用户：{userName}
+
+商品：{productNames}
+退款金额：¥{amount}
+退款原因：{reason}
+
+退款时间：{time}`
 	},
 
 	'mall.orderCancelled': {

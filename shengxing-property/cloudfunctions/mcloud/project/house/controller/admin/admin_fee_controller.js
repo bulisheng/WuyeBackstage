@@ -45,6 +45,15 @@ class AdminFeeController extends BaseProjectAdminController {
 		return await service.saveFee(input);
 	}
 
+	async batchSaveFee() {
+		await this.isAdmin();
+		let input = this.validateData({
+			items: 'array|default=[]'
+		});
+		let service = new AdminFeeService();
+		return await service.batchSaveFee(input.items);
+	}
+
 	async getFeeDetail() {
 		await this.isAdmin();
 		let input = this.validateData({
@@ -64,6 +73,18 @@ class AdminFeeController extends BaseProjectAdminController {
 		return await service.statusFee(input.id, input.status);
 	}
 
+	async refundFee() {
+		await this.isAdmin();
+		let input = this.validateData({
+			id: 'must|id',
+			reason: 'string|name=退款原因',
+			tradeNo: 'string|name=交易号',
+			amount: 'string|name=金额'
+		});
+		let service = new AdminFeeService();
+		return await service.refundFee(input.id, input);
+	}
+
 	async remindFee() {
 		await this.isAdmin();
 		let input = this.validateData({
@@ -78,6 +99,21 @@ class AdminFeeController extends BaseProjectAdminController {
 		let service = new AdminFeeService();
 		input.operatorId = this._adminId;
 		return await service.remindFee(input.id, input);
+	}
+
+	async remindOverdueFees() {
+		await this.isAdmin();
+		let input = this.validateData({
+			search: 'string|min:1|max:30|name=搜索条件',
+			method: 'string|name=催缴方式',
+			result: 'string|name=催缴结果',
+			assigneeName: 'string|name=负责人',
+			assigneePhone: 'string|name=联系电话',
+			communityName: 'string|name=小区名称'
+		});
+		let service = new AdminFeeService();
+		input.operatorId = this._adminId;
+		return await service.remindOverdueFees(input);
 	}
 
 	async getFeeReminderList() {

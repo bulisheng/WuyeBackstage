@@ -104,6 +104,35 @@ class AdminTaskController extends BaseProjectAdminController {
 		return await service.statusTask(input.id, input.status);
 	}
 
+	async assignTask() {
+		await this.isAdmin();
+		let rules = {
+			id: 'must|id',
+			assigneeName: 'must|string|name=负责人',
+			assigneePhone: 'string|name=联系电话',
+			note: 'string|name=备注',
+			communityName: 'string|name=小区名称'
+		};
+		let input = this.validateData(rules);
+		let service = new AdminTaskService();
+		return await service.assignTask(input.id, input);
+	}
+
+	async replyTask() {
+		await this.isAdmin();
+		let rules = {
+			id: 'must|id',
+			replyContent: 'must|string|name=回复内容',
+			note: 'string|name=备注',
+			replyBy: 'string|name=回复人',
+			communityName: 'string|name=小区名称',
+			assigneeName: 'string|name=负责人'
+		};
+		let input = this.validateData(rules);
+		let service = new AdminTaskService();
+		return await service.replyTask(input.id, input);
+	}
+
 	/************** 数据导出 BEGIN ********************* */
 	/** 当前是否有导出文件生成 */
 	async taskDataGet() {

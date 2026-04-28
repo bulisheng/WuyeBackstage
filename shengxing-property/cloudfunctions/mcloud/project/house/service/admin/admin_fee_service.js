@@ -3,6 +3,7 @@ const util = require('../../../../framework/utils/util.js');
 const exportUtil = require('../../../../framework/utils/export_util.js');
 const timeUtil = require('../../../../framework/utils/time_util.js');
 const NotificationService = require('../../notification_service.js');
+const PaymentService = require('../../payment_service.js');
 const FeeModel = require('../../model/fee_model.js');
 const FeeReminderLogModel = require('../../model/fee_reminder_log_model.js');
 
@@ -82,6 +83,15 @@ class AdminFeeService extends BaseProjectAdminService {
 		return { id };
 	}
 
+	async batchSaveFee(items = []) {
+		let result = [];
+		for (let i = 0; i < items.length; i++) {
+			let item = items[i] || {};
+			result.push(await this.saveFee(item));
+		}
+		return result;
+	}
+
 	async statusFee(id, status) {
 		let fee = await FeeModel.getOne({ _id: id }, '*');
 		if (!fee) return null;
@@ -95,8 +105,18 @@ class AdminFeeService extends BaseProjectAdminService {
 				payTime: timeUtil.timestamp2Time(Date.now(), 'Y-M-D h:m'),
 				statusText: '已缴费'
 			});
+		} else if (nextStatus === 4) {
+			patch.FEE_OBJ = Object.assign({}, feeObj, {
+				refundTime: timeUtil.timestamp2Time(Date.now(), 'Y-M-D h:m'),
+				statusText: '已退款'
+			});
 		}
 		return await FeeModel.edit(id, patch);
+	}
+
+	async refundFee(id, input = {}) {
+		let payment = new PaymentService();
+		return await payment.refund('fee', id, input);
 	}
 
 	async remindFee(id, input = {}) {
@@ -150,6 +170,35 @@ class AdminFeeService extends BaseProjectAdminService {
 		}
 
 		return reminderData;
+	}
+
+	async remindOverdueFees(input = {}) {
+		let where = {
+			and: {
+				_pid: this.getProjectId(),
+				FEE_STATUS: 0
+			}
+		};
+		if (util.isDefined(input.search) && input.search) {
+			where.or = [
+				{ FEE_TITLE: ['like', input.search] },
+				{ FEE_DESC: ['like', input.search] },
+				{ 'FEE_OBJ.houseName': ['like', input.search] },
+			];
+		}
+		let result = await FeeModel.getList(where, '*', { FEE_ADD_TIME: 'desc' }, 1, 9999, false, 0, false);
+		let logs = [];
+		for (let i = 0; i < (result.list || []).length; i++) {
+			let item = result.list[i];
+			logs.push(await this.remindFee(item._id, {
+				communityName: input.communityName || '',
+				method: input.method || '批量催缴',
+				result: input.result || '已发送',
+				assigneeName: input.assigneeName || '',
+				assigneePhone: input.assigneePhone || ''
+			}));
+		}
+		return logs;
 	}
 
 	async getFeeReminderList({

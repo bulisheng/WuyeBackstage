@@ -35,6 +35,11 @@ class TaskService extends BaseProjectService {
 		return await TaskModel.getOne(where);
 	}
 
+	async _getTaskUser(userId) {
+		let passport = new PassportService();
+		return await passport.getMyDetail(userId);
+	}
+
 
 	/**添加 */
 	async insertTask(userId, {
@@ -104,6 +109,76 @@ class TaskService extends BaseProjectService {
 		hasImageForms
 	}) {
 		await TaskModel.editForms(id, 'TASK_FORMS', 'TASK_OBJ', hasImageForms);
+	}
+
+	async assignTask(id, input = {}) {
+		let task = await TaskModel.getOne({ _id: id }, '*');
+		if (!task) return null;
+		let obj = task.TASK_OBJ || {};
+		let lastTime = Date.now();
+		let patch = {
+			TASK_STATUS: 1,
+			TASK_LAST_TIME: lastTime,
+			TASK_OBJ: Object.assign({}, obj, {
+				assigneeName: input.assigneeName || '',
+				assigneePhone: input.assigneePhone || '',
+				assignNote: input.note || '',
+				assignTime: timeUtil.timestamp2Time(lastTime, 'Y-M-D h:m')
+			})
+		};
+		await TaskModel.edit(id, patch);
+		try {
+			let user = await this._getTaskUser(task.TASK_USER_ID);
+			let notification = new NotificationService();
+			await notification.send('repair.assigned', {
+				communityName: input.communityName || user.USER_HOUSE || '',
+				houseName: obj.building || '',
+				staffName: input.assigneeName || '',
+				staffPhone: input.assigneePhone || '',
+				appointmentTime: obj.appointmentTime || '',
+				userName: user.USER_NAME || '',
+				phone: user.USER_MOBILE || ''
+			}, {
+				receiverText: user.USER_NAME || ''
+			});
+		} catch (err) {
+			console.log(err);
+		}
+		return patch;
+	}
+
+	async replyTask(id, input = {}) {
+		let task = await TaskModel.getOne({ _id: id }, '*');
+		if (!task) return null;
+		let obj = task.TASK_OBJ || {};
+		let lastTime = Date.now();
+		let patch = {
+			TASK_STATUS: 9,
+			TASK_LAST_TIME: lastTime,
+			TASK_OBJ: Object.assign({}, obj, {
+				replyContent: input.replyContent || '',
+				replyNote: input.note || '',
+				replyTime: timeUtil.timestamp2Time(lastTime, 'Y-M-D h:m'),
+				replyBy: input.replyBy || '',
+				assigneeName: input.assigneeName || obj.assigneeName || ''
+			})
+		};
+		await TaskModel.edit(id, patch);
+		try {
+			let user = await this._getTaskUser(task.TASK_USER_ID);
+			let notification = new NotificationService();
+			await notification.send('repair.closed', {
+				communityName: input.communityName || user.USER_HOUSE || '',
+				houseName: obj.building || '',
+				replyContent: input.replyContent || '',
+				time: timeUtil.timestamp2Time(lastTime, 'Y-M-D h:m')
+			}, {
+				receiverText: user.USER_NAME || ''
+			});
+		} catch (err) {
+			console.log(err);
+		}
+		return patch;
 	}
 
 	/**删除数据 */

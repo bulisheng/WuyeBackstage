@@ -10,6 +10,7 @@ const util = require('../../../../framework/utils/util.js');
 const exportUtil = require('../../../../framework/utils/export_util.js');
 const timeUtil = require('../../../../framework/utils/time_util.js');
 const dataUtil = require('../../../../framework/utils/data_util.js');
+const TaskService = require('../../task_service.js');
 const TaskModel = require('../../model/task_model.js');
 const UserModel = require('../../model/user_model.js');
 
@@ -83,7 +84,30 @@ class AdminTaskService extends BaseProjectAdminService {
 
 	/**修改状态 */
 	async statusTask(id, status) {
-		this.AppError('该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let task = await TaskModel.getOne({ _id: id }, '*');
+		if (!task) return null;
+		let lastTime = timeUtil.time();
+		let patch = {
+			TASK_STATUS: Number(status),
+			TASK_LAST_TIME: lastTime
+		};
+		if (Number(status) === 9) {
+			patch.TASK_OBJ = Object.assign({}, task.TASK_OBJ || {}, {
+				replyTime: timeUtil.timestamp2Time(lastTime, 'Y-M-D h:m'),
+				statusText: '已办结'
+			});
+		}
+		return await TaskModel.edit(id, patch);
+	}
+
+	async assignTask(id, input = {}) {
+		let service = new TaskService();
+		return await service.assignTask(id, input);
+	}
+
+	async replyTask(id, input = {}) {
+		let service = new TaskService();
+		return await service.replyTask(id, input);
 	}
 
 	// #####################导出数据
@@ -100,8 +124,33 @@ class AdminTaskService extends BaseProjectAdminService {
 
 	/**导出数据 */
 	async exportTaskDataExcel(condition, fields) {
-
-		this.AppError('该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {};
+		if (condition) {
+			try {
+				where = JSON.parse(decodeURIComponent(condition));
+			} catch (err) {
+				where = {};
+			}
+		}
+		if (!where.and) where.and = {};
+		where.and._pid = this.getProjectId();
+		let result = await TaskModel.getList(where, '*', { TASK_ADD_TIME: 'desc' }, 1, 9999, false, 0, false);
+		let data = [['标题', '分类', '优先级', '楼栋房号', '联系人', '电话', '状态', '创建时间', '处理时间']];
+		(result.list || []).forEach(item => {
+			let obj = item.TASK_OBJ || {};
+			data.push([
+				obj.title || '',
+				obj.type || '',
+				obj.level || '',
+				obj.building || '',
+				obj.person || '',
+				obj.phone || '',
+				item.TASK_STATUS == 1 ? '处理中' : (item.TASK_STATUS == 9 ? '已办结' : '待处理'),
+				timeUtil.timestamp2Time(item.TASK_ADD_TIME, 'Y-M-D h:m'),
+				timeUtil.timestamp2Time(item.TASK_LAST_TIME, 'Y-M-D h:m')
+			]);
+		});
+		return await exportUtil.exportDataExcel(EXPORT_TASK_DATA_KEY, '报修数据', result.total || (result.list || []).length, data);
 
 	}
 

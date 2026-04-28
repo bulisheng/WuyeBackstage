@@ -191,6 +191,38 @@ class PaymentService {
 		});
 	}
 
+	async refund(bizType, bizId, payload = {}) {
+		if (!bizType || !bizId) {
+			throw new AppError('退款参数不完整', appCode.LOGIC);
+		}
+
+		let result = null;
+		if (bizType === 'fee') {
+			result = await this._refundFee(bizId, payload);
+		} else if (bizType === 'mall') {
+			result = await this._refundMall(bizId, payload);
+		} else {
+			throw new AppError('不支持的退款业务类型', appCode.LOGIC);
+		}
+
+		await PayLogModel.insert({
+			PAY_BIZ_TYPE: bizType,
+			PAY_BIZ_ID: bizId,
+			PAY_TRADE_NO: payload.tradeNo || `REFUND_${bizId}_${Date.now()}`,
+			PAY_TITLE: result.title || '',
+			PAY_DESC: result.desc || '退款成功',
+			PAY_AMOUNT: String(payload.amount || result.amount || ''),
+			PAY_CHANNEL: payload.channel || 'refund',
+			PAY_STATUS: 9,
+			PAY_OBJ: Object.assign({}, payload, result, {
+				refundTime: result.refundTime || '',
+				refundReason: payload.reason || ''
+			})
+		});
+
+		return result;
+	}
+
 	async _callbackFee(feeId, { tradeNo, amount, channel, status, payload }) {
 		let fee = await FeeModel.getOne({ _id: feeId }, '*');
 		if (!fee) {
@@ -289,6 +321,82 @@ class PaymentService {
 			title: order.ORDER_TITLE,
 			amount: amount || obj.price || '',
 			payTime
+		};
+	}
+
+	async _refundFee(feeId, payload = {}) {
+		let fee = await FeeModel.getOne({ _id: feeId }, '*');
+		if (!fee) throw new AppError('账单不存在', appCode.LOGIC);
+		let feeObj = fee.FEE_OBJ || {};
+		let refundTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
+		let newObj = Object.assign({}, feeObj, {
+			refundTime,
+			refundReason: payload.reason || '',
+			statusText: '已退款'
+		});
+		await FeeModel.edit(feeId, {
+			FEE_STATUS: 4,
+			FEE_OBJ: newObj
+		});
+		try {
+			let notification = new NotificationService();
+			await notification.send('fee.refunded', {
+				communityName: payload.communityName || feeObj.communityName || '',
+				houseName: payload.houseName || feeObj.houseName || '',
+				billName: fee.FEE_TITLE || '',
+				amount: payload.amount || feeObj.amount || '',
+				reason: payload.reason || '',
+				time: refundTime
+			}, {
+				receiverText: payload.userName || feeObj.userName || ''
+			});
+		} catch (err) {
+			console.log(err);
+		}
+		return {
+			id: feeId,
+			title: fee.FEE_TITLE,
+			amount: payload.amount || feeObj.amount || '',
+			refundTime,
+			desc: '退款成功'
+		};
+	}
+
+	async _refundMall(orderId, payload = {}) {
+		let order = await MallOrderModel.getOne({ _id: orderId }, '*');
+		if (!order) throw new AppError('订单不存在', appCode.LOGIC);
+		let obj = order.ORDER_OBJ || {};
+		let refundTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
+		let newObj = Object.assign({}, obj, {
+			refundTime,
+			refundReason: payload.reason || '',
+			statusText: '已退款'
+		});
+		await MallOrderModel.edit(orderId, {
+			ORDER_STATUS: 4,
+			ORDER_OBJ: newObj
+		});
+		try {
+			let notification = new NotificationService();
+			await notification.send('mall.orderRefunded', {
+				communityName: payload.communityName || '',
+				userName: payload.userName || '',
+				productNames: payload.productNames || order.ORDER_TITLE || '',
+				amount: payload.amount || obj.price || '',
+				reason: payload.reason || '',
+				time: refundTime
+			}, {
+				receiverText: payload.userName || ''
+			});
+		} catch (err) {
+			console.log(err);
+		}
+		return {
+			id: orderId,
+			title: order.ORDER_TITLE,
+			amount: payload.amount || obj.price || '',
+			refundTime,
+			desc: '退款成功'
 		};
 	}
 }
