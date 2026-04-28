@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../WK-main"
+		},
+		{
+			"path": "../drivermini-master"
+		}
+	],
+	"settings": {}
+}
