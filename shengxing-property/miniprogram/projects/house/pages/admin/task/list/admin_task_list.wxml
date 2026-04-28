@@ -16,7 +16,7 @@
 					</view>
 					<view wx:if="{{item.TASK_STATUS==0}}" class="right text-red">「待处理」</view>
 						<view wx:elif="{{item.TASK_STATUS==1}}" class="right text-blue">「处理中」</view>
-						<view wx:elif="{{item.TASK_STATUS==2}}" class="right text-green">「已办结」</view>
+						<view wx:elif="{{item.TASK_STATUS==9}}" class="right text-green">「已办结」</view>
 
 					<view wx:if="{{item.TASK_OBJ.level=='紧急'}}" class="right text-orange">「{{item.TASK_OBJ.level}}」</view>
 					<view wx:elif="{{item.TASK_OBJ.level=='一般'}}" class="right text-olive">「{{item.TASK_OBJ.level}}」</view>
@@ -67,7 +67,7 @@
 
 						<view  wx:if="{{item.TASK_STATUS!=1}}" bindtap="bindStatusTap"  data-id="{{item._id}}" data-status="1"  data-id="{{item._id}}" class="btn  margin-right-s">设为办理中</view>
 
-						<view  wx:if="{{item.TASK_STATUS!=2}}" bindtap="bindStatusTap"  data-id="{{item._id}}" data-status="2"  data-id="{{item._id}}" class="btn  margin-right-s">设为办结</view>
+						<view  wx:if="{{item.TASK_STATUS!=9}}" bindtap="bindStatusTap"  data-id="{{item._id}}" data-status="9"  data-id="{{item._id}}" class="btn  margin-right-s">设为办结</view>
 
 						<view bindtap="bindDelTap" data-id="{{item._id}}" class="btn  margin-right-s"><text class="icon-delete margin-right-xxs text-orange"></text>删除</view>
 

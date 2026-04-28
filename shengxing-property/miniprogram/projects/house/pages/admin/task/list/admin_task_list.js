@@ -141,7 +141,7 @@ Page({
 			{ label: '全部', type: '', value: '' },
 			{ label: '待处理', type: 'status', value: '0' },
 			{ label: '处理中', type: 'status', value: '1' },
-			{ label: '已办结', type: 'status', value: '2' },
+			{ label: '已办结', type: 'status', value: '9' },
 		];
 
 

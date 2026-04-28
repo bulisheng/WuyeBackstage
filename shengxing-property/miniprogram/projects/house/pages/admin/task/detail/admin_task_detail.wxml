@@ -10,11 +10,41 @@
 					<view class="mao">：</view>
 					<view class="content">{{task.TASK_ADD_TIME}} </view>
 				</view>
+				<view class="info-item">
+					<view class="title">状态</view>
+					<view class="mao">：</view>
+					<view class="content">{{task.statusText}}</view>
+				</view>
+				<view class="info-item" wx:if="{{task.TASK_LAST_TIME}}">
+					<view class="title">处理时间</view>
+					<view class="mao">：</view>
+					<view class="content">{{task.TASK_LAST_TIME}}</view>
+				</view>
 			</view>
 		</view>
 	</view>
 
 	<view style="height:30rpx;"></view>
+
+	<view class="admin-comm-list">
+		<view class="item">
+			<view class="info" style="min-height: unset;">
+				<view class="info-item"><view class="title">负责人</view><view class="mao">：</view><view class="content"><input value="{{edit.assigneeName}}" data-field="assigneeName" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">电话</view><view class="mao">：</view><view class="content"><input value="{{edit.assigneePhone}}" data-field="assigneePhone" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">备注</view><view class="mao">：</view><view class="content"><input value="{{edit.note}}" data-field="note" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">回复内容</view><view class="mao">：</view><view class="content"><textarea value="{{edit.replyContent}}" data-field="replyContent" bindinput="bindInput"></textarea></view></view>
+				<view class="info-item">
+					<view class="title">动作</view><view class="mao">：</view>
+					<view class="content">
+						<button bindtap="bindAssignTap" size="mini" class="margin-right-xs">分配</button>
+						<button bindtap="bindReplyTap" size="mini" class="margin-right-xs">办结</button>
+						<button bindtap="bindStatusTap" data-status="1" size="mini" class="margin-right-xs">处理中</button>
+						<button bindtap="bindStatusTap" data-status="9" size="mini">已办结</button>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
 
 	<import src="../../../../../../tpls/public/admin_forms_detail_tpl.wxml" />
 	<template is="adminFormsDetailTpl" data="{{forms:task.TASK_FORMS}}" /> 

@@ -10,6 +10,7 @@
 					<view wx:elif="{{item.ORDER_STATUS==1}}" class="right text-green">「已支付」</view>
 					<view wx:elif="{{item.ORDER_STATUS==2}}" class="right text-blue">「已发货」</view>
 					<view wx:elif="{{item.ORDER_STATUS==3}}" class="right text-green">「已完成」</view>
+					<view wx:elif="{{item.ORDER_STATUS==4}}" class="right text-blue">「已退款」</view>
 					<view wx:else class="right text-grey">「已关闭」</view>
 				</view>
 				<view class="info">

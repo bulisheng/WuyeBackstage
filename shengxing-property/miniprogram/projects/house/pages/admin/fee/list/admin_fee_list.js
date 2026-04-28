@@ -18,6 +18,21 @@ Page({
 		pageHelper.commListListener(this, e);
 	},
 
+	async bindBatchTap() {
+		wx.navigateTo({
+			url: '../batch/admin_fee_batch'
+		});
+	},
+
+	async bindRemindOverdueTap() {
+		await cloudHelper.callCloudSumbit('admin/fee_remind_overdue', {
+			search: this.data.search || '',
+			method: '批量催缴',
+			result: '已发送'
+		}, { title: '批量催缴中' });
+		wx.showToast({ title: '催缴任务已提交', icon: 'none' });
+	},
+
 	async bindExportTap() {
 		await cloudHelper.callCloudSumbit('admin/fee_data_export', {
 			condition: this.data.dataList && this.data.dataList.condition ? this.data.dataList.condition : ''
@@ -40,6 +55,7 @@ Page({
 			{ label: '全部', type: '', value: '' },
 			{ label: '待缴费', type: 'status', value: '0' },
 			{ label: '已缴费', type: 'status', value: '1' },
+			{ label: '已退款', type: 'status', value: '4' },
 			{ label: '已作废', type: 'status', value: '9' },
 		];
 

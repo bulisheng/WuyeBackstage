@@ -21,6 +21,7 @@ Page({
 			{ label: '已支付', type: 'status', value: '1' },
 			{ label: '已发货', type: 'status', value: '2' },
 			{ label: '已完成', type: 'status', value: '3' },
+			{ label: '已退款', type: 'status', value: '4' },
 			{ label: '已关闭', type: 'status', value: '9' },
 		];
 		this.setData({ search: '', sortItems: [sortItems1], sortMenus, isLoad: true });

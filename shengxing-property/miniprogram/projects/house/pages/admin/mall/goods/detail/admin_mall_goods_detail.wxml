@@ -1,0 +1,50 @@
+<view wx:if="{{isLoad===null}}" class="margin-top load notexist text-l text-grey"></view>
+<view wx:if="{{isLoad===false}}" class="margin-top load loading text-l text-grey"></view>
+
+<view wx:if="{{isLoad && isAdmin}}" class="main-admin">
+	<view class="admin-comm-list">
+		<view class="item">
+			<view class="info" style="min-height: unset;">
+				<view class="info-item"><view class="title">标题</view><view class="mao">：</view><view class="content"><input value="{{edit.title}}" data-field="title" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">名称</view><view class="mao">：</view><view class="content"><input value="{{edit.name}}" data-field="name" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">封面</view><view class="mao">：</view><view class="content"><input value="{{edit.cover}}" data-field="cover" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">价格</view><view class="mao">：</view><view class="content"><input value="{{edit.price}}" data-field="price" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">库存</view><view class="mao">：</view><view class="content"><input value="{{edit.stock}}" data-field="stock" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">说明</view><view class="mao">：</view><view class="content"><textarea value="{{edit.desc}}" data-field="desc" bindinput="bindInput"></textarea></view></view>
+				<view class="info-item">
+					<view class="title">状态</view><view class="mao">：</view>
+					<view class="content">
+						<button bindtap="bindStatusTap" data-status="1" size="mini" class="margin-right-xs">上架</button>
+						<button bindtap="bindStatusTap" data-status="0" size="mini" class="margin-right-xs">下架</button>
+						<button bindtap="bindStatusTap" data-status="9" size="mini">停用</button>
+					</view>
+				</view>
+				<view class="info-item">
+					<view class="title">保存</view><view class="mao">：</view>
+					<view class="content"><button bindtap="bindSaveTap" size="mini">保存商品</button></view>
+				</view>
+			</view>
+		</view>
+	</view>
+
+	<view class="admin-comm-list margin-top-s">
+		<view class="item">
+			<view class="info" style="min-height: unset;">
+				<view class="info-item"><view class="title">状态</view><view class="mao">：</view><view class="content">{{detail.statusText}}</view></view>
+				<view class="info-item"><view class="title">创建时间</view><view class="mao">：</view><view class="content">{{detail.MALL_ADD_TIME}}</view></view>
+				<view class="info-item"><view class="title">更新时间</view><view class="mao">：</view><view class="content">{{detail.MALL_EDIT_TIME}}</view></view>
+			</view>
+		</view>
+	</view>
+
+	<view class="admin-comm-list margin-top-s">
+		<view class="item">
+			<view class="info" style="min-height: unset;">
+				<view class="info-item"><view class="title">扩展信息</view><view class="mao">：</view></view>
+				<view wx:for="{{objItems}}" wx:key="key" class="info-item">
+					<view class="title">{{item.key}}</view><view class="mao">：</view><view class="content">{{item.value}}</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</view>

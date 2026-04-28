@@ -29,6 +29,7 @@ Page({
 			{ title: '报修管理', icon: 'icon-repair', url: '../../task/list/admin_task_list', color: 'text-blue' },
 			{ title: '投诉建议', icon: 'icon-servicefill', url: '../../complaint/list/admin_complaint_list', color: 'text-red' },
 			{ title: '缴费管理', icon: 'icon-pay', url: '../../fee/list/admin_fee_list', color: 'text-brown' },
+			{ title: '商品管理', icon: 'icon-cartfill', url: '../../mall/goods/list/admin_mall_goods_list', color: 'text-purple' },
 			{ title: '商城管理', icon: 'icon-cartfill', url: '../../mall/order/list/admin_mall_order_list', color: 'text-orange' },
 			{ title: '投票管理', icon: 'icon-rank', url: '../../vote/list/admin_vote_list', color: 'text-orange' },
 			{ title: '活动管理', icon: 'icon-activityfill', url: '../../activity/list/admin_activity_list', color: 'text-pink' },

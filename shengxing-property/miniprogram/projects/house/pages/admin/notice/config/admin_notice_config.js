@@ -3,7 +3,10 @@ const cloudHelper = require('../../../../../../../helper/cloud_helper.js');
 
 const SCENES = [
 	{ code: 'repair.created', title: '报修通知', desc: '用户提交报修后通知' },
+	{ code: 'repair.assigned', title: '报修分配', desc: '报修分配处理人后通知' },
+	{ code: 'repair.closed', title: '报修办结', desc: '报修办结后通知' },
 	{ code: 'fee.paid', title: '缴费成功', desc: '用户缴费后通知' },
+	{ code: 'fee.refunded', title: '账单退款', desc: '账单退款后通知' },
 	{ code: 'fee.reminder', title: '账单催缴', desc: '账单催缴记录通知' },
 	{ code: 'complaint.created', title: '投诉建议', desc: '用户提交投诉后通知' },
 	{ code: 'complaint.assigned', title: '投诉分配', desc: '投诉分配负责人后通知' },
@@ -11,6 +14,8 @@ const SCENES = [
 	{ code: 'service.created', title: '物业服务', desc: '用户提交服务申请后通知' },
 	{ code: 'mall.orderCreated', title: '商城下单', desc: '用户下单后通知' },
 	{ code: 'mall.orderPaid', title: '订单支付', desc: '订单支付完成后通知' },
+	{ code: 'mall.orderShipped', title: '订单发货', desc: '订单发货后通知' },
+	{ code: 'mall.orderRefunded', title: '订单退款', desc: '订单退款后通知' },
 	{ code: 'customer.transferRequested', title: '转人工客服', desc: '用户转人工后通知' },
 	{ code: 'customer.assigned', title: '客服分配', desc: '客服工单分配后通知' },
 	{ code: 'customer.replied', title: '客服回复', desc: '客服工单回复后通知' }

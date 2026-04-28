@@ -1,0 +1,37 @@
+<block wx:if="{{isAdmin&&isLoad}}">
+	<view class="admin-top-oper">
+		<button bindtap="bindAddTap" class="btn mid radius bg-admin text-white margin-right-s"><text class="icon-add margin-right-xxs"></text>新增商品</button>
+		<button bindtap="url" data-url="../../order/list/admin_mall_order_list" class="btn mid radius bg-admin text-white"><text class="icon-order margin-right-xxs"></text>订单管理</button>
+	</view>
+	<cmpt-comm-list id="cmpt-comm-list" source="admin" type="admin-mall-goods-list" search="{{search}}" _menus="{{sortMenus}}" _items="{{sortItems}}" pulldownType="{{['list','modal','list']}}" route="admin/mall_goods_list" sortMenusDefaultIndex="0" topBottom="50" placeholder="搜索商品标题,描述,名称" bind:list="bindCommListCmpt">
+		<view class="admin-comm-list">
+			<view wx:if="{{dataList && dataList.total}}" class="load text-grey">共有{{dataList.total}}条符合条件记录</view>
+			<view class="item" wx:for="{{dataList.list}}" wx:key="_id">
+				<view class="no">{{index+1}}</view>
+				<view class="header">
+					<view class="left text-cut">{{item.MALL_TITLE}}</view>
+					<view wx:if="{{item.MALL_STATUS==1}}" class="right text-green">「上架」</view>
+					<view wx:elif="{{item.MALL_STATUS==0}}" class="right text-orange">「下架」</view>
+					<view wx:else class="right text-grey">「停用」</view>
+				</view>
+				<view class="info">
+					<view class="info-item">
+					<view class="title">封面</view><view class="mao">：</view>
+					<view class="content">
+							<image wx:if="{{item.MALL_OBJ && item.MALL_OBJ.cover}}" src="{{item.MALL_OBJ.cover}}" mode="aspectFill" style="width: 96rpx; height: 96rpx; border-radius: 8rpx;" />
+						</view>
+					</view>
+					<view class="info-item"><view class="title">描述</view><view class="mao">：</view><view class="content">{{item.MALL_DESC}}</view></view>
+					<view class="info-item"><view class="title">价格</view><view class="mao">：</view><view class="content">¥{{item.MALL_OBJ && item.MALL_OBJ.price}}</view></view>
+					<view class="info-item"><view class="title">库存</view><view class="mao">：</view><view class="content">{{item.MALL_OBJ && item.MALL_OBJ.stock}}</view></view>
+					<view class="oprt">
+						<view bindtap="url" data-url="../detail/admin_mall_goods_detail?id={{item._id}}" class="btn margin-right-s">查看详情</view>
+						<view bindtap="url" data-url="../detail/admin_mall_goods_detail?id={{item._id}}" class="btn margin-right-s">编辑</view>
+					</view>
+				</view>
+			</view>
+		</view>
+		<import src="../../../../../../tpls/public/list_load_tpl.wxml" />
+		<template is="listLoadTpl" data="{{skin:'text-grey',dataList}}" />
+	</cmpt-comm-list>
+</block>

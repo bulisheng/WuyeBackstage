@@ -63,9 +63,13 @@
 				<view class="info-item"><view class="title">结果</view><view class="mao">：</view><view class="content"><input value="{{reminder.result}}" data-group="reminder" data-field="result" bindinput="bindInput" /></view></view>
 				<view class="info-item"><view class="title">负责人</view><view class="mao">：</view><view class="content"><input value="{{reminder.assigneeName}}" data-group="reminder" data-field="assigneeName" bindinput="bindInput" /></view></view>
 				<view class="info-item"><view class="title">电话</view><view class="mao">：</view><view class="content"><input value="{{reminder.assigneePhone}}" data-group="reminder" data-field="assigneePhone" bindinput="bindInput" /></view></view>
+				<view class="info-item"><view class="title">原因</view><view class="mao">：</view><view class="content"><input value="{{reminder.reason}}" data-group="reminder" data-field="reason" bindinput="bindInput" /></view></view>
 				<view class="info-item">
 					<view class="title">动作</view><view class="mao">：</view>
-					<view class="content"><button bindtap="bindRemindTap" size="mini">生成催缴情</button></view>
+					<view class="content">
+						<button bindtap="bindRemindTap" size="mini" class="margin-right-xs">生成催缴情</button>
+						<button bindtap="bindRefundTap" size="mini">退款</button>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -79,6 +83,7 @@
 					<view class="content">
 						<button bindtap="bindStatusTap" data-status="0" size="mini" class="margin-right-xs">待缴费</button>
 						<button bindtap="bindStatusTap" data-status="1" size="mini" class="margin-right-xs">已缴费</button>
+						<button bindtap="bindStatusTap" data-status="4" size="mini" class="margin-right-xs">已退款</button>
 						<button bindtap="bindStatusTap" data-status="9" size="mini">作废</button>
 					</view>
 				</view>

@@ -6,6 +6,7 @@ const timeUtil = require('../../../../../../helper/time_helper.js');
 const STATUS_TEXT = {
 	0: '待缴费',
 	1: '已缴费',
+	4: '已退款',
 	9: '已作废'
 };
 
@@ -28,7 +29,8 @@ Page({
 			method: '钉钉提醒',
 			result: '已发送',
 			assigneeName: '',
-			assigneePhone: ''
+			assigneePhone: '',
+			reason: ''
 		}
 	},
 
@@ -79,7 +81,8 @@ Page({
 				method: '钉钉提醒',
 				result: '已发送',
 				assigneeName: '',
-				assigneePhone: ''
+				assigneePhone: '',
+				reason: ''
 			}
 		});
 	},
@@ -125,9 +128,24 @@ Page({
 			method: reminder.method,
 			result: reminder.result,
 			assigneeName: reminder.assigneeName,
-			assigneePhone: reminder.assigneePhone
+			assigneePhone: reminder.assigneePhone,
+			desc: reminder.reason
 		}, { title: '催缴中' });
 		wx.showToast({ title: '催缴已记录', icon: 'success' });
+		await this._loadDetail();
+	},
+
+	async bindRefundTap() {
+		const reminder = this.data.reminder || {};
+		await cloudHelper.callCloudSumbit('admin/fee_refund', {
+			id: this.data.detail._id,
+			reason: reminder.reason || '人工退款',
+			amount: this.data.edit.amount || (this.data.detail.FEE_OBJ && this.data.detail.FEE_OBJ.amount) || '',
+			userName: this.data.detail.FEE_OBJ && this.data.detail.FEE_OBJ.userName ? this.data.detail.FEE_OBJ.userName : '',
+			houseName: this.data.edit.houseName || '',
+			communityName: this.data.detail.FEE_OBJ && this.data.detail.FEE_OBJ.communityName ? this.data.detail.FEE_OBJ.communityName : ''
+		}, { title: '退款中' });
+		wx.showToast({ title: '已退款', icon: 'success' });
 		await this._loadDetail();
 	},
 
