@@ -1,0 +1,14 @@
+<view class="page">
+	<image class="cover" src="{{goods&&goods.MALL_OBJ&&goods.MALL_OBJ.cover?goods.MALL_OBJ.cover:'../../../images/home/cute_1.jpg'}}" mode="aspectFill" />
+	<view class="card">
+		<view class="title">{{goods?goods.MALL_TITLE:'五常大米 5kg'}}</view>
+		<view class="price">¥{{goods&&goods.MALL_OBJ?goods.MALL_OBJ.price:'0.00'}}</view>
+		<view class="tags"><text>优选好物</text><text>社区配送</text><text>售后保障</text></view>
+		<view class="row"><text>描述</text><text>{{goods?goods.MALL_DESC:''}}</text></view>
+		<view class="row"><text>数量</text><view class="step"><button bindtap="minus">-</button><text>{{qty}}</text><button bindtap="plus">+</button></view></view>
+	</view>
+	<view class="bar">
+		<button class="cart">加入购物车</button>
+		<button class="buy" bindtap="buy">立即购买</button>
+	</view>
+</view>

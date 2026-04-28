@@ -1,0 +1,15 @@
+page { background: #f7f8fa; }
+.page { padding: 24rpx 24rpx 140rpx; }
+.tabs { display: flex; height: 72rpx; align-items: center; justify-content: center; gap: 80rpx; color: #8b95a1; font-size: 28rpx; }
+.tabs view { height: 72rpx; line-height: 72rpx; }
+.tabs .active { color: #13b35d; font-weight: 800; border-bottom: 6rpx solid #13b35d; }
+.bill-card { background: #fff; border-radius: 16rpx; padding: 28rpx 24rpx; display: flex; justify-content: space-between; align-items: center; margin-top: 20rpx; }
+.bill-title { font-size: 30rpx; color: #202124; font-weight: 700; margin-bottom: 12rpx; }
+.overdue { color: #ff5b55; background: #fff0ef; border-radius: 6rpx; padding: 6rpx 10rpx; font-size: 22rpx; }
+.right { text-align: right; color: #8b95a1; font-size: 23rpx; }
+.price, .right view { color: #202124; font-size: 30rpx; font-weight: 700; margin-bottom: 10rpx; }
+.total { margin-top: 28rpx; color: #6b7280; font-size: 25rpx; }
+.total text { color: #ff5b55; font-weight: 800; }
+.primary { position: fixed; right: 24rpx; bottom: 44rpx; width: 220rpx; height: 82rpx; line-height: 82rpx; border-radius: 44rpx; background: #13b35d; color: #fff; font-size: 29rpx; }
+.record { margin-top: 28rpx; text-align: center; color: #13b35d; font-size: 26rpx; }
+.empty { text-align: center; color: #a0a7b0; padding: 60rpx 0; }

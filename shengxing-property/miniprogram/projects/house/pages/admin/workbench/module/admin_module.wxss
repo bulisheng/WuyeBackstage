@@ -1,0 +1,118 @@
+@import "../../../../../../../style/public/admin.wxss";
+
+page {
+	background: #f6f7f8;
+}
+
+.admin-module {
+	padding: 24rpx;
+}
+
+.hero {
+	background: #13b35d;
+	color: #fff;
+	border-radius: 12rpx;
+	padding: 30rpx;
+}
+
+.hero .title {
+	font-size: 36rpx;
+	font-weight: 800;
+	margin-bottom: 12rpx;
+}
+
+.hero text {
+	font-size: 25rpx;
+	line-height: 1.6;
+}
+
+.stats {
+	margin-top: 20rpx;
+	display: flex;
+	background: #fff;
+	border-radius: 10rpx;
+	padding: 24rpx 0;
+}
+
+.stat {
+	width: 33.333%;
+	text-align: center;
+}
+
+.stat view {
+	font-size: 34rpx;
+	font-weight: 800;
+	color: #202124;
+}
+
+.stat text {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 23rpx;
+	color: #7b8794;
+}
+
+.section-title {
+	margin: 30rpx 4rpx 18rpx;
+	font-size: 30rpx;
+	font-weight: 800;
+	color: #1f2933;
+}
+
+.action-list,
+.flow {
+	background: #fff;
+	border-radius: 10rpx;
+	overflow: hidden;
+}
+
+.action {
+	min-height: 90rpx;
+	display: flex;
+	align-items: center;
+	padding: 0 24rpx;
+	border-bottom: 1rpx solid #eef0f2;
+}
+
+.action:last-child {
+	border-bottom: 0;
+}
+
+.action .icon-roundcheckfill {
+	color: #13b35d;
+	margin-right: 18rpx;
+}
+
+.action view {
+	flex: 1;
+	font-size: 28rpx;
+	color: #202124;
+}
+
+.action .icon-right {
+	color: #c1c7d0;
+}
+
+.flow {
+	padding: 24rpx;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.flow view {
+	width: 116rpx;
+	height: 62rpx;
+	line-height: 62rpx;
+	text-align: center;
+	border-radius: 8rpx;
+	background: #eefaf3;
+	color: #0d8f49;
+	font-size: 22rpx;
+}
+
+.flow text {
+	width: 28rpx;
+	height: 2rpx;
+	background: #cfd8dc;
+}

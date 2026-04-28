@@ -1,0 +1,14 @@
+<view class="page">
+	<view class="chat">
+		<view wx:for="{{messages}}" wx:key="text" class="msg {{item.role}}">
+			<view>{{item.text}}</view>
+		</view>
+	</view>
+	<view class="faq">
+		<text wx:for="{{faqs}}" wx:key="title">{{item.title}}</text>
+	</view>
+	<view class="input-bar">
+		<input placeholder="请输入消息..." value="{{formQuestion}}" bindinput="bindInput" data-item="formQuestion" />
+		<button bindtap="transfer">转人工</button>
+	</view>
+</view>

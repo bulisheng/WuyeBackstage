@@ -1,0 +1,16 @@
+<view class="page">
+	<view class="search"><text class="icon-search"></text><text>搜索商品</text></view>
+	<scroll-view scroll-x class="cates">
+		<text wx:for="{{cates}}" wx:key="*this" class="{{index===0?'active':''}}">{{item}}</text>
+	</scroll-view>
+	<view class="goods">
+		<view wx:for="{{goods}}" wx:key="id" class="good" bindtap="goDetail" data-id="{{item.id}}">
+			<image src="{{item.pic}}" mode="aspectFill" />
+			<view class="info">
+				<view class="name">{{item.name}}</view>
+				<text>限时特惠</text>
+				<view class="bottom"><view>¥{{item.price}}</view><text>已售 {{item.sales}}</text><button catchtap="goOrders">＋</button></view>
+			</view>
+		</view>
+	</view>
+</view>

@@ -1,0 +1,267 @@
+@import "../../../../../style/public/comm_box_list.wxss";
+@import "../../../style/skin.wxss";
+
+page {
+	background-color: #f6f7f8;
+}
+
+.home-page {
+	padding: 28rpx 24rpx 120rpx;
+	box-sizing: border-box;
+}
+
+.home-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 56rpx;
+}
+
+.community {
+	display: flex;
+	align-items: center;
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #202124;
+}
+
+.community .icon-unfold {
+	margin-left: 8rpx;
+	font-size: 24rpx;
+	color: #4b5563;
+}
+
+.notice-dot {
+	width: 56rpx;
+	height: 56rpx;
+	border-radius: 50%;
+	background: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	color: #253858;
+	box-shadow: 0 8rpx 20rpx rgba(20, 28, 38, .08);
+}
+
+.notice-dot .dot {
+	position: absolute;
+	top: 8rpx;
+	right: 8rpx;
+	width: 14rpx;
+	height: 14rpx;
+	border-radius: 50%;
+	background: #ff4d4f;
+	border: 3rpx solid #fff;
+}
+
+.search {
+	margin-top: 22rpx;
+	height: 64rpx;
+	border-radius: 32rpx;
+	background: #fff;
+	display: flex;
+	align-items: center;
+	padding: 0 24rpx;
+	color: #9aa0a6;
+	font-size: 26rpx;
+	box-shadow: 0 8rpx 20rpx rgba(20, 28, 38, .05);
+}
+
+.search text:first-child {
+	margin-right: 12rpx;
+	color: #7b8794;
+}
+
+.banner {
+	height: 170rpx;
+	border-radius: 18rpx;
+	overflow: hidden;
+	margin-top: 22rpx;
+	position: relative;
+	box-shadow: 0 14rpx 28rpx rgba(22, 163, 74, .16);
+}
+
+.banner image {
+	width: 100%;
+	height: 100%;
+}
+
+.banner-copy {
+	position: absolute;
+	left: 30rpx;
+	top: 28rpx;
+	color: #fff;
+}
+
+.banner-copy view {
+	font-size: 34rpx;
+	font-weight: 800;
+}
+
+.banner-copy text {
+	display: block;
+	font-size: 24rpx;
+	margin-top: 8rpx;
+}
+
+.banner-btn {
+	position: absolute;
+	left: 30rpx;
+	bottom: 22rpx;
+	height: 40rpx;
+	line-height: 40rpx;
+	border-radius: 20rpx;
+	padding: 0 22rpx;
+	background: #fff;
+	color: #15b05c;
+	font-size: 22rpx;
+	font-weight: 700;
+}
+
+.king {
+	margin-top: 28rpx;
+	display: flex;
+	flex-wrap: wrap;
+	background: #fff;
+	border-radius: 18rpx;
+	padding: 28rpx 8rpx 24rpx;
+}
+
+.king-item {
+	width: 33.333%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin-bottom: 28rpx;
+	font-size: 25rpx;
+	color: #222;
+	font-weight: 600;
+}
+
+.king-icon {
+	width: 62rpx;
+	height: 62rpx;
+	border-radius: 18rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 14rpx;
+}
+
+.king-icon image {
+	width: 36rpx;
+	height: 36rpx;
+}
+
+.i-blue { background: #4aa3ff; }
+.i-green { background: #25c66a; }
+.i-orange { background: #ff8a3d; }
+.i-royal { background: #3d8bff; }
+.i-shop { background: #ff9d37; }
+.i-red { background: #ff6b6b; }
+
+.authen {
+	margin-top: 22rpx;
+	background: #fff8e9;
+	color: #d89221;
+	padding: 18rpx 24rpx;
+	border-radius: 14rpx;
+	font-size: 25rpx;
+}
+
+.notice-card {
+	margin-top: 22rpx;
+	background: #fff;
+	border-radius: 14rpx;
+	height: 72rpx;
+	display: flex;
+	align-items: center;
+	padding: 0 22rpx;
+}
+
+.notice-card .label {
+	color: #11a957;
+	font-weight: 800;
+	margin-right: 22rpx;
+	font-size: 25rpx;
+}
+
+.notice-title {
+	flex: 1;
+	color: #575f6a;
+	font-size: 24rpx;
+}
+
+.notice-card .icon-right {
+	color: #c1c7d0;
+}
+
+.section-title {
+	margin: 30rpx 4rpx 18rpx;
+	font-size: 30rpx;
+	font-weight: 800;
+	color: #1f2933;
+}
+
+.tool-card {
+	background: #fff;
+	border-radius: 16rpx;
+	display: flex;
+	padding: 26rpx 0 22rpx;
+}
+
+.tool-item {
+	width: 25%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	color: #343b44;
+	font-size: 23rpx;
+}
+
+.tool-item text {
+	font-size: 38rpx;
+	color: #4b5563;
+	margin-bottom: 12rpx;
+}
+
+.feed-card {
+	background: #fff;
+	border-radius: 14rpx;
+	padding: 18rpx;
+	display: flex;
+	margin-bottom: 18rpx;
+}
+
+.feed-card image {
+	width: 160rpx;
+	height: 120rpx;
+	border-radius: 12rpx;
+	margin-right: 18rpx;
+}
+
+.feed-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.feed-title {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #1f2933;
+}
+
+.feed-desc {
+	margin-top: 10rpx;
+	font-size: 24rpx;
+	color: #667085;
+	line-height: 1.45;
+}
+
+.feed-main text {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	color: #12a35a;
+}

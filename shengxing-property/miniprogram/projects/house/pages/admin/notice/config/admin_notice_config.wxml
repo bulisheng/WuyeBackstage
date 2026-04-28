@@ -1,0 +1,60 @@
+<view class="notice-config">
+	<view class="community-card">
+		<view>
+			<text>当前小区</text>
+			<view>{{currentCommunity}}</view>
+		</view>
+		<button size="mini" bindtap="_loadDetail">刷新</button>
+	</view>
+
+	<view class="section-title">通知配置</view>
+	<view class="robot-list">
+		<view wx:for="{{configs}}" wx:key="code" class="robot">
+			<view class="robot-main">
+				<view class="robot-title">{{item.title}}</view>
+				<text>{{item.code}} · {{item.desc}}</text>
+				<view class="robot-field">
+					<text class="label">Webhook</text>
+					<input value="{{item.webhook}}" bindinput="bindInput" data-index="{{index}}" data-field="webhook" placeholder="钉钉 Webhook" placeholder-class="phc" />
+				</view>
+				<view class="robot-field">
+					<text class="label">Secret</text>
+					<input value="{{item.secret}}" bindinput="bindInput" data-index="{{index}}" data-field="secret" placeholder="加签密钥" placeholder-class="phc" />
+				</view>
+				<view class="robot-field">
+					<text class="label">模板 ID</text>
+					<input value="{{item.miniTemplateId}}" bindinput="bindInput" data-index="{{index}}" data-field="miniTemplateId" placeholder="订阅消息模板 ID" placeholder-class="phc" />
+				</view>
+				<view class="robot-field">
+					<text class="label">页面</text>
+					<input value="{{item.page}}" bindinput="bindInput" data-index="{{index}}" data-field="page" placeholder="订阅消息跳转页" placeholder-class="phc" />
+				</view>
+				<view class="robot-field">
+					<text class="label">@手机号</text>
+					<input value="{{item.atMobiles}}" bindinput="bindInput" data-index="{{index}}" data-field="atMobiles" placeholder="逗号分隔手机号" placeholder-class="phc" />
+				</view>
+			</view>
+			<switch checked="{{item.enabled}}" bindchange="switchRobot" data-index="{{index}}" color="#13b35d" />
+			<button size="mini" bindtap="saveConfig" data-index="{{index}}">保存</button>
+			<button size="mini" bindtap="testSend" data-index="{{index}}">测试</button>
+		</view>
+	</view>
+
+	<view class="section-title">场景配置</view>
+	<view class="scene-list">
+		<view wx:for="{{sceneList}}" wx:key="code" class="scene">
+			<view>{{item.title}}</view>
+			<text>{{item.code}}</text>
+			<text>{{item.desc}}</text>
+		</view>
+	</view>
+
+	<view class="section-title">通知日志</view>
+	<view class="log-list">
+		<view wx:for="{{logs}}" wx:key="NOTICELOG_ID" class="log">
+			<text>{{item.NOTICELOG_ADD_TIME}}</text>
+			<view>{{item.NOTICELOG_TITLE}}</view>
+			<text class="{{item.NOTICELOG_STATUS===1?'ok':'warn'}}">{{item.NOTICELOG_STATUS===1?'发送成功':'待发送'}}</text>
+		</view>
+	</view>
+</view>
