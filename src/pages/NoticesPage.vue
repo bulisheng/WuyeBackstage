@@ -1,0 +1,220 @@
+<template>
+	<section class="panel">
+		<div class="panel-head">
+			<h2>通知中心</h2>
+			<span>{{ workspace.noticeConfigs.length }} 个配置 / {{ workspace.noticeRecords.length }} 条记录</span>
+		</div>
+
+		<div class="permission-grid">
+			<div class="permission-card span-2">
+				<div class="panel-head compact">
+					<h3>通知配置</h3>
+					<span>{{ workspace.editingNoticeConfigId ? '编辑中' : '新增' }}</span>
+				</div>
+				<div class="form-grid">
+					<label class="field">
+						<span>场景</span>
+						<select v-model="workspace.noticeConfigForm.scene">
+							<option v-for="item in sceneOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+						</select>
+					</label>
+					<label class="field">
+						<span>渠道</span>
+						<select v-model="workspace.noticeConfigForm.channel">
+							<option value="dingtalk">钉钉机器人</option>
+							<option value="sms">短信</option>
+							<option value="wechat">小程序订阅消息</option>
+							<option value="system">站内通知</option>
+						</select>
+					</label>
+					<label class="field span-2">
+						<span>模板名称</span>
+						<input v-model="workspace.noticeConfigForm.templateName" type="text" placeholder="模板名称" />
+					</label>
+					<label class="field span-2">
+						<span>机器人名称</span>
+						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="机器人名称" />
+					</label>
+					<label class="field span-2">
+						<span>Webhook</span>
+						<input v-model="workspace.noticeConfigForm.webhookUrl" type="text" placeholder="钉钉机器人地址" />
+					</label>
+					<label class="field span-2">
+						<span>Secret</span>
+						<input v-model="workspace.noticeConfigForm.secret" type="text" placeholder="加签密钥，编辑时可留空保留原值" />
+					</label>
+					<label class="field">
+						<span>重试次数</span>
+						<input v-model.number="workspace.noticeConfigForm.retryLimit" type="number" min="1" step="1" />
+					</label>
+					<label class="field checkbox-field">
+						<input v-model="workspace.noticeConfigForm.alarmEnabled" :true-value="1" :false-value="0" type="checkbox" />
+						<span>失败告警</span>
+					</label>
+					<label class="field checkbox-field">
+						<input v-model="workspace.noticeConfigForm.enabled" :true-value="1" :false-value="0" type="checkbox" />
+						<span>启用</span>
+					</label>
+				</div>
+				<div class="form-actions">
+					<button class="primary" :disabled="!workspace.canAction('notice:publish')" @click="workspace.saveNoticeConfig">{{ workspace.editingNoticeConfigId ? '保存配置' : '新增配置' }}</button>
+					<button @click="workspace.resetNoticeConfigForm">重置</button>
+				</div>
+			</div>
+
+			<div class="permission-card">
+				<div class="panel-head compact">
+					<h3>手动发送</h3>
+					<span>测试发送 / 手动通知</span>
+				</div>
+				<div class="form-grid">
+					<label class="field">
+						<span>场景</span>
+						<select v-model="workspace.noticeSendForm.scene">
+							<option v-for="item in sceneOptions" :key="`send-${item.value}`" :value="item.value">{{ item.label }}</option>
+						</select>
+					</label>
+					<label class="field">
+						<span>渠道</span>
+						<select v-model="workspace.noticeSendForm.channel">
+							<option value="system">站内通知</option>
+							<option value="dingtalk">钉钉机器人</option>
+							<option value="sms">短信</option>
+						</select>
+					</label>
+					<label class="field">
+						<span>目标类型</span>
+						<input v-model="workspace.noticeSendForm.targetType" type="text" placeholder="bill / repair / manual" />
+					</label>
+					<label class="field">
+						<span>目标ID</span>
+						<input v-model="workspace.noticeSendForm.targetId" type="text" placeholder="0" />
+					</label>
+					<label class="field span-2">
+						<span>标题</span>
+						<input v-model="workspace.noticeSendForm.title" type="text" placeholder="通知标题" />
+					</label>
+					<label class="field span-2">
+						<span>内容</span>
+						<textarea v-model="workspace.noticeSendForm.content" rows="4" placeholder="通知内容"></textarea>
+					</label>
+				</div>
+				<div class="form-actions">
+					<button class="primary" :disabled="!workspace.canAction('notice:publish')" @click="workspace.sendNotice">发送</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="spaced-block">
+			<table class="spaced-table">
+				<thead>
+					<tr>
+						<th>场景</th>
+						<th>渠道</th>
+						<th>模板</th>
+						<th>机器人</th>
+						<th>Webhook</th>
+						<th>重试</th>
+						<th>状态</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="item in workspace.noticeConfigs" :key="item.id" class="clickable-row" @click="selectedConfig = item">
+						<td>{{ item.scene }}</td>
+						<td>{{ item.channel }}</td>
+						<td>{{ item.templateName }}</td>
+						<td>{{ item.robotName || '未配置' }}</td>
+						<td>{{ item.webhookUrl ? '已配置' : '未配置' }}</td>
+						<td>{{ item.retryLimit }}</td>
+						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
+						<td class="actions">
+							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="workspace.editNoticeConfig(item)">编辑</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<div class="spaced-block">
+			<table class="spaced-table">
+				<thead>
+					<tr>
+						<th>时间</th>
+						<th>场景</th>
+						<th>标题</th>
+						<th>渠道</th>
+						<th>状态</th>
+						<th>重试</th>
+						<th>错误</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="item in workspace.noticeRecords" :key="item.id" class="clickable-row" @click="selectedRecord = item">
+						<td>{{ item.createdAt || item.sentAt || '-' }}</td>
+						<td>{{ item.eventType }}</td>
+						<td>{{ item.title }}</td>
+						<td>{{ item.channel }}</td>
+						<td><span class="status" :class="item.status === 'sent' ? 'approved' : item.status === 'pending' ? 'pending' : 'rejected'">{{ workspace.noticeStatusText(item.status) }}</span></td>
+						<td>{{ item.retryCount }}</td>
+						<td>{{ item.errorMessage || '-' }}</td>
+						<td class="actions">
+							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="workspace.retryNotice(item)">重试</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<div v-if="selectedConfig" class="detail-card">
+			<div class="panel-head compact">
+				<h3>配置详情</h3>
+				<span>{{ selectedConfig.scene }}</span>
+			</div>
+			<div class="detail-grid">
+				<div><strong>场景</strong><p>{{ selectedConfig.scene }}</p></div>
+				<div><strong>渠道</strong><p>{{ selectedConfig.channel }}</p></div>
+				<div><strong>模板</strong><p>{{ selectedConfig.templateName || '-' }}</p></div>
+				<div><strong>机器人</strong><p>{{ selectedConfig.robotName || '-' }}</p></div>
+				<div><strong>Webhook</strong><p>{{ selectedConfig.webhookUrl || '-' }}</p></div>
+				<div><strong>状态</strong><p>{{ selectedConfig.enabled ? '启用' : '停用' }}</p></div>
+			</div>
+		</div>
+
+		<div v-if="selectedRecord" class="detail-card">
+			<div class="panel-head compact">
+				<h3>发送详情</h3>
+				<span>{{ selectedRecord.title }}</span>
+			</div>
+			<div class="detail-grid">
+				<div><strong>场景</strong><p>{{ selectedRecord.eventType }}</p></div>
+				<div><strong>渠道</strong><p>{{ selectedRecord.channel }}</p></div>
+				<div><strong>状态</strong><p>{{ workspace.noticeStatusText(selectedRecord.status) }}</p></div>
+				<div><strong>重试</strong><p>{{ selectedRecord.retryCount }}</p></div>
+				<div><strong>错误</strong><p>{{ selectedRecord.errorMessage || '无' }}</p></div>
+				<div><strong>内容</strong><p>{{ selectedRecord.content || '-' }}</p></div>
+			</div>
+		</div>
+	</section>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
+
+const workspace = useAdminWorkspaceStore();
+const selectedConfig = ref(null);
+const selectedRecord = ref(null);
+
+const sceneOptions = [
+	{ value: 'bill_created', label: '新账单生成' },
+	{ value: 'bill_paid', label: '支付成功' },
+	{ value: 'bill_remind', label: '账单催缴' },
+	{ value: 'repair_created', label: '新报修提交' },
+	{ value: 'repair_status', label: '工单状态变化' },
+	{ value: 'repair_remind', label: '工单催单' },
+	{ value: 'notification_alarm', label: '失败告警' },
+	{ value: 'manual', label: '手动通知' }
+];
+</script>

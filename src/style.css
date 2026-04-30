@@ -189,6 +189,52 @@ p {
 	padding: 20px;
 }
 
+.filter-row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(180px, 1fr));
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.detail-card {
+	margin-top: 16px;
+	padding: 16px;
+	border-radius: 12px;
+	border: 1px solid #e8eeea;
+	background: #f9fbfa;
+}
+
+.detail-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px 20px;
+}
+
+.detail-grid strong {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 12px;
+	color: #6b7280;
+}
+
+.detail-grid p {
+	margin: 0;
+	color: #1f2933;
+	line-height: 1.6;
+}
+
+.clickable-row {
+	cursor: pointer;
+}
+
+.clickable-row:hover {
+	background: #f7faf8;
+}
+
+.spaced-block {
+	margin-top: 18px;
+}
+
 .login-main {
 	display: grid;
 	place-items: center;
