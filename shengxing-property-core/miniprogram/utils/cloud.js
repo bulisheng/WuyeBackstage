@@ -1,12 +1,10 @@
 const setting = require('../setting/setting.js');
 const { getAuthState } = require('./auth.js');
+const { buildCommunityRequestParams } = require('./community.js');
 
 function callCloud(route, params = {}) {
 	const state = getAuthState() || {};
-	const nextParams = Object.assign({}, params);
-	if (state.schemaName && !nextParams.schemaName) {
-		nextParams.schemaName = state.schemaName;
-	}
+	const nextParams = buildCommunityRequestParams(params, state);
 	if (state.token && !nextParams.token) {
 		nextParams.token = state.token;
 	}

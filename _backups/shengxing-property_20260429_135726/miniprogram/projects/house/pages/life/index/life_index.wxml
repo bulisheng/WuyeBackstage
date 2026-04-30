@@ -1,0 +1,9 @@
+<view class="page">
+	<view wx:for="{{menus}}" wx:key="title" class="life-card" bindtap="go" data-url="{{item.url}}">
+		<view>
+			<view class="title">{{item.title}}</view>
+			<text>{{item.desc}}</text>
+		</view>
+		<text class="icon-right"></text>
+	</view>
+</view>

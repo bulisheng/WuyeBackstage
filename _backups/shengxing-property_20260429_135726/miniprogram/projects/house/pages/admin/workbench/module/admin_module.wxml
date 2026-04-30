@@ -1,0 +1,33 @@
+<view class="admin-module">
+	<view class="hero">
+		<view class="title">{{module.title}}</view>
+		<text>{{module.desc}}</text>
+	</view>
+
+	<view class="stats">
+		<view wx:for="{{module.stats}}" wx:key="label" class="stat">
+			<view>{{item.value}}</view>
+			<text>{{item.label}}</text>
+		</view>
+	</view>
+
+	<view class="section-title">后台操作</view>
+	<view class="action-list">
+		<view wx:for="{{module.actions}}" wx:key="*this" class="action" bindtap="tapAction" data-name="{{item}}">
+			<text class="icon-roundcheckfill"></text>
+			<view>{{item}}</view>
+			<text class="icon-right"></text>
+		</view>
+	</view>
+
+	<view class="section-title">闭环状态</view>
+	<view class="flow">
+		<view>提交/生成</view>
+		<text></text>
+		<view>后台处理</view>
+		<text></text>
+		<view>状态通知</view>
+		<text></text>
+		<view>用户确认</view>
+	</view>
+</view>

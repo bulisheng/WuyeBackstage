@@ -1,5 +1,6 @@
 const { callCloud } = require('../../../../../utils/cloud.js');
-const { isOwnerAuthed } = require('../../../../../utils/auth.js');
+const { getAuthState, isOwnerAuthed } = require('../../../../../utils/auth.js');
+const { getCommunityDisplayName } = require('../../../../../utils/community.js');
 const setting = require('../../../public/project_setting.js');
 
 function makeBannerStyle(coverUrl) {
@@ -11,7 +12,7 @@ function makeBannerStyle(coverUrl) {
 
 Page({
 	data: {
-		communityName: setting.COMMUNITY_NAME,
+		communityName: getCommunityDisplayName(getAuthState(), setting.COMMUNITY_NAME),
 		isOwnerAuthed: false,
 		searchText: '搜索服务、公告、活动',
 		bannerStyle: makeBannerStyle(''),
@@ -59,7 +60,10 @@ Page({
 			const announcements = Array.isArray(home.announcements) ? home.announcements : [];
 			const banner = home.banner || announcements[0] || {};
 			this.setData({
-				communityName: home.communityName || setting.COMMUNITY_NAME,
+				communityName: getCommunityDisplayName({
+					currentCommunity: profile.currentCommunity,
+					schemaName: profile.schemaName
+				}, home.communityName || setting.COMMUNITY_NAME),
 				isOwnerAuthed: ownerAuthed || !!(profile.isAuthed && profile.statusCode === 'approved'),
 				announcements: announcements.slice(0, 3),
 				bannerLabel: banner.isPinned ? '置顶公告' : '社区公告',

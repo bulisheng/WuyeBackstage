@@ -1,0 +1,11 @@
+page { background: #fff; }
+.page { padding: 78rpx 44rpx; text-align: center; }
+.ok { width: 104rpx; height: 104rpx; margin: 0 auto; border-radius: 50%; background: #18b65f; color: #fff; line-height: 104rpx; font-size: 70rpx; font-weight: 800; }
+.title { margin-top: 28rpx; font-size: 34rpx; font-weight: 700; }
+.money { margin-top: 18rpx; font-size: 44rpx; font-weight: 800; }
+.sub { margin-top: 12rpx; color: #8b95a1; font-size: 25rpx; }
+.rows { margin-top: 64rpx; text-align: left; }
+.rows view { display: flex; justify-content: space-between; padding: 18rpx 0; color: #8b95a1; font-size: 25rpx; }
+.rows text:last-child { color: #4b5563; max-width: 430rpx; text-align: right; }
+.outline { margin-top: 64rpx; height: 82rpx; line-height: 82rpx; border-radius: 44rpx; background: #fff; border: 1rpx solid #18b65f; color: #18b65f; font-size: 28rpx; }
+.link { margin-top: 28rpx; color: #18b65f; font-size: 26rpx; }

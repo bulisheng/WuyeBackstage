@@ -1,0 +1,15 @@
+page { background: #f7f8fa; }
+.page { padding: 20rpx 24rpx; }
+.tabs { display: flex; justify-content: space-between; color: #8b95a1; font-size: 24rpx; height: 64rpx; }
+.tabs .active { color: #13b35d; font-weight: 800; }
+.order { background: #fff; border-radius: 16rpx; padding: 22rpx; margin-top: 18rpx; }
+.top, .body { display: flex; justify-content: space-between; align-items: center; }
+.top { color: #8b95a1; font-size: 23rpx; }
+.status { color: #4091ff !important; background: #edf5ff; border-radius: 20rpx; padding: 4rpx 12rpx; }
+.body { margin-top: 22rpx; }
+.body image { width: 112rpx; height: 112rpx; border-radius: 10rpx; margin-right: 18rpx; }
+.body view { flex: 1; font-size: 27rpx; color: #202124; font-weight: 700; }
+.body view text { display: block; color: #8b95a1; font-size: 22rpx; margin-top: 18rpx; font-weight: 400; }
+.body > text { font-size: 27rpx; color: #202124; }
+.pay { text-align: right; color: #202124; font-size: 25rpx; margin-top: 22rpx; }
+.empty { text-align: center; color: #a0a7b0; padding: 50rpx 0; }
