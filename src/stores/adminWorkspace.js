@@ -16,7 +16,7 @@ import {
 const routeLabels = {
 	login: '后台登录',
 	dashboard: '数据看板',
-	owners: '业主认证审核',
+	owners: '住户管理',
 	communities: '小区管理',
 	permissions: '权限管理',
 	repairs: '报修管理',
@@ -30,6 +30,14 @@ const routerReady = { value: false };
 const activeRoute = ref('login');
 const stats = ref([]);
 const owners = ref([]);
+const ownerRecords = owners;
+const tenantRecords = ref([]);
+const residentChangeLogs = ref([]);
+const residentActiveTab = ref('owner_audit');
+const residentSearchKeyword = ref('');
+const residentTypeFilter = ref('all');
+const residentStatusFilter = ref('');
+const residentSelectedId = ref('');
 const communities = ref([]);
 const communityForm = ref(createCommunityForm());
 const editingCommunityId = ref('');
@@ -89,7 +97,7 @@ const adminMenuOptions = computed(() => MODULE_CATALOG.map((item) => ({
 	label: item.name || buildMenuLabel(item.key),
 	description: item.description || ''
 })));
-const quickPermissionTokens = ['community:edit', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'notice:publish'];
+const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'notice:publish'];
 const adminActionOptions = computed(() => quickPermissionTokens.map((item) => ({
 	key: item,
 	label: buildActionLabel(item)
@@ -402,6 +410,24 @@ async function loadAccessProfile() {
 	ensureVisibleRoute();
 }
 
+async function loadOwnerRecords(params = {}) {
+	const data = await adminApi.ownerList(params);
+	owners.value = data.list || [];
+	return owners.value;
+}
+
+async function loadTenantRecords(params = {}) {
+	const data = await adminApi.tenantList(params);
+	tenantRecords.value = data.list || [];
+	return tenantRecords.value;
+}
+
+async function loadResidentChangeLogs(params = {}) {
+	const data = await adminApi.residentChangeLogList(params);
+	residentChangeLogs.value = data.list || [];
+	return residentChangeLogs.value;
+}
+
 async function loginAdmin() {
 	try {
 		const res = await adminApi.login(loginForm.value);
@@ -422,6 +448,9 @@ async function logoutAdmin() {
 	communities.value = [];
 	stats.value = [];
 	owners.value = [];
+	tenantRecords.value = [];
+	residentChangeLogs.value = [];
+	residentSelectedId.value = '';
 	admins.value = [];
 	permissions.value = [];
 	auditLogs.value = [];
@@ -960,6 +989,9 @@ async function reload() {
 	if (!selectedSchema.value) {
 		stats.value = [];
 		owners.value = [];
+		tenantRecords.value = [];
+		residentChangeLogs.value = [];
+		residentSelectedId.value = '';
 		repairs.value = [];
 		fees.value = [];
 		selectedRepairId.value = '';
@@ -978,9 +1010,11 @@ async function reload() {
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
-	const [dashboard, ownerData, repairData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
+	const [dashboard, ownerData, tenantData, residentLogData, repairData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
 		canMenu('dashboard') ? adminApi.dashboard() : Promise.resolve({ stats: [] }),
 		canMenu('owners') ? adminApi.ownerList() : Promise.resolve({ list: [] }),
+		canMenu('owners') ? adminApi.tenantList() : Promise.resolve({ list: [] }),
+		canMenu('owners') ? adminApi.residentChangeLogList({ limit: 100 }) : Promise.resolve({ list: [] }),
 		canMenu('repairs') ? adminApi.repairList() : Promise.resolve({ list: [] }),
 		canMenu('fees') ? adminApi.feeList() : Promise.resolve({ list: [] }),
 		canMenu('fees') ? adminApi.feePayments() : Promise.resolve({ list: [] }),
@@ -997,6 +1031,8 @@ async function reload() {
 	}
 	stats.value = dashboard.stats || [];
 	owners.value = ownerData.list || [];
+	tenantRecords.value = tenantData.list || [];
+	residentChangeLogs.value = residentLogData.list || [];
 	repairs.value = repairData.list || [];
 	fees.value = feeData.list || [];
 	paymentRecords.value = paymentData.list || [];
@@ -1044,6 +1080,14 @@ export function useAdminWorkspaceStore() {
 		activeRoute,
 		stats,
 		owners,
+		ownerRecords,
+		tenantRecords,
+		residentChangeLogs,
+		residentActiveTab,
+		residentSearchKeyword,
+		residentTypeFilter,
+		residentStatusFilter,
+		residentSelectedId,
 		communities,
 		communityForm,
 		editingCommunityId,
@@ -1111,6 +1155,9 @@ export function useAdminWorkspaceStore() {
 		stop,
 		reload,
 		loadAccessProfile,
+		loadOwnerRecords,
+		loadTenantRecords,
+		loadResidentChangeLogs,
 		loginAdmin,
 		logoutAdmin,
 		resetLoginForm,

@@ -1,6 +1,6 @@
 const MODULE_CATALOG = [
 	{ key: 'dashboard', name: '工作台', sort: 1, group: 'primary', authRequired: false, description: '数据概览与快捷入口' },
-	{ key: 'owners', name: '业主认证', sort: 2, group: 'primary', authRequired: false, description: '业主认证审核入口' },
+	{ key: 'owners', name: '住户管理', sort: 2, group: 'primary', authRequired: false, description: '业主、租户与住户变更记录' },
 	{ key: 'communities', name: '小区信息', sort: 3, group: 'primary', authRequired: false, description: '小区基础资料与配置' },
 	{ key: 'permissions', name: '权限管理', sort: 4, group: 'settings', authRequired: true, description: '管理员、权限与模块配置' },
 	{ key: 'repairs', name: '报修', sort: 5, group: 'primary', authRequired: true, description: '报修工单与处理' },
