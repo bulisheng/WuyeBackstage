@@ -47,7 +47,15 @@ const activePermissionTab = ref('admins');
 const adminForm = ref(emptyAdmin());
 const permissionForm = ref(emptyPermission());
 const repairs = ref([]);
+const selectedRepairId = ref('');
+const repairDetail = ref(null);
+const repairLogs = ref([]);
+const repairActions = ref({});
+const repairActionForm = ref(emptyRepairAction());
 const fees = ref([]);
+const selectedFeeId = ref('');
+const paymentRecords = ref([]);
+const selectedFeePayments = ref([]);
 const feeForm = ref(emptyFee());
 const editingFeeId = ref('');
 const noticeConfigs = ref([]);
@@ -111,6 +119,14 @@ function emptyFee() {
 		amount: 0,
 		status: 'pending',
 		dueDate: ''
+	};
+}
+
+function emptyRepairAction() {
+	return {
+		action: 'assign',
+		assignee: '',
+		content: ''
 	};
 }
 
@@ -180,7 +196,10 @@ function workStatusText(status) {
 		assigned: '已派单',
 		processing: '处理中',
 		completed: '已完成',
-		closed: '已关闭'
+		confirmed: '用户已确认',
+		rated: '已评价',
+		closed: '已关闭',
+		cancelled: '已取消'
 	}[status] || status;
 }
 
@@ -402,7 +421,14 @@ async function logoutAdmin() {
 	auditLogs.value = [];
 	moduleRecords.value = [];
 	repairs.value = [];
+	selectedRepairId.value = '';
+	repairDetail.value = null;
+	repairLogs.value = [];
+	repairActions.value = {};
 	fees.value = [];
+	selectedFeeId.value = '';
+	paymentRecords.value = [];
+	selectedFeePayments.value = [];
 	noticeConfigs.value = [];
 	noticeRecords.value = [];
 	editingCommunityId.value = '';
@@ -414,6 +440,7 @@ async function logoutAdmin() {
 	adminForm.value = emptyAdmin();
 	permissionForm.value = emptyPermission();
 	feeForm.value = emptyFee();
+	repairActionForm.value = emptyRepairAction();
 	noticeConfigForm.value = emptyNoticeConfig();
 	noticeSendForm.value = emptyNoticeSend();
 	selectedSchema.value = '';
@@ -688,6 +715,7 @@ async function saveFee() {
 	const result = await adminApi.saveFee(payload);
 	fees.value = result.list || fees.value;
 	resetFeeForm();
+	await loadFeePayments();
 }
 
 function editFee(item) {
@@ -724,6 +752,61 @@ async function remindFee(item) {
 		sendNow: true
 	});
 	window.alert('已创建催缴记录');
+}
+
+async function selectFee(item) {
+	selectedFeeId.value = String(item && item.id ? item.id : '');
+	if (!selectedFeeId.value) {
+		selectedFeePayments.value = [];
+		return;
+	}
+	const result = await adminApi.feePayments({ billId: selectedFeeId.value });
+	selectedFeePayments.value = result.list || [];
+}
+
+async function loadFeePayments(params = {}) {
+	if (!canMenu('fees') || !selectedSchema.value) {
+		paymentRecords.value = [];
+		return;
+	}
+	const result = await adminApi.feePayments(params);
+	paymentRecords.value = result.list || [];
+}
+
+async function openRepairDetail(item) {
+	selectedRepairId.value = String(item && item.id ? item.id : '');
+	if (!selectedRepairId.value) {
+		repairDetail.value = null;
+		repairLogs.value = [];
+		repairActions.value = {};
+		return;
+	}
+	const result = await adminApi.repairDetail(selectedRepairId.value);
+	repairDetail.value = result.repair || null;
+	repairLogs.value = result.logs || result.timeline || [];
+	repairActions.value = result.actions || {};
+	repairActionForm.value = {
+		action: 'assign',
+		assignee: repairDetail.value?.assignee || '',
+		content: ''
+	};
+}
+
+async function saveRepairAction() {
+	if (!selectedRepairId.value) return;
+	const payload = {
+		id: selectedRepairId.value,
+		action: repairActionForm.value.action,
+		assignee: repairActionForm.value.assignee,
+		content: repairActionForm.value.content
+	};
+	const result = await adminApi.repairAction(payload);
+	repairDetail.value = result.repair || repairDetail.value;
+	repairLogs.value = result.logs || result.timeline || repairLogs.value;
+	repairActions.value = result.actions || repairActions.value;
+	repairActionForm.value.content = '';
+	const listResult = await adminApi.repairList();
+	repairs.value = listResult.list || repairs.value;
 }
 
 function resetNoticeConfigForm() {
@@ -809,6 +892,13 @@ async function reload() {
 		owners.value = [];
 		repairs.value = [];
 		fees.value = [];
+		selectedRepairId.value = '';
+		repairDetail.value = null;
+		repairLogs.value = [];
+		repairActions.value = {};
+		selectedFeeId.value = '';
+		paymentRecords.value = [];
+		selectedFeePayments.value = [];
 		noticeConfigs.value = [];
 		noticeRecords.value = [];
 		admins.value = [];
@@ -818,11 +908,12 @@ async function reload() {
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
-	const [dashboard, ownerData, repairData, feeData, noticeConfigData, noticeRecordData] = await Promise.all([
+	const [dashboard, ownerData, repairData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
 		canMenu('dashboard') ? adminApi.dashboard() : Promise.resolve({ stats: [] }),
 		canMenu('owners') ? adminApi.ownerList() : Promise.resolve({ list: [] }),
 		canMenu('repairs') ? adminApi.repairList() : Promise.resolve({ list: [] }),
 		canMenu('fees') ? adminApi.feeList() : Promise.resolve({ list: [] }),
+		canMenu('fees') ? adminApi.feePayments() : Promise.resolve({ list: [] }),
 		canMenu('notices') ? adminApi.noticeConfigList() : Promise.resolve({ list: [] }),
 		canMenu('notices') ? adminApi.noticeList() : Promise.resolve({ list: [] })
 	]);
@@ -838,6 +929,7 @@ async function reload() {
 	owners.value = ownerData.list || [];
 	repairs.value = repairData.list || [];
 	fees.value = feeData.list || [];
+	paymentRecords.value = paymentData.list || [];
 	noticeConfigs.value = noticeConfigData.list || [];
 	noticeRecords.value = noticeRecordData.list || [];
 }
@@ -845,6 +937,13 @@ async function reload() {
 async function onSchemaChange() {
 	adminApi.setSchemaName(selectedSchema.value);
 	resetFeeForm();
+	selectedRepairId.value = '';
+	repairDetail.value = null;
+	repairLogs.value = [];
+	repairActions.value = {};
+	selectedFeeId.value = '';
+	paymentRecords.value = [];
+	selectedFeePayments.value = [];
 	await reload();
 }
 
@@ -892,7 +991,15 @@ export function useAdminWorkspaceStore() {
 		adminForm,
 		permissionForm,
 		repairs,
+		selectedRepairId,
+		repairDetail,
+		repairLogs,
+		repairActions,
+		repairActionForm,
 		fees,
+		selectedFeeId,
+		paymentRecords,
+		selectedFeePayments,
 		feeForm,
 		editingFeeId,
 		noticeConfigs,
@@ -960,10 +1067,14 @@ export function useAdminWorkspaceStore() {
 		toggleModule,
 		batchUpdateModules,
 		restoreAllModules,
+		openRepairDetail,
+		saveRepairAction,
 		editFee,
 		saveFee,
 		removeFee,
 		remindFee,
+		selectFee,
+		loadFeePayments,
 		resetFeeForm,
 		editNoticeConfig,
 		saveNoticeConfig,

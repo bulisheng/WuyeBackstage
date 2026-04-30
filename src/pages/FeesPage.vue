@@ -80,7 +80,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="item in filteredFees" :key="item.id" class="clickable-row" @click="selectedFee = item">
+				<tr v-for="item in filteredFees" :key="item.id" class="clickable-row" @click="selectFee(item)">
 					<td>{{ item.billNo }}</td>
 					<td>{{ item.ownerName }}</td>
 					<td>{{ item.house }}</td>
@@ -111,6 +111,84 @@
 				<div><strong>截止日期</strong><p>{{ selectedFee.dueDate || '-' }}</p></div>
 				<div><strong>备注</strong><p>{{ selectedFee.note || '暂无' }}</p></div>
 			</div>
+			<div class="payment-section">
+				<div class="panel-head compact">
+					<h3>单笔账单支付流水</h3>
+					<span>{{ selectedFeePayments.length }} 条</span>
+				</div>
+				<table>
+					<thead>
+						<tr>
+							<th>流水号</th>
+							<th>金额</th>
+							<th>渠道</th>
+							<th>状态</th>
+							<th>交易号</th>
+							<th>支付时间</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="payment in selectedFeePayments" :key="payment.id">
+							<td>{{ payment.paymentNo || '-' }}</td>
+							<td>{{ workspace.money(payment.amount) }}</td>
+							<td>{{ payment.channel || '-' }}</td>
+							<td><span class="status" :class="payment.status">{{ paymentStatusText(payment.status) }}</span></td>
+							<td>{{ payment.transactionId || '-' }}</td>
+							<td>{{ payment.paidAt || payment.createdAt || '-' }}</td>
+						</tr>
+					</tbody>
+				</table>
+				<p v-if="!selectedFeePayments.length" class="empty-text">当前账单暂无支付流水。</p>
+			</div>
+		</div>
+		<div class="detail-card">
+			<div class="panel-head compact">
+				<h3>支付流水视图</h3>
+				<span>{{ filteredPayments.length }} 条</span>
+			</div>
+			<div class="filter-row">
+				<label class="field">
+					<span>流水关键词</span>
+					<input v-model="paymentKeyword" type="text" placeholder="流水号 / 交易号 / 账单号 / 业主" />
+				</label>
+				<label class="field">
+					<span>流水状态</span>
+					<select v-model="paymentStatus">
+						<option value="">全部</option>
+						<option value="pending">待支付</option>
+						<option value="success">成功</option>
+						<option value="failed">失败</option>
+						<option value="refunded">已退款</option>
+					</select>
+				</label>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>流水号</th>
+						<th>账单</th>
+						<th>业主/房屋</th>
+						<th>金额</th>
+						<th>渠道</th>
+						<th>状态</th>
+						<th>交易号</th>
+						<th>时间</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="payment in filteredPayments" :key="payment.id">
+						<td>{{ payment.paymentNo || '-' }}</td>
+						<td>{{ payment.billNo || payment.title || '-' }}</td>
+						<td>{{ payment.ownerName || '-' }} / {{ payment.house || '-' }}</td>
+						<td>{{ workspace.money(payment.amount) }}</td>
+						<td>{{ payment.channel || '-' }}</td>
+						<td><span class="status" :class="payment.status">{{ paymentStatusText(payment.status) }}</span></td>
+						<td>{{ payment.transactionId || '-' }}</td>
+						<td>{{ payment.paidAt || payment.createdAt || '-' }}</td>
+					</tr>
+				</tbody>
+			</table>
+			<p v-if="!filteredPayments.length" class="empty-text">暂无匹配支付流水。</p>
 		</div>
 	</section>
 </template>
@@ -123,9 +201,37 @@ const workspace = useAdminWorkspaceStore();
 const keyword = ref('');
 const status = ref('');
 const selectedFee = ref(null);
+const paymentKeyword = ref('');
+const paymentStatus = ref('');
 
 const filteredFees = computed(() => workspace.fees.filter((item) => {
 	const text = `${item.billNo || ''} ${item.ownerName || ''} ${item.house || ''} ${item.title || ''}`.toLowerCase();
 	return (!keyword.value || text.includes(keyword.value.trim().toLowerCase())) && (!status.value || item.status === status.value);
 }));
+
+const selectedFeePayments = computed(() => {
+	return workspace.selectedFeePayments;
+});
+
+const filteredPayments = computed(() => workspace.paymentRecords.filter((item) => {
+	const text = `${item.paymentNo || ''} ${item.transactionId || ''} ${item.billNo || ''} ${item.title || ''} ${item.ownerName || ''} ${item.house || ''}`.toLowerCase();
+	const keywordMatched = !paymentKeyword.value || text.includes(paymentKeyword.value.trim().toLowerCase());
+	const statusMatched = !paymentStatus.value || item.status === paymentStatus.value;
+	return keywordMatched && statusMatched;
+}));
+
+function paymentStatusText(value) {
+	return {
+		pending: '待支付',
+		success: '成功',
+		paid: '已支付',
+		failed: '失败',
+		refunded: '已退款'
+	}[value] || value || '-';
+}
+
+async function selectFee(item) {
+	selectedFee.value = item;
+	await workspace.selectFee(item);
+}
 </script>

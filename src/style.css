@@ -210,6 +210,11 @@ p {
 	gap: 12px 20px;
 }
 
+.detail-grid .wide,
+.action-editor .wide {
+	grid-column: 1 / -1;
+}
+
 .detail-grid strong {
 	display: block;
 	margin-bottom: 4px;
@@ -223,6 +228,12 @@ p {
 	line-height: 1.6;
 }
 
+.empty-text {
+	margin-top: 14px;
+	color: #6b7280;
+	line-height: 1.6;
+}
+
 .clickable-row {
 	cursor: pointer;
 }
@@ -233,6 +244,55 @@ p {
 
 .spaced-block {
 	margin-top: 18px;
+}
+
+.state-panel,
+.payment-section {
+	margin-top: 20px;
+	padding-top: 16px;
+	border-top: 1px solid #e8eeea;
+}
+
+.action-editor {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	padding: 14px;
+	border-radius: 10px;
+	background: #fff;
+	border: 1px solid #edf0ee;
+	margin-bottom: 16px;
+}
+
+.timeline {
+	display: grid;
+	gap: 10px;
+}
+
+.timeline-item {
+	position: relative;
+	padding: 12px 12px 12px 18px;
+	border: 1px solid #e8eeea;
+	border-radius: 10px;
+	background: #fff;
+	display: grid;
+	gap: 4px;
+}
+
+.timeline-item::before {
+	content: "";
+	position: absolute;
+	left: 7px;
+	top: 16px;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: #13b35d;
+}
+
+.timeline-item span,
+.timeline-item small {
+	color: #6b7280;
 }
 
 .login-main {
@@ -319,6 +379,7 @@ th {
 
 .status.disabled,
 .status.closed,
+.status.cancelled,
 .status.void {
 	background: #f1f5f9;
 	color: #64748b;

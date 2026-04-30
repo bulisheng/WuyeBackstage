@@ -33,7 +33,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="item in filteredRepairs" :key="item.id" class="clickable-row" @click="selectedRepair = item">
+				<tr v-for="item in filteredRepairs" :key="item.id" class="clickable-row" @click="workspace.openRepairDetail(item)">
 					<td>{{ item.title }}</td>
 					<td>{{ item.type }}</td>
 					<td>{{ item.contact }}</td>
@@ -44,20 +44,63 @@
 			</tbody>
 		</table>
 
-		<div v-if="selectedRepair" class="detail-card">
+		<div v-if="workspace.repairDetail" class="detail-card">
 			<div class="panel-head compact">
 				<h3>工单详情</h3>
-				<span>{{ selectedRepair.status }}</span>
+				<span>{{ workspace.workStatusText(workspace.repairDetail.status) }}</span>
 			</div>
 			<div class="detail-grid">
-				<div><strong>标题</strong><p>{{ selectedRepair.title || '-' }}</p></div>
-				<div><strong>类型</strong><p>{{ selectedRepair.type || '-' }}</p></div>
-				<div><strong>联系人</strong><p>{{ selectedRepair.contact || '-' }}</p></div>
-				<div><strong>电话</strong><p>{{ selectedRepair.phone || '-' }}</p></div>
-				<div><strong>状态</strong><p>{{ workspace.workStatusText(selectedRepair.status) }}</p></div>
-				<div><strong>处理人</strong><p>{{ selectedRepair.assignee || '未分配' }}</p></div>
+				<div><strong>标题</strong><p>{{ workspace.repairDetail.title || '-' }}</p></div>
+				<div><strong>类型</strong><p>{{ workspace.repairDetail.type || '-' }}</p></div>
+				<div><strong>房屋</strong><p>{{ workspace.repairDetail.house || '-' }}</p></div>
+				<div><strong>联系人</strong><p>{{ workspace.repairDetail.contact || '-' }}</p></div>
+				<div><strong>电话</strong><p>{{ workspace.repairDetail.phone || '-' }}</p></div>
+				<div><strong>状态</strong><p>{{ workspace.workStatusText(workspace.repairDetail.status) }}</p></div>
+				<div><strong>处理人</strong><p>{{ workspace.repairDetail.assignee || '未分配' }}</p></div>
+				<div><strong>提交时间</strong><p>{{ workspace.repairDetail.createdAt || '-' }}</p></div>
+				<div class="wide"><strong>描述</strong><p>{{ workspace.repairDetail.desc || '暂无描述' }}</p></div>
+			</div>
+			<div class="state-panel">
+				<div class="panel-head compact">
+					<h3>状态流转</h3>
+					<span>{{ workspace.repairLogs.length }} 条记录</span>
+				</div>
+				<div class="action-editor">
+					<label class="field">
+						<span>动作</span>
+						<select v-model="workspace.repairActionForm.action">
+							<option value="assign">派单</option>
+							<option value="processing">开始处理</option>
+							<option value="complete">完成维修</option>
+							<option value="close">关闭工单</option>
+							<option value="reopen">重开工单</option>
+							<option value="remark">仅备注</option>
+						</select>
+					</label>
+					<label class="field">
+						<span>处理人</span>
+						<input v-model="workspace.repairActionForm.assignee" type="text" placeholder="维修师傅 / 班组" />
+					</label>
+					<label class="field wide">
+						<span>处理说明</span>
+						<textarea v-model="workspace.repairActionForm.content" rows="3" placeholder="填写派单、处理、关闭或备注说明"></textarea>
+					</label>
+					<div class="form-actions wide">
+						<button class="primary" :disabled="!canSubmitAction" @click="workspace.saveRepairAction">提交流转</button>
+					</div>
+				</div>
+				<div class="timeline">
+					<div v-for="log in workspace.repairLogs" :key="log.id || `${log.action}-${log.createdAt}`" class="timeline-item">
+						<strong>{{ log.actionLabel || log.action }}</strong>
+						<span>{{ log.fromLabel || log.fromStatus || '-' }} → {{ log.toLabel || log.toStatus || '-' }}</span>
+						<p>{{ log.content || '无说明' }}</p>
+						<small>{{ log.createdAt || '-' }} / {{ log.operatorType || '-' }}</small>
+					</div>
+					<p v-if="!workspace.repairLogs.length" class="empty-text">暂无流转记录</p>
+				</div>
 			</div>
 		</div>
+		<p v-else class="empty-text">点击列表中的工单查看详情和处理流转。</p>
 	</section>
 </template>
 
@@ -68,10 +111,16 @@ import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 const workspace = useAdminWorkspaceStore();
 const keyword = ref('');
 const status = ref('');
-const selectedRepair = ref(null);
 
 const filteredRepairs = computed(() => workspace.repairs.filter((item) => {
 	const text = `${item.title || ''} ${item.contact || ''} ${item.phone || ''}`.toLowerCase();
 	return (!keyword.value || text.includes(keyword.value.trim().toLowerCase())) && (!status.value || item.status === status.value);
 }));
+
+const canSubmitAction = computed(() => {
+	const action = workspace.repairActionForm.action;
+	if (action === 'assign') return workspace.canAction('repair:assign');
+	if (action === 'close') return workspace.canAction('repair:close');
+	return workspace.canAction('repair:update');
+});
 </script>
