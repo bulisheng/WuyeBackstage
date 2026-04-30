@@ -259,11 +259,24 @@ th {
 	gap: 8px;
 }
 
-.actions button:last-child {
+.actions button:last-child,
+.community-actions button:last-child {
 	background: #6b7280;
 }
 
 .actions .danger {
+	background: #dc2626;
+}
+
+.community-actions button {
+	border: 0;
+	border-radius: 8px;
+	padding: 9px 14px;
+	background: #13b35d;
+	color: #fff;
+}
+
+.community-actions .danger {
 	background: #dc2626;
 }
 
@@ -279,15 +292,35 @@ th {
 	padding: 14px;
 	border: 1px solid #edf0ee;
 	border-radius: 8px;
+	gap: 16px;
 }
 
-.community-row div {
+.community-meta {
 	display: grid;
 	gap: 4px;
 }
 
-.community-row span {
+.community-meta span,
+.community-meta small {
 	color: #6b7280;
+}
+
+.community-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.community-editor {
+	display: grid;
+	gap: 16px;
+	padding: 16px;
+	border: 1px solid #edf0ee;
+	border-radius: 8px;
+	background: #f8faf9;
+	margin-bottom: 18px;
 }
 
 .announcement-panel {

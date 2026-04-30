@@ -31,7 +31,7 @@
 						<span>当前小区</span>
 						<select v-model="selectedSchema" @change="onSchemaChange">
 							<option value="">请选择</option>
-							<option v-for="item in communities" :key="item.schemaName || item.code" :value="item.schemaName">
+							<option v-for="item in activeCommunities" :key="item.schemaName || item.code" :value="item.schemaName">
 								{{ communityLabel(item) }}
 							</option>
 						</select>
@@ -160,16 +160,58 @@
 
 			<section v-if="activeTab === 'communities'" class="panel">
 				<div class="panel-head">
-					<h2>小区配置</h2>
-					<span>后续接新增、编辑、停用</span>
+					<h2>小区管理</h2>
+					<span>{{ communities.length }} 个小区</span>
+				</div>
+				<div class="community-editor">
+					<div class="form-grid">
+						<label class="field">
+							<span>小区编码</span>
+							<input v-model="communityForm.code" type="text" placeholder="例如 rzb-001" />
+						</label>
+						<label class="field">
+							<span>小区名称</span>
+							<input v-model="communityForm.name" type="text" placeholder="例如 荣尊堡" />
+						</label>
+						<label class="field">
+							<span>Schema</span>
+							<input v-model="communityForm.schemaName" type="text" placeholder="可留空自动生成" />
+						</label>
+						<label class="field">
+							<span>排序</span>
+							<input v-model.number="communityForm.sort" type="number" min="0" step="1" />
+						</label>
+						<label class="field span-2">
+							<span>地址</span>
+							<input v-model="communityForm.address" type="text" placeholder="请输入小区地址" />
+						</label>
+						<label class="field span-2">
+							<span>联系电话</span>
+							<input v-model="communityForm.phone" type="text" placeholder="请输入联系电话" />
+						</label>
+						<label class="field checkbox-field">
+							<input v-model="communityForm.active" :true-value="1" :false-value="0" type="checkbox" />
+							<span>启用</span>
+						</label>
+					</div>
+					<div class="form-actions">
+						<button class="primary" @click="saveCommunity">{{ editingCommunityId ? '保存修改' : '新增小区' }}</button>
+						<button @click="resetCommunityForm">重置</button>
+					</div>
 				</div>
 				<div class="community-list">
 					<div v-for="item in communities" :key="item.id" class="community-row">
-						<div>
+						<div class="community-meta">
 							<strong>{{ item.name }}</strong>
 							<span>{{ item.code }}</span>
+							<small>{{ item.address || '暂无地址' }}</small>
 						</div>
-						<span class="status approved">{{ item.active ? '启用' : '停用' }}</span>
+						<div class="community-actions">
+							<span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span>
+							<button @click="editCommunity(item)">编辑</button>
+							<button @click="toggleCommunityActive(item)">{{ item.active ? '停用' : '启用' }}</button>
+							<button class="danger" @click="removeCommunity(item)">删除</button>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -292,11 +334,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { adminApi } from './api/admin.js';
+import { buildCommunityLabel, buildCommunityPayload, createCommunityForm } from './utils/community.js';
 
 const activeTab = ref('dashboard');
 const stats = ref([]);
 const owners = ref([]);
 const communities = ref([]);
+const communityForm = ref(createCommunityForm());
+const editingCommunityId = ref('');
 const announcements = ref([]);
 const repairs = ref([]);
 const fees = ref([]);
@@ -319,7 +364,9 @@ const pageTitle = computed(() => {
 
 const pendingCount = computed(() => owners.value.filter((item) => item.auditStatus === 'pending').length);
 
+const activeCommunities = computed(() => communities.value.filter((item) => item.active));
 const activeCommunity = computed(() => communities.value.find((item) => item.schemaName === selectedSchema.value) || null);
+const communityLabel = buildCommunityLabel;
 
 function statusText(status) {
 	return {
@@ -365,10 +412,6 @@ function emptyAnnouncement() {
 	};
 }
 
-function communityLabel(item) {
-	return `${item.name}${item.schemaName ? ` · ${item.schemaName}` : ''}`;
-}
-
 function announcementStatusText(status) {
 	return {
 		draft: '草稿',
@@ -380,13 +423,65 @@ function announcementStatusText(status) {
 async function loadCommunities() {
 	const communityData = await adminApi.communityList();
 	communities.value = communityData.list || [];
-	const hasSelected = communities.value.some((item) => item.schemaName === selectedSchema.value);
+	const hasSelected = activeCommunities.value.some((item) => item.schemaName === selectedSchema.value);
 	if (!hasSelected) {
-		selectedSchema.value = communities.value.find((item) => item.active)?.schemaName
-			|| communities.value[0]?.schemaName
+		selectedSchema.value = activeCommunities.value[0]?.schemaName
 			|| '';
 	}
 	adminApi.setSchemaName(selectedSchema.value);
+}
+
+function resetCommunityForm() {
+	editingCommunityId.value = '';
+	communityForm.value = createCommunityForm();
+}
+
+function editCommunity(item) {
+	editingCommunityId.value = String(item.id || '');
+	communityForm.value = createCommunityForm(item);
+	activeTab.value = 'communities';
+}
+
+async function saveCommunity() {
+	try {
+		const payload = buildCommunityPayload(communityForm.value);
+		const result = await adminApi.saveCommunity({
+			...payload,
+			id: editingCommunityId.value || undefined
+		});
+		communities.value = result.list || communities.value;
+		resetCommunityForm();
+		await loadCommunities();
+	} catch (err) {
+		window.alert(err.message || '保存失败');
+	}
+}
+
+async function toggleCommunityActive(item) {
+	try {
+		const payload = buildCommunityPayload({
+			...item,
+			active: item.active ? 0 : 1
+		});
+		await adminApi.saveCommunity({
+			...payload,
+			id: item.id
+		});
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '切换状态失败');
+	}
+}
+
+async function removeCommunity(item) {
+	const confirmed = window.confirm(`确认删除/停用小区「${buildCommunityLabel(item)}」？`);
+	if (!confirmed) return;
+	try {
+		await adminApi.deleteCommunity(item.id);
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '删除失败');
+	}
 }
 
 function resetAnnouncementForm() {

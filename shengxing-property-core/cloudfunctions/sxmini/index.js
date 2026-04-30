@@ -1168,7 +1168,12 @@ function communityDto(item) {
 		code: item.code || '',
 		name: item.name || '',
 		schemaName: item.schemaName || '',
-		active: Boolean(Number(item.active))
+		address: item.address || '',
+		phone: item.phone || '',
+		active: Boolean(Number(item.active)),
+		sort: Number(item.sort || 0),
+		createdAt: item.created_at || '',
+		updatedAt: item.updated_at || ''
 	};
 }
 
@@ -1227,9 +1232,64 @@ async function adminOwnerAudit(params = {}) {
 async function adminCommunityList() {
 	await init();
 	const rows = await queryRows(
-		`SELECT id, code, name, schema_name AS schemaName, active FROM ${globalTable('communities')} ORDER BY sort ASC, id ASC`
+		`SELECT id, code, name, schema_name AS schemaName, address, phone, active, sort, created_at, updated_at
+		FROM ${globalTable('communities')}
+		ORDER BY sort ASC, id ASC`
 	);
 	return { list: rows.map(communityDto) };
+}
+
+async function adminCommunitySave(params = {}) {
+	await init();
+	const id = sqlNumber(params.id);
+	const code = String(params.code || '').trim();
+	const name = String(params.name || '').trim();
+	const rawSchemaName = String(params.schemaName || '').trim() || communitySchemaFallback(code || name);
+	const schemaName = normalizeSchemaName(rawSchemaName);
+	const address = String(params.address || '').trim();
+	const phone = String(params.phone || '').trim();
+	const sort = sqlNumber(params.sort, 100);
+	const active = params.active === false || params.active === 0 || params.active === '0' ? 0 : 1;
+	if (!code) throw new Error('小区编码不能为空');
+	if (!name) throw new Error('小区名称不能为空');
+	if (!schemaName) throw new Error('schemaName invalid');
+	if (id) {
+		await runSql(
+			`UPDATE ${globalTable('communities')}
+			SET code = {{code}}, name = {{name}}, schema_name = {{schemaName}},
+				address = {{address}}, phone = {{phone}}, active = {{active}}, sort = {{sort}}
+			WHERE id = {{id}}`,
+			{ id, code, name, schemaName, address, phone, active, sort }
+		);
+	} else {
+		await runSql(
+			`INSERT INTO ${globalTable('communities')} (_openid, code, name, schema_name, address, phone, active, sort)
+			VALUES ({{openid}}, {{code}}, {{name}}, {{schemaName}}, {{address}}, {{phone}}, {{active}}, {{sort}})`,
+			{
+				openid: getOpenId(),
+				code,
+				name,
+				schemaName,
+				address,
+				phone,
+				active,
+				sort
+			}
+		);
+	}
+	await ensureTenantSchema(schemaName);
+	return await adminCommunityList();
+}
+
+async function adminCommunityDelete(params = {}) {
+	await init();
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('小区ID无效');
+	await runSql(
+		`UPDATE ${globalTable('communities')} SET active = 0 WHERE id = {{id}}`,
+		{ id }
+	);
+	return await adminCommunityList();
 }
 
 async function adminRepairList(params = {}) {
@@ -1375,15 +1435,17 @@ exports.main = async (event) => {
 			if (route === 'admin/dashboard') data = await adminDashboard(params);
 			else if (route === 'admin/owner/list') data = await adminOwnerList(params);
 			else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params);
-		else if (route === 'admin/community/list') data = await adminCommunityList();
-		else if (route === 'admin/repair/list') data = await adminRepairList(params);
-		else if (route === 'admin/fee/list') data = await adminFeeList(params);
-		else if (route === 'admin/complaint/list') data = await adminComplaintList(params);
-		else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params);
-		else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params);
-		else if (route === 'admin/announcement/save') data = await adminAnnouncementSave(params);
-		else if (route === 'admin/announcement/delete') data = await adminAnnouncementDelete(params);
-		else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
+			else if (route === 'admin/community/list') data = await adminCommunityList();
+			else if (route === 'admin/community/save') data = await adminCommunitySave(params);
+			else if (route === 'admin/community/delete') data = await adminCommunityDelete(params);
+			else if (route === 'admin/repair/list') data = await adminRepairList(params);
+			else if (route === 'admin/fee/list') data = await adminFeeList(params);
+			else if (route === 'admin/complaint/list') data = await adminComplaintList(params);
+			else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params);
+			else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params);
+			else if (route === 'admin/announcement/save') data = await adminAnnouncementSave(params);
+			else if (route === 'admin/announcement/delete') data = await adminAnnouncementDelete(params);
+			else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
 		}
 		else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
 		return response({ code: 0, msg: 'ok', data }, normalized.isHttp);
