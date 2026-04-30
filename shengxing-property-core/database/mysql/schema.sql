@@ -49,6 +49,28 @@ CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`admin_community_permis
 	KEY idx_admin_community_permissions_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`admin_audit_logs` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	admin_id BIGINT UNSIGNED DEFAULT NULL,
+	username VARCHAR(80) DEFAULT '',
+	role ENUM('super_admin','admin','finance','customer_service','repairman') NOT NULL DEFAULT 'admin',
+	community_id BIGINT UNSIGNED DEFAULT NULL,
+	community_name VARCHAR(120) DEFAULT '',
+	route VARCHAR(120) NOT NULL,
+	module_key VARCHAR(64) DEFAULT '',
+	action_key VARCHAR(64) DEFAULT '',
+	status ENUM('success','failed') NOT NULL DEFAULT 'success',
+	message VARCHAR(255) DEFAULT '',
+	params_json LONGTEXT,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	KEY idx_admin_audit_logs_admin (admin_id),
+	KEY idx_admin_audit_logs_community (community_id),
+	KEY idx_admin_audit_logs_route (route),
+	KEY idx_admin_audit_logs_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 INSERT INTO `cloudbase-d9g78eneac709f5a5`.`communities` (code, name, schema_name, sort, active)
 VALUES
 	('rzb-001', '荣尊堡', 'rzb', 1, 1),

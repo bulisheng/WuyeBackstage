@@ -37,6 +37,7 @@ test('accessible communities are derived from admin and permission records', () 
 test('route rules map admin endpoints to module and action keys', () => {
 	assert.deepEqual(engine.getRouteRule('admin/community/save'), { module: 'communities', action: 'community:edit' });
 	assert.deepEqual(engine.getRouteRule('admin/announcement/delete'), { module: 'announcements', action: 'announcement:delete' });
+	assert.deepEqual(engine.getRouteRule('admin/audit/list'), { module: 'permissions', action: 'admin:audit:view' });
 });
 
 console.log('permission engine assertions passed');

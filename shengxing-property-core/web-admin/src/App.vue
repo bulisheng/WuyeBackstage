@@ -440,6 +440,36 @@
 						</tr>
 					</tbody>
 				</table>
+				<div v-if="canAction('admin:audit:view')" class="audit-panel">
+					<div class="panel-head compact">
+						<h3>操作审计</h3>
+						<span>{{ auditLogs.length }} 条最近记录</span>
+					</div>
+					<table class="spaced-table">
+						<thead>
+							<tr>
+								<th>时间</th>
+								<th>操作员</th>
+								<th>小区</th>
+								<th>路由</th>
+								<th>模块 / 动作</th>
+								<th>结果</th>
+								<th>参数摘要</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="item in auditLogs" :key="item.id">
+								<td>{{ item.createdAt || '-' }}</td>
+								<td>{{ item.username }} · {{ item.roleLabel }}</td>
+								<td>{{ item.communityName || '全局' }}</td>
+								<td>{{ item.route }}</td>
+								<td>{{ item.moduleKey || '-' }} / {{ item.actionKey || '-' }}</td>
+								<td><span class="status" :class="item.status === 'success' ? 'approved' : 'disabled'">{{ item.status === 'success' ? '成功' : '失败' }}</span></td>
+								<td>{{ item.message ? `${item.message} · ` : '' }}{{ auditParamsLabel(item) }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 			</section>
 
 			<section v-if="activeTab === 'repairs'" class="panel">
@@ -577,8 +607,10 @@ const owners = ref([]);
 const communities = ref([]);
 const communityForm = ref(createCommunityForm());
 const editingCommunityId = ref('');
+const operatorDirectory = ref([]);
 const admins = ref([]);
 const permissions = ref([]);
+const auditLogs = ref([]);
 const roleOptions = ref(listRoleOptions());
 const currentAdminId = ref(adminApi.getCurrentAdminId());
 const adminAccess = ref(null);
@@ -610,7 +642,7 @@ const pageTitle = computed(() => {
 const pendingCount = computed(() => owners.value.filter((item) => item.auditStatus === 'pending').length);
 
 const activeCommunities = computed(() => communities.value.filter((item) => item.active));
-const activeAdmins = computed(() => admins.value.filter((item) => item.active));
+const activeAdmins = computed(() => operatorDirectory.value.filter((item) => item.active));
 const activeCommunity = computed(() => communities.value.find((item) => item.schemaName === selectedSchema.value) || null);
 const permissionMatrix = computed(() => buildPermissionMatrix(communities.value, permissions.value, roleOptions.value));
 const adminRoleAccess = computed(() => buildRoleAccessProfile(adminForm.value.role));
@@ -726,6 +758,22 @@ function canAction(action) {
 	return allowedActions.value.includes('*') || allowedActions.value.includes(action);
 }
 
+function auditParamsLabel(item) {
+	const params = item && item.params ? item.params : {};
+	const keys = ['username', 'role', 'communityId', 'adminId', 'id', 'status', 'auditStatus', 'title', 'scene'];
+	const pairs = keys
+		.filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+		.slice(0, 4)
+		.map((key) => `${key}:${params[key]}`);
+	if (pairs.length) return pairs.join(' · ');
+	try {
+		const text = JSON.stringify(params);
+		return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+	} catch (err) {
+		return '{}';
+	}
+}
+
 function syncSelectedAdminId(adminId) {
 	const next = String(adminId || '').trim();
 	currentAdminId.value = next;
@@ -766,16 +814,16 @@ function openMatrixCell(row, cell) {
 }
 
 async function loadAdminDirectory() {
-	const [roleData, adminData] = await Promise.all([
+	const [roleData, operatorData] = await Promise.all([
 		adminApi.roleList(),
-		adminApi.adminList()
+		adminApi.operatorList()
 	]);
 	roleOptions.value = roleData.list && roleData.list.length ? roleData.list : listRoleOptions();
-	admins.value = adminData.list || [];
-	if (!currentAdminId.value || !admins.value.some((item) => String(item.id) === currentAdminId.value && item.active)) {
-		const preferred = admins.value.find((item) => item.active && item.role === 'super_admin')
-			|| admins.value.find((item) => item.active)
-			|| admins.value[0]
+	operatorDirectory.value = operatorData.list || [];
+	if (!currentAdminId.value || !operatorDirectory.value.some((item) => String(item.id) === currentAdminId.value && item.active)) {
+		const preferred = operatorDirectory.value.find((item) => item.active && item.role === 'super_admin')
+			|| operatorDirectory.value.find((item) => item.active)
+			|| operatorDirectory.value[0]
 			|| null;
 		syncSelectedAdminId(preferred ? preferred.id : '');
 	}
@@ -810,8 +858,14 @@ async function loadAccessProfile() {
 }
 
 async function loadPermissionTables() {
-	const permissionData = await adminApi.permissionList();
+	const [adminData, permissionData, auditData] = await Promise.all([
+		canAction('admin:user:view') ? adminApi.adminList() : Promise.resolve({ list: [] }),
+		canAction('admin:permission:view') ? adminApi.permissionList() : Promise.resolve({ list: [] }),
+		canAction('admin:audit:view') ? adminApi.auditList() : Promise.resolve({ list: [] })
+	]);
+	admins.value = adminData.list || [];
 	permissions.value = permissionData.list || [];
+	auditLogs.value = auditData.list || [];
 }
 
 function resetCommunityForm() {
@@ -1022,7 +1076,9 @@ async function reload() {
 		fees.value = [];
 		complaints.value = [];
 		noticeConfigs.value = [];
+		admins.value = [];
 		permissions.value = [];
+		auditLogs.value = [];
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
@@ -1038,7 +1094,9 @@ async function reload() {
 	if (canMenu('permissions')) {
 		await loadPermissionTables();
 	} else {
+		admins.value = [];
 		permissions.value = [];
+		auditLogs.value = [];
 	}
 	stats.value = dashboard.stats || [];
 	owners.value = ownerData.list || [];

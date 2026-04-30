@@ -6,7 +6,7 @@ const ROLE_ACCESS_PRESETS = {
 	},
 	admin: {
 		menus: ['dashboard', 'owners', 'announcements', 'communities', 'permissions', 'repairs', 'fees', 'complaints', 'notices'],
-		actions: ['community:view', 'community:edit', 'community:delete', 'announcement:view', 'announcement:publish', 'announcement:delete', 'owner:view', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage'],
+		actions: ['community:view', 'community:edit', 'community:delete', 'announcement:view', 'announcement:publish', 'announcement:delete', 'owner:view', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
 		note: '管理员默认可见全部业务菜单'
 	},
 	finance: {
@@ -40,6 +40,7 @@ const ROUTE_RULES = {
 	'admin/permission/list': { module: 'permissions', action: 'admin:permission:view' },
 	'admin/permission/save': { module: 'permissions', action: 'admin:permission:manage' },
 	'admin/permission/delete': { module: 'permissions', action: 'admin:permission:manage' },
+	'admin/audit/list': { module: 'permissions', action: 'admin:audit:view' },
 	'admin/repair/list': { module: 'repairs', action: 'repair:view' },
 	'admin/fee/list': { module: 'fees', action: 'fee:view' },
 	'admin/complaint/list': { module: 'complaints', action: 'complaint:view' },

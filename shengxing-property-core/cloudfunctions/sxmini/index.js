@@ -11,6 +11,7 @@ const app = cloudbase.init({
 	env: cloudbase.SYMBOL_CURRENT_ENV
 });
 const models = app.models;
+const adminAudit = require('./admin_audit.js');
 const GLOBAL_SCHEMA = process.env.MYSQL_GLOBAL_SCHEMA || 'cloudbase-d9g78eneac709f5a5';
 const DEFAULT_COMMUNITIES = [
 	{ code: 'rzb-001', name: '荣尊堡', schemaName: 'rzb', sort: 1 },
@@ -35,7 +36,7 @@ const TENANT_TABLES = [
 	'notice_configs',
 	'announcements'
 ];
-const ADMIN_BOOTSTRAP_ROUTES = new Set(['admin/user/list', 'admin/role/list']);
+const ADMIN_BOOTSTRAP_ROUTES = new Set(['admin/access/operators', 'admin/role/list']);
 
 function getOpenId() {
 	const ctx = cloud.getWXContext ? cloud.getWXContext() : {};
@@ -181,6 +182,29 @@ async function ensureGlobalRegistryTables() {
 			UNIQUE KEY uk_admin_community_permissions (admin_id, community_id),
 			KEY idx_admin_community_permissions_community (community_id),
 			KEY idx_admin_community_permissions_role (role)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+	);
+	await runSql(
+		`CREATE TABLE IF NOT EXISTS ${globalTable('admin_audit_logs')} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			_openid VARCHAR(64) DEFAULT '' NOT NULL,
+			admin_id BIGINT UNSIGNED DEFAULT NULL,
+			username VARCHAR(80) DEFAULT '',
+			role ENUM('super_admin','admin','finance','customer_service','repairman') NOT NULL DEFAULT 'admin',
+			community_id BIGINT UNSIGNED DEFAULT NULL,
+			community_name VARCHAR(120) DEFAULT '',
+			route VARCHAR(120) NOT NULL,
+			module_key VARCHAR(64) DEFAULT '',
+			action_key VARCHAR(64) DEFAULT '',
+			status ENUM('success','failed') NOT NULL DEFAULT 'success',
+			message VARCHAR(255) DEFAULT '',
+			params_json LONGTEXT,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_admin_audit_logs_admin (admin_id),
+			KEY idx_admin_audit_logs_community (community_id),
+			KEY idx_admin_audit_logs_route (route),
+			KEY idx_admin_audit_logs_created_at (created_at)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 	);
 }
@@ -1258,6 +1282,8 @@ async function resolveAdminAccess(headers, params = {}, route = '') {
 	if (currentCommunity && !permissionEngine.hasCommunityAccess(context.access, currentCommunity.id)) {
 		throw new Error('无权访问该小区');
 	}
+	context.currentCommunity = currentCommunity;
+	context.currentCommunityPermissions = currentCommunityPermissions;
 	return context;
 }
 
@@ -1337,6 +1363,7 @@ function adminUserDto(item) {
 		role: item.role || 'admin',
 		roleLabel: roleLabel(item.role || 'admin'),
 		communityId: item.community_id ? Number(item.community_id) : 0,
+		communityName: item.community_name || '',
 		active: Boolean(Number(item.active)),
 		lastLoginAt: item.last_login_at || '',
 		createdAt: item.created_at || '',
@@ -1519,6 +1546,19 @@ async function adminRoleList(accessContext = null) {
 	await init();
 	return {
 		list: ADMIN_ROLES.map((item) => Object.assign({}, item))
+	};
+}
+
+async function adminOperatorList() {
+	await init();
+	const rows = await queryRows(
+		`SELECT u.id, u.username, u.role, u.community_id, u.active, u.last_login_at, u.created_at, u.updated_at, c.name AS community_name
+		FROM ${globalTable('admin_users')} u
+		LEFT JOIN ${globalTable('communities')} c ON c.id = u.community_id
+		ORDER BY u.id DESC`
+	);
+	return {
+		list: rows.filter((item) => Number(item.active)).map(adminUserDto)
 	};
 }
 
@@ -1720,6 +1760,67 @@ async function adminPermissionDelete(params = {}, accessContext = null) {
 	return await adminPermissionList(accessContext);
 }
 
+async function writeAdminAuditLog({ accessContext = null, route = '', params = {}, status = 'success', message = '', community = null } = {}) {
+	if (!accessContext) return;
+	const rule = getRoutePermission(route) || {};
+	const record = adminAudit.buildAuditRecord({
+		adminUser: accessContext.admin,
+		community: community || accessContext.currentCommunity || null,
+		route,
+		rule,
+		status,
+		message,
+		params
+	});
+	await runSql(
+		`INSERT INTO ${globalTable('admin_audit_logs')}
+		(_openid, admin_id, username, role, community_id, community_name, route, module_key, action_key, status, message, params_json)
+		VALUES ({{_openid}}, {{admin_id}}, {{username}}, {{role}}, {{community_id}}, {{community_name}}, {{route}}, {{module_key}}, {{action_key}}, {{status}}, {{message}}, {{params_json}})`,
+		record
+	);
+}
+
+async function adminAuditList(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/audit/list');
+	}
+	const rows = await queryRows(
+		`SELECT l.id, l.admin_id, l.username, l.role, l.community_id, l.community_name, l.route, l.module_key, l.action_key, l.status, l.message, l.params_json, l.created_at
+		FROM ${globalTable('admin_audit_logs')} l
+		ORDER BY l.id DESC
+		LIMIT 100`
+	);
+	const list = rows.map((item) => ({
+		id: Number(item.id),
+		adminId: item.admin_id != null ? Number(item.admin_id) : 0,
+		username: item.username || '',
+		role: item.role || 'admin',
+		roleLabel: roleLabel(item.role || 'admin'),
+		communityId: item.community_id != null ? Number(item.community_id) : 0,
+		communityName: item.community_name || '',
+		route: item.route || '',
+		moduleKey: item.module_key || '',
+		actionKey: item.action_key || '',
+		status: item.status || 'success',
+		message: item.message || '',
+		params: (() => {
+			try {
+				const parsed = item.params_json ? JSON.parse(item.params_json) : {};
+				return parsed && typeof parsed === 'object' ? parsed : {};
+			} catch (err) {
+				return {};
+			}
+		})(),
+		createdAt: item.created_at || ''
+	}));
+	if (!accessContext) return { list };
+	if (String(accessContext.admin && accessContext.admin.role || '') === 'super_admin') return { list };
+	const allowed = new Set((accessContext.accessibleCommunityIds || []).map((item) => String(item)));
+	if (!allowed.size) return { list: list.filter((item) => !item.communityId || item.adminId === Number(accessContext.admin && accessContext.admin.id)) };
+	return { list: list.filter((item) => !item.communityId || allowed.has(String(item.communityId))) };
+}
+
 async function adminRepairList(params = {}, accessContext = null) {
 	await init();
 	if (accessContext) {
@@ -1885,29 +1986,63 @@ exports.main = async (event) => {
 		else if (route === 'repair/list') data = await repairList(params);
 		else if (route === 'repair/create') data = await repairCreate(params);
 		else if (route.startsWith('admin/')) {
-			const adminAccess = await resolveAdminAccess(normalized.headers, params, route);
-			if (route === 'admin/dashboard') data = await adminDashboard(params, adminAccess);
-			else if (route === 'admin/owner/list') data = await adminOwnerList(params, adminAccess);
-			else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params, adminAccess);
-			else if (route === 'admin/community/list') data = await adminCommunityList(adminAccess);
-			else if (route === 'admin/community/save') data = await adminCommunitySave(params, adminAccess);
-			else if (route === 'admin/community/delete') data = await adminCommunityDelete(params, adminAccess);
-			else if (route === 'admin/role/list') data = await adminRoleList(adminAccess);
-			else if (route === 'admin/access/profile') data = await adminAccessProfile(params, adminAccess);
-			else if (route === 'admin/user/list') data = await adminUserList(adminAccess);
-			else if (route === 'admin/user/save') data = await adminUserSave(params, adminAccess);
-			else if (route === 'admin/user/delete') data = await adminUserDelete(params, adminAccess);
-			else if (route === 'admin/permission/list') data = await adminPermissionList(adminAccess);
-			else if (route === 'admin/permission/save') data = await adminPermissionSave(params, adminAccess);
-			else if (route === 'admin/permission/delete') data = await adminPermissionDelete(params, adminAccess);
-			else if (route === 'admin/repair/list') data = await adminRepairList(params, adminAccess);
-			else if (route === 'admin/fee/list') data = await adminFeeList(params, adminAccess);
-			else if (route === 'admin/complaint/list') data = await adminComplaintList(params, adminAccess);
-			else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params, adminAccess);
-			else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params, adminAccess);
-			else if (route === 'admin/announcement/save') data = await adminAnnouncementSave(params, adminAccess);
-			else if (route === 'admin/announcement/delete') data = await adminAnnouncementDelete(params, adminAccess);
-			else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
+			let adminAccess = null;
+			try {
+				adminAccess = await resolveAdminAccess(normalized.headers, params, route);
+				if (route === 'admin/dashboard') data = await adminDashboard(params, adminAccess);
+				else if (route === 'admin/owner/list') data = await adminOwnerList(params, adminAccess);
+				else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params, adminAccess);
+				else if (route === 'admin/access/operators') data = await adminOperatorList();
+				else if (route === 'admin/community/list') data = await adminCommunityList(adminAccess);
+				else if (route === 'admin/community/save') data = await adminCommunitySave(params, adminAccess);
+				else if (route === 'admin/community/delete') data = await adminCommunityDelete(params, adminAccess);
+				else if (route === 'admin/role/list') data = await adminRoleList(adminAccess);
+				else if (route === 'admin/access/profile') data = await adminAccessProfile(params, adminAccess);
+				else if (route === 'admin/user/list') data = await adminUserList(adminAccess);
+				else if (route === 'admin/user/save') data = await adminUserSave(params, adminAccess);
+				else if (route === 'admin/user/delete') data = await adminUserDelete(params, adminAccess);
+				else if (route === 'admin/permission/list') data = await adminPermissionList(adminAccess);
+				else if (route === 'admin/permission/save') data = await adminPermissionSave(params, adminAccess);
+				else if (route === 'admin/permission/delete') data = await adminPermissionDelete(params, adminAccess);
+				else if (route === 'admin/audit/list') data = await adminAuditList(params, adminAccess);
+				else if (route === 'admin/repair/list') data = await adminRepairList(params, adminAccess);
+				else if (route === 'admin/fee/list') data = await adminFeeList(params, adminAccess);
+				else if (route === 'admin/complaint/list') data = await adminComplaintList(params, adminAccess);
+				else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params, adminAccess);
+				else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params, adminAccess);
+				else if (route === 'admin/announcement/save') data = await adminAnnouncementSave(params, adminAccess);
+				else if (route === 'admin/announcement/delete') data = await adminAnnouncementDelete(params, adminAccess);
+				else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
+				if (adminAccess) {
+					try {
+						await writeAdminAuditLog({
+							accessContext: adminAccess,
+							route,
+							params,
+							status: 'success',
+							community: adminAccess.currentCommunity || null
+						});
+					} catch (auditErr) {
+						console.error('[sxmini] audit log error', auditErr);
+					}
+				}
+			} catch (err) {
+				if (adminAccess) {
+					try {
+						await writeAdminAuditLog({
+							accessContext: adminAccess,
+							route,
+							params,
+							status: 'failed',
+							message: err && err.message ? err.message : 'cloud error',
+							community: adminAccess.currentCommunity || null
+						});
+					} catch (auditErr) {
+						console.error('[sxmini] audit log error', auditErr);
+					}
+				}
+				throw err;
+			}
 		}
 		else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
 		return response({ code: 0, msg: 'ok', data }, normalized.isHttp);
