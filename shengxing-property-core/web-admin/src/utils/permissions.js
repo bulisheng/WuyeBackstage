@@ -14,7 +14,7 @@ const ROLE_ACCESS_PRESETS = {
 	},
 	admin: {
 		menus: ['dashboard', 'owners', 'announcements', 'communities', 'permissions', 'repairs', 'fees', 'complaints', 'notices'],
-		actions: ['community:edit', 'announcement:publish', 'owner:audit', 'repair:assign', 'fee:manage', 'complaint:handle', 'notice:publish'],
+		actions: ['community:edit', 'community:module:view', 'community:module:manage', 'announcement:publish', 'owner:audit', 'repair:assign', 'fee:manage', 'complaint:handle', 'notice:publish'],
 		note: '管理员默认看到全部业务菜单'
 	},
 	finance: {
@@ -49,6 +49,8 @@ const MENU_LABELS = {
 const ACTION_LABELS = {
 	'*': '全部动作',
 	'community:edit': '小区编辑',
+	'community:module:view': '模块查看',
+	'community:module:manage': '模块管理',
 	'announcement:publish': '公告发布',
 	'owner:audit': '业主审核',
 	'repair:view': '查看报修',

@@ -30,11 +30,17 @@
 		</view>
 	</view>
 
-	<view class="service-grid">
-		<view wx:for="{{primaryServices}}" wx:key="title" class="service-card" bindtap="go" data-type="{{item.type}}">
+	<view wx:if="{{primaryServices.length}}" class="service-grid">
+		<view wx:for="{{primaryServices}}" wx:key="moduleKey" class="service-card {{item.disabled ? 'card-disabled' : ''}}" bindtap="go" data-type="{{item.type}}" data-disabled="{{item.disabled}}">
 			<view class="service-icon icon-{{item.theme}}">{{item.mark}}</view>
 			<text class="service-title">{{item.title}}</text>
 			<text class="service-desc">{{item.desc}}</text>
+		</view>
+	</view>
+	<view wx:else class="notice-section card empty-block">
+		<view class="empty-state">
+			<view class="empty-title">当前小区暂未开放功能模块</view>
+			<text class="subtle">请联系物业后台开启需要的模块。</text>
 		</view>
 	</view>
 
@@ -59,12 +65,12 @@
 		</view>
 	</view>
 
-	<view class="section-title">便民服务</view>
-	<view class="convenience-grid">
-		<view wx:for="{{convenienceServices}}" wx:key="title" class="convenience-card card" bindtap="go" data-type="{{item.type}}">
+	<view wx:if="{{convenienceServices.length}}" class="section-title">便民服务</view>
+	<view wx:if="{{convenienceServices.length}}" class="convenience-grid">
+		<view wx:for="{{convenienceServices}}" wx:key="moduleKey" class="convenience-card card {{item.disabled ? 'card-disabled' : ''}}" bindtap="go" data-type="{{item.type}}" data-disabled="{{item.disabled}}">
 			<view class="convenience-icon icon-{{item.theme}}">{{item.mark}}</view>
 			<view class="convenience-title">{{item.title}}</view>
 			<text class="convenience-desc">{{item.desc}}</text>
-	</view>
+		</view>
 	</view>
 </view>

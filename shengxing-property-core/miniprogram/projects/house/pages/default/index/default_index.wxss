@@ -198,6 +198,11 @@
 	gap: 10rpx;
 }
 
+.card-disabled {
+	opacity: 0.55;
+	filter: grayscale(0.2);
+}
+
 .service-icon,
 .convenience-icon {
 	width: 72rpx;

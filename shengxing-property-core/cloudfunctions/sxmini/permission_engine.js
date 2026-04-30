@@ -6,7 +6,7 @@ const ROLE_ACCESS_PRESETS = {
 	},
 	admin: {
 		menus: ['dashboard', 'owners', 'announcements', 'communities', 'permissions', 'repairs', 'fees', 'complaints', 'notices'],
-		actions: ['community:view', 'community:edit', 'community:delete', 'announcement:view', 'announcement:publish', 'announcement:delete', 'owner:view', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
+		actions: ['community:view', 'community:edit', 'community:delete', 'community:module:view', 'community:module:manage', 'announcement:view', 'announcement:publish', 'announcement:delete', 'owner:view', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
 		note: '管理员默认可见全部业务菜单'
 	},
 	finance: {
@@ -33,6 +33,9 @@ const ROUTE_RULES = {
 	'admin/community/list': { module: 'communities', action: 'community:view' },
 	'admin/community/save': { module: 'communities', action: 'community:edit' },
 	'admin/community/delete': { module: 'communities', action: 'community:delete' },
+	'admin/community/module/list': { module: 'permissions', action: 'community:module:view' },
+	'admin/community/module/save': { module: 'permissions', action: 'community:module:manage' },
+	'admin/community/module/batch_save': { module: 'permissions', action: 'community:module:manage' },
 	'admin/role/list': { module: 'permissions', action: 'admin:role:view' },
 	'admin/user/list': { module: 'permissions', action: 'admin:user:view' },
 	'admin/user/save': { module: 'permissions', action: 'admin:user:manage' },
@@ -165,6 +168,14 @@ function hasModuleAccess(access = {}, moduleKey) {
 	return false;
 }
 
+function hasModuleEnabled(access = {}, moduleKey) {
+	const key = normalizeText(moduleKey);
+	if (!key) return true;
+	const modules = Array.isArray(access.enabledModules) ? access.enabledModules : [];
+	if (!modules.length) return true;
+	return modules.includes(key);
+}
+
 function hasActionAccess(access = {}, actionKey) {
 	const key = normalizeText(actionKey);
 	if (!key) return true;
@@ -195,6 +206,7 @@ module.exports = {
 	buildEffectiveAccess,
 	buildAccessibleCommunityIds,
 	hasModuleAccess,
+	hasModuleEnabled,
 	hasActionAccess,
 	hasCommunityAccess,
 	getRouteRule

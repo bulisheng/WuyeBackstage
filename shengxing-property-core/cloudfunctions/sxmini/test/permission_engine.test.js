@@ -13,6 +13,8 @@ test('admin preset keeps permission management read actions', () => {
 	assert.ok(admin.actions.includes('admin:role:view'));
 	assert.ok(admin.actions.includes('admin:user:view'));
 	assert.ok(admin.actions.includes('admin:permission:view'));
+	assert.ok(admin.actions.includes('community:module:view'));
+	assert.ok(admin.actions.includes('community:module:manage'));
 });
 
 test('community overrides extend action permissions', () => {
@@ -38,6 +40,12 @@ test('route rules map admin endpoints to module and action keys', () => {
 	assert.deepEqual(engine.getRouteRule('admin/community/save'), { module: 'communities', action: 'community:edit' });
 	assert.deepEqual(engine.getRouteRule('admin/announcement/delete'), { module: 'announcements', action: 'announcement:delete' });
 	assert.deepEqual(engine.getRouteRule('admin/audit/list'), { module: 'permissions', action: 'admin:audit:view' });
+	assert.deepEqual(engine.getRouteRule('admin/community/module/save'), { module: 'permissions', action: 'community:module:manage' });
+});
+
+test('module enablement only passes when current community module is enabled', () => {
+	assert.equal(engine.hasModuleEnabled({ enabledModules: ['dashboard', 'repairs'] }, 'dashboard'), true);
+	assert.equal(engine.hasModuleEnabled({ enabledModules: ['dashboard', 'repairs'] }, 'fees'), false);
 });
 
 console.log('permission engine assertions passed');

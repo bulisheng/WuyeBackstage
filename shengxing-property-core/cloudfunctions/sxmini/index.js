@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk');
 const cloudbase = require('@cloudbase/node-sdk');
 const crypto = require('crypto');
 const permissionEngine = require('./permission_engine.js');
+const communityModules = require('./community_modules.js');
 
 cloud.init({
 	env: cloud.DYNAMIC_CURRENT_ENV
@@ -37,6 +38,24 @@ const TENANT_TABLES = [
 	'announcements'
 ];
 const ADMIN_BOOTSTRAP_ROUTES = new Set(['admin/access/operators', 'admin/role/list']);
+const MODULE_CHECK_EXEMPT_ROUTES = new Set([
+	'admin/access/operators',
+	'admin/access/profile',
+	'admin/community/list',
+	'admin/community/save',
+	'admin/community/delete',
+	'admin/community/module/list',
+	'admin/community/module/save',
+	'admin/community/module/batch_save',
+	'admin/role/list',
+	'admin/user/list',
+	'admin/user/save',
+	'admin/user/delete',
+	'admin/permission/list',
+	'admin/permission/save',
+	'admin/permission/delete',
+	'admin/audit/list'
+]);
 
 function getOpenId() {
 	const ctx = cloud.getWXContext ? cloud.getWXContext() : {};
@@ -166,6 +185,37 @@ async function queryRows(sql, params = {}) {
 	return rowsFromResult(await runSql(sql, params));
 }
 
+async function ensureCommunityModuleRecords(communityId) {
+	const communityKey = sqlNumber(communityId);
+	if (!communityKey) return;
+	const defaults = communityModules.buildDefaultCommunityModules(communityKey);
+	for (const item of defaults) {
+		await runSql(
+			`INSERT INTO ${globalTable('community_modules')}
+			(_openid, community_id, module_key, module_name, enabled, sort)
+			VALUES ({{openid}}, {{communityId}}, {{moduleKey}}, {{moduleName}}, {{enabled}}, {{sort}})
+			ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), sort = VALUES(sort)`,
+			{
+				openid: getOpenId(),
+				communityId: communityKey,
+				moduleKey: item.moduleKey,
+				moduleName: item.moduleName,
+				enabled: item.enabled,
+				sort: item.sort
+			}
+		);
+	}
+}
+
+async function syncCommunityModulesForAllCommunities() {
+	const rows = await queryRows(
+		`SELECT id FROM ${globalTable('communities')} WHERE active = 1 ORDER BY id ASC`
+	);
+	for (const row of rows) {
+		await ensureCommunityModuleRecords(row.id);
+	}
+}
+
 async function ensureGlobalRegistryTables() {
 	await runSql(
 		`CREATE TABLE IF NOT EXISTS ${globalTable('admin_community_permissions')} (
@@ -182,6 +232,22 @@ async function ensureGlobalRegistryTables() {
 			UNIQUE KEY uk_admin_community_permissions (admin_id, community_id),
 			KEY idx_admin_community_permissions_community (community_id),
 			KEY idx_admin_community_permissions_role (role)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+	);
+	await runSql(
+		`CREATE TABLE IF NOT EXISTS ${globalTable('community_modules')} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			_openid VARCHAR(64) DEFAULT '' NOT NULL,
+			community_id BIGINT UNSIGNED NOT NULL,
+			module_key VARCHAR(64) NOT NULL,
+			module_name VARCHAR(120) NOT NULL,
+			enabled TINYINT(1) NOT NULL DEFAULT 1,
+			sort INT NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uk_community_modules (community_id, module_key),
+			KEY idx_community_modules_community_enabled (community_id, enabled)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 	);
 	await runSql(
@@ -219,6 +285,7 @@ async function init() {
 		);
 	}
 	await ensureGlobalRegistryTables();
+	await syncCommunityModulesForAllCommunities();
 	return { ok: true, database: 'mysql' };
 }
 
@@ -1127,9 +1194,12 @@ async function home(params = {}) {
 	await init();
 	const community = await resolveCommunityContext(params, { openid: getOpenId() });
 	const announcements = await listAnnouncements(community.schemaName, 6);
+	await ensureCommunityModuleRecords(community.id);
+	const modules = await getCommunityModules(community.id);
 	return {
 		communityName: community.name,
 		schemaName: community.schemaName,
+		modules,
 		banner: announcements[0] || {
 			title: '社区公告',
 			summary: '暂无公告发布',
@@ -1243,21 +1313,38 @@ async function getActiveAdminPermissions(adminId) {
 	}));
 }
 
-function buildAdminAccessContext(adminUser, permissions, communities, currentCommunityPermissions) {
+async function getCommunityModules(communityId) {
+	const id = sqlNumber(communityId);
+	if (!id) return [];
+	const rows = await queryRows(
+		`SELECT cm.id, cm.community_id, cm.module_key, cm.module_name, cm.enabled, cm.sort
+		FROM ${globalTable('community_modules')} cm
+		WHERE cm.community_id = {{communityId}}
+		ORDER BY cm.sort ASC, cm.id ASC`,
+		{ communityId: id }
+	);
+	return communityModules.buildCommunityModuleList(rows);
+}
+
+function buildAdminAccessContext(adminUser, permissions, communities, currentCommunityPermissions, currentCommunityModules) {
 	const access = permissionEngine.buildEffectiveAccess(
 		adminUser.role || 'admin',
 		currentCommunityPermissions || []
 	);
 	const accessibleCommunityIds = permissionEngine.buildAccessibleCommunityIds(adminUser, permissions, communities);
+	const moduleList = communityModules.buildCommunityModuleList(currentCommunityModules || []);
 	return {
 		admin: adminUser,
 		access: Object.assign({}, access, {
 			communityIds: accessibleCommunityIds,
 			role: adminUser.role || 'admin',
-			roleLabel: roleLabel(adminUser.role || 'admin')
+			roleLabel: roleLabel(adminUser.role || 'admin'),
+			enabledModules: moduleList.filter((item) => item.enabled).map((item) => item.key),
+			moduleRecords: moduleList
 		}),
 		accessibleCommunityIds,
-		currentCommunityPermissions: currentCommunityPermissions || []
+		currentCommunityPermissions: currentCommunityPermissions || [],
+		currentCommunityModules: moduleList
 	};
 }
 
@@ -1274,16 +1361,25 @@ async function resolveAdminAccess(headers, params = {}, route = '') {
 	const communities = await listActiveCommunities();
 	let currentCommunity = null;
 	let currentCommunityPermissions = [];
+	let currentCommunityModules = [];
 	if (params && (params.schemaName || params.schema || params.communityId || params.communityName)) {
 		currentCommunity = await resolveCommunityContext(params);
 		currentCommunityPermissions = permissions.filter((item) => Number(item.communityId) === Number(currentCommunity.id));
+		currentCommunityModules = await getCommunityModules(currentCommunity.id);
 	}
-	const context = buildAdminAccessContext(adminUser, permissions, communities, currentCommunityPermissions.flatMap((item) => item.permissions || []));
+	const context = buildAdminAccessContext(
+		adminUser,
+		permissions,
+		communities,
+		currentCommunityPermissions.flatMap((item) => item.permissions || []),
+		currentCommunityModules
+	);
 	if (currentCommunity && !permissionEngine.hasCommunityAccess(context.access, currentCommunity.id)) {
 		throw new Error('无权访问该小区');
 	}
 	context.currentCommunity = currentCommunity;
 	context.currentCommunityPermissions = currentCommunityPermissions;
+	context.currentCommunityModules = currentCommunityModules;
 	return context;
 }
 
@@ -1307,6 +1403,13 @@ function checkCommunityAccess(context, community) {
 	if (!context || !community) return;
 	if (!permissionEngine.hasCommunityAccess(context.access, community.id)) {
 		throw new Error('无权访问该小区');
+	}
+}
+
+function checkModuleEnabled(context, moduleKey) {
+	if (!context) return;
+	if (!permissionEngine.hasModuleEnabled(context.access, moduleKey)) {
+		throw new Error('当前小区未启用该模块');
 	}
 }
 
@@ -1517,6 +1620,7 @@ async function adminCommunitySave(params = {}, accessContext = null) {
 		);
 	}
 	await ensureTenantSchema(schemaName);
+	await ensureCommunityModuleRecords(id);
 	return await adminCommunityList(accessContext);
 }
 
@@ -1540,6 +1644,91 @@ async function adminCommunityDelete(params = {}, accessContext = null) {
 		{ id }
 	);
 	return await adminCommunityList(accessContext);
+}
+
+async function adminCommunityModuleList(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/community/module/list');
+	}
+	const community = await resolveCommunityContext(params);
+	if (accessContext) {
+		checkCommunityAccess(accessContext, community);
+	}
+	await ensureCommunityModuleRecords(community.id);
+	const list = await getCommunityModules(community.id);
+	return {
+		community: communityDto(community),
+		list
+	};
+}
+
+async function adminCommunityModuleSave(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/community/module/save');
+	}
+	const community = await resolveCommunityContext(params);
+	if (accessContext) {
+		checkCommunityAccess(accessContext, community);
+	}
+	await ensureCommunityModuleRecords(community.id);
+	const moduleKey = String(params.moduleKey || params.module_key || '').trim();
+	if (!moduleKey) throw new Error('模块标识不能为空');
+	const moduleItem = communityModules.MODULE_CATALOG.find((item) => item.key === moduleKey);
+	if (!moduleItem) throw new Error('模块不存在');
+	const enabled = params.enabled === false || params.enabled === 0 || params.enabled === '0' ? 0 : 1;
+	await runSql(
+		`INSERT INTO ${globalTable('community_modules')}
+		(_openid, community_id, module_key, module_name, enabled, sort)
+		VALUES ({{openid}}, {{communityId}}, {{moduleKey}}, {{moduleName}}, {{enabled}}, {{sort}})
+		ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), enabled = VALUES(enabled), sort = VALUES(sort)`,
+		{
+			openid: getOpenId(),
+			communityId: sqlNumber(community.id),
+			moduleKey,
+			moduleName: moduleItem.name,
+			enabled,
+			sort: moduleItem.sort
+		}
+	);
+	return await adminCommunityModuleList({ communityId: community.id }, accessContext);
+}
+
+async function adminCommunityModuleBatchSave(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/community/module/batch_save');
+	}
+	const community = await resolveCommunityContext(params);
+	if (accessContext) {
+		checkCommunityAccess(accessContext, community);
+	}
+	await ensureCommunityModuleRecords(community.id);
+	const modules = Array.isArray(params.modules) ? params.modules : [];
+	if (!modules.length) throw new Error('模块配置不能为空');
+	for (const item of modules) {
+		const moduleKey = String(item && (item.moduleKey || item.module_key) || '').trim();
+		if (!moduleKey) continue;
+		const moduleItem = communityModules.MODULE_CATALOG.find((next) => next.key === moduleKey);
+		if (!moduleItem) continue;
+		const enabled = item.enabled === false || item.enabled === 0 || item.enabled === '0' ? 0 : 1;
+		await runSql(
+			`INSERT INTO ${globalTable('community_modules')}
+			(_openid, community_id, module_key, module_name, enabled, sort)
+			VALUES ({{openid}}, {{communityId}}, {{moduleKey}}, {{moduleName}}, {{enabled}}, {{sort}})
+			ON DUPLICATE KEY UPDATE module_name = VALUES(module_name), enabled = VALUES(enabled), sort = VALUES(sort)`,
+			{
+				openid: getOpenId(),
+				communityId: sqlNumber(community.id),
+				moduleKey,
+				moduleName: moduleItem.name,
+				enabled,
+				sort: moduleItem.sort
+			}
+		);
+	}
+	return await adminCommunityModuleList({ communityId: community.id }, accessContext);
 }
 
 async function adminRoleList(accessContext = null) {
@@ -1989,6 +2178,10 @@ exports.main = async (event) => {
 			let adminAccess = null;
 			try {
 				adminAccess = await resolveAdminAccess(normalized.headers, params, route);
+				const routeRule = getRoutePermission(route);
+				if (adminAccess && routeRule && !MODULE_CHECK_EXEMPT_ROUTES.has(route)) {
+					checkModuleEnabled(adminAccess, routeRule.module);
+				}
 				if (route === 'admin/dashboard') data = await adminDashboard(params, adminAccess);
 				else if (route === 'admin/owner/list') data = await adminOwnerList(params, adminAccess);
 				else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params, adminAccess);
@@ -1996,6 +2189,9 @@ exports.main = async (event) => {
 				else if (route === 'admin/community/list') data = await adminCommunityList(adminAccess);
 				else if (route === 'admin/community/save') data = await adminCommunitySave(params, adminAccess);
 				else if (route === 'admin/community/delete') data = await adminCommunityDelete(params, adminAccess);
+				else if (route === 'admin/community/module/list') data = await adminCommunityModuleList(params, adminAccess);
+				else if (route === 'admin/community/module/save') data = await adminCommunityModuleSave(params, adminAccess);
+				else if (route === 'admin/community/module/batch_save') data = await adminCommunityModuleBatchSave(params, adminAccess);
 				else if (route === 'admin/role/list') data = await adminRoleList(adminAccess);
 				else if (route === 'admin/access/profile') data = await adminAccessProfile(params, adminAccess);
 				else if (route === 'admin/user/list') data = await adminUserList(adminAccess);

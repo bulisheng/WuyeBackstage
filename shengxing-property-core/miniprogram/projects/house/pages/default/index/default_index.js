@@ -1,6 +1,7 @@
 const { callCloud } = require('../../../../../utils/cloud.js');
 const { getAuthState, isOwnerAuthed } = require('../../../../../utils/auth.js');
 const { getCommunityDisplayName } = require('../../../../../utils/community.js');
+const { buildHomeEntryGroups } = require('../../../../../utils/modules.js');
 const setting = require('../../../public/project_setting.js');
 
 function makeBannerStyle(coverUrl) {
@@ -20,20 +21,8 @@ Page({
 		bannerTitle: '社区公告',
 		bannerSummary: '暂无公告发布',
 		announcements: [],
-		primaryServices: [
-			{ title: '生活缴费', desc: '账单、支付、记录', type: 'life', mark: '缴', theme: 'blue' },
-			{ title: '报事报修', desc: '提交、处理、回访', type: 'repair', mark: '修', theme: 'green' },
-			{ title: '投诉建议', desc: '反馈、跟进、归档', type: 'complaint', mark: '诉', theme: 'orange' },
-			{ title: '物业服务', desc: '代寄、代取、预约', type: 'service', mark: '服', theme: 'teal' },
-			{ title: '盛兴严选', desc: '精选商品与服务', type: 'mall', mark: '选', theme: 'pink' },
-			{ title: '在线客服', desc: '咨询与转人工', type: 'customer', mark: '客', theme: 'red' }
-		],
-		convenienceServices: [
-			{ title: '访客通行', desc: '访客登记与通行', type: 'visitor', mark: '访', theme: 'blue' },
-			{ title: '停车缴费', desc: '停车缴费与查询', type: 'parking', mark: '停', theme: 'green' },
-			{ title: '快递代收', desc: '快递代收与提醒', type: 'express', mark: '递', theme: 'orange' },
-			{ title: '更多服务', desc: '查看更多便民功能', type: 'more', mark: '更多', theme: 'gray' }
-		],
+		primaryServices: [],
+		convenienceServices: [],
 		loading: true
 	},
 
@@ -59,6 +48,7 @@ Page({
 			const profile = profileRes.result.data || {};
 			const announcements = Array.isArray(home.announcements) ? home.announcements : [];
 			const banner = home.banner || announcements[0] || {};
+			const entryGroups = buildHomeEntryGroups(home.modules || [], { isOwnerAuthed: ownerAuthed || !!(profile.isAuthed && profile.statusCode === 'approved') });
 			this.setData({
 				communityName: getCommunityDisplayName({
 					currentCommunity: profile.currentCommunity,
@@ -66,6 +56,8 @@ Page({
 				}, home.communityName || setting.COMMUNITY_NAME),
 				isOwnerAuthed: ownerAuthed || !!(profile.isAuthed && profile.statusCode === 'approved'),
 				announcements: announcements.slice(0, 3),
+				primaryServices: entryGroups.primaryServices,
+				convenienceServices: entryGroups.convenienceServices,
 				bannerLabel: banner.isPinned ? '置顶公告' : '社区公告',
 				bannerTitle: banner.title || '社区公告',
 				bannerSummary: banner.summary || '暂无公告发布',
@@ -92,7 +84,12 @@ Page({
 
 	go(e) {
 		const type = e.currentTarget.dataset.type;
-		if (!this.data.isOwnerAuthed && ['life', 'repair', 'complaint', 'service'].includes(type)) {
+		const disabled = e.currentTarget.dataset.disabled === 'true';
+		if (disabled) {
+			wx.showToast({ title: '认证后可用', icon: 'none' });
+			return;
+		}
+		if (!this.data.isOwnerAuthed && ['life', 'repair', 'complaint'].includes(type)) {
 			wx.showToast({ title: '需要认证业主', icon: 'none' });
 			return;
 		}
@@ -104,8 +101,16 @@ Page({
 			wx.switchTab({ url: '/projects/house/pages/repair/index/repair_index' });
 			return;
 		}
-		if (type === 'service') {
-			wx.switchTab({ url: '/projects/house/pages/life/index/life_index' });
+		if (type === 'owner') {
+			wx.navigateTo({ url: '/projects/house/pages/auth/index/auth_index' });
+			return;
+		}
+		if (type === 'community') {
+			wx.showToast({ title: '小区资料后续开放', icon: 'none' });
+			return;
+		}
+		if (type === 'announcement' || type === 'notice') {
+			wx.showToast({ title: '请在公告区查看详情', icon: 'none' });
 			return;
 		}
 		wx.showToast({ title: '功能暂未开放', icon: 'none' });

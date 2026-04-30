@@ -33,6 +33,21 @@ CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`admin_users` (
 	UNIQUE KEY uk_admin_users_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`community_modules` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	module_key VARCHAR(64) NOT NULL,
+	module_name VARCHAR(120) NOT NULL,
+	enabled TINYINT(1) NOT NULL DEFAULT 1,
+	sort INT NOT NULL DEFAULT 0,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	UNIQUE KEY uk_community_modules (community_id, module_key),
+	KEY idx_community_modules_community_enabled (community_id, enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`admin_community_permissions` (
 	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 	_openid VARCHAR(64) DEFAULT '' NOT NULL,

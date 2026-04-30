@@ -43,33 +43,41 @@
   - 参数摘要
 - 前端权限页已经增加“操作审计”面板，可以直接查看最近的后端审计记录。
 - `admin_audit_logs` 已经同步到 CloudBase MySQL，且资源权限是 `ADMINONLY`。
+- `community_modules` 已经同步到 CloudBase MySQL，且资源权限是 `ADMINONLY`。
+- 后端已经能按小区补齐模块目录，并通过 `checkModuleEnabled` 拦截未启用模块。
+- 后台“权限管理”页已经新增“模块开关” Tab，支持当前小区单模块开关、全部开启和全部关闭。
+- 小程序首页已经改成动态入口版，会根据当前小区模块和业主认证状态生成入口。
 - 本地代码和静态站点已经同步到最新版本。
 
 ## 下一步应该做什么
 
 ### 优先级 1：用真实后台操作验证审计日志
-现在 `admin_audit_logs` 表已经建好，资源权限也已经锁到 `ADMINONLY`。下一步要做的是：
+现在 `admin_audit_logs` 表和 `community_modules` 表都已经建好，资源权限也已经锁到 `ADMINONLY`。下一步要做的是：
 - 触发一两个真实的后台接口
 - 确认审计日志能落库
 - 确认 `admin/audit/list` 能正常看到成功 / 失败记录
 
-### 优先级 2：继续收紧剩余后台目录
+### 优先级 2：把审计数据做成可排查视图
+现在已经能在权限页里看到最近记录，但后续可以再做两件事：
+- 加筛选条件：按操作员、小区、路由、时间范围筛选
+- 加详情弹窗：展开查看更完整的参数摘要和失败原因
+
+### 优先级 3：继续收紧剩余后台目录
 当前已经完成：
 - `admin/user/list` 从 bootstrap 目录拆出
 - 顶部操作员目录改用 `admin/access/operators`
 
 下一步可以继续把其它 bootstrap 入口拆成“最小可用目录”和“真正的管理入口”两层，避免目录职责继续膨胀。
 
-### 优先级 3：把审计数据做成可排查视图
-现在已经能在权限页里看到最近记录，但后续可以再做两件事：
-- 加筛选条件：按操作员、小区、路由、时间范围筛选
-- 加详情弹窗：展开查看更完整的参数摘要和失败原因
-
 ### 优先级 4：把权限模型继续下沉到菜单显示
 后端已经按“角色 + 小区 + 动作”做了校验，前端还可以进一步同步这套规则：
 - 从当前角色推导出可见模块
 - 隐藏或禁用没有权限的入口
 - 按钮被隐藏或禁用时，要给出明确原因
+
+### 优先级 5：继续完善首页入口和模块映射
+- 现在首页已经支持按模块开关动态显示入口。
+- 后续如果新增模块，需要同时更新后台模块目录、首页入口映射和测试。
 
 ### 权限判断顺序
 后端判断权限时，建议一直保持这个顺序：
@@ -95,8 +103,11 @@
 - `web-admin/dist/`
 - `cloudfunctions/sxmini/index.js`
 - `cloudfunctions/sxmini/admin_audit.js`
+- `cloudfunctions/sxmini/community_modules.js`
 - `cloudfunctions/sxmini/permission_engine.js`
 - `database/mysql/schema.sql`
+- `web-admin/src/utils/modules.js`
+- `miniprogram/utils/modules.js`
 
 ## 建议的下一步顺序
 
