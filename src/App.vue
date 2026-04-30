@@ -61,16 +61,16 @@ import CommunitiesPage from './pages/CommunitiesPage.vue';
 import FeesPage from './pages/FeesPage.vue';
 import LoginPage from './pages/LoginPage.vue';
 import NoticesPage from './pages/NoticesPage.vue';
-import OwnersPage from './pages/OwnersPage.vue';
 import PermissionsPage from './pages/PermissionsPage.vue';
 import RepairsPage from './pages/RepairsPage.vue';
+import ResidentsPage from './pages/ResidentsPage.vue';
 import { useAdminWorkspaceStore } from './stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
 
 const pageMap = {
 	dashboard: DashboardPage,
-	owners: OwnersPage,
+	owners: ResidentsPage,
 	communities: CommunitiesPage,
 	permissions: PermissionsPage,
 	repairs: RepairsPage,

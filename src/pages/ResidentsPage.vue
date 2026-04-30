@@ -1,0 +1,288 @@
+<template>
+	<section class="panel residents-page">
+		<div class="panel-head">
+			<div>
+				<h2>住户管理</h2>
+				<p class="panel-subtitle">手机号优先绑定，业主和租户分开管理，关键资料变更留痕。</p>
+			</div>
+			<span>{{ visibleRows.length }} 条记录</span>
+		</div>
+
+		<div class="resident-tabs">
+			<button
+				v-for="tab in tabs"
+				:key="tab.key"
+				:class="{ active: workspace.residentActiveTab === tab.key }"
+				@click="workspace.residentActiveTab = tab.key"
+			>
+				<strong>{{ tab.label }}</strong>
+				<small>{{ tab.count }}</small>
+			</button>
+		</div>
+
+		<div class="filter-row resident-filters">
+			<label class="field wide">
+				<span>搜索</span>
+				<input v-model="workspace.residentSearchKeyword" type="text" placeholder="手机号 / 房号 / 姓名" />
+			</label>
+			<label class="field">
+				<span>类型</span>
+				<select v-model="workspace.residentTypeFilter">
+					<option value="all">全部</option>
+					<option value="owner">业主</option>
+					<option value="tenant">租户</option>
+				</select>
+			</label>
+			<label class="field">
+				<span>状态</span>
+				<select v-model="workspace.residentStatusFilter">
+					<option value="">全部状态</option>
+					<option value="pending">待审核</option>
+					<option value="approved">已通过</option>
+					<option value="rejected">已驳回</option>
+					<option value="disabled">已冻结</option>
+					<option value="active">租住中</option>
+					<option value="moved_out">已迁出</option>
+				</select>
+			</label>
+		</div>
+
+		<table v-if="workspace.residentActiveTab !== 'logs'">
+			<thead>
+				<tr>
+					<th>类型</th>
+					<th>姓名</th>
+					<th>手机号</th>
+					<th>房屋</th>
+					<th>状态</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr
+					v-for="item in visibleRows"
+					:key="`${item.identityType}-${item.id}`"
+					class="clickable-row"
+					@click="selectResident(item)"
+				>
+					<td>{{ item.identityType === 'tenant' ? '租户' : '业主' }}</td>
+					<td>{{ item.name || '-' }}</td>
+					<td>{{ item.mobile || '-' }}</td>
+					<td>{{ item.house || '-' }}</td>
+					<td><span class="status" :class="item.status">{{ statusLabel(item) }}</span></td>
+					<td class="actions resident-actions">
+						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="workspace.auditOwner(item.raw, 'approved')">审核通过</button>
+						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="workspace.auditOwner(item.raw, 'rejected')">驳回</button>
+						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, item.status === 'disabled' ? '解冻' : '冻结')">{{ item.status === 'disabled' ? '解冻' : '冻结' }}</button>
+						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, '编辑')">编辑</button>
+						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, '换手机号')">换手机号</button>
+						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, '换房号')">换房号</button>
+						<button :disabled="!workspace.canAction('resident:import')" @click.stop="recordPendingAction(item, '合并')">合并</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<table v-else>
+			<thead>
+				<tr>
+					<th>住户类型</th>
+					<th>住户ID</th>
+					<th>字段</th>
+					<th>变更前</th>
+					<th>变更后</th>
+					<th>来源</th>
+					<th>时间</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for="item in visibleLogs" :key="item.id">
+					<td>{{ item.residentType === 'tenant' ? '租户' : '业主' }}</td>
+					<td>{{ item.residentId }}</td>
+					<td>{{ item.fieldName }}</td>
+					<td>{{ item.beforeValue || '-' }}</td>
+					<td>{{ item.afterValue || '-' }}</td>
+					<td>{{ item.source || '-' }}</td>
+					<td>{{ item.createdAt || '-' }}</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<p v-if="workspace.residentActiveTab !== 'logs' && !visibleRows.length" class="empty-text">暂无匹配住户。</p>
+		<p v-if="workspace.residentActiveTab === 'logs' && !visibleLogs.length" class="empty-text">暂无变更记录。</p>
+
+		<div v-if="selectedResident" class="detail-card resident-detail">
+			<div class="panel-head compact">
+				<h3>{{ selectedResident.identityType === 'tenant' ? '租户详情' : '业主详情' }}</h3>
+				<span>{{ actionHint || buildResidentDisplayLabel(selectedResident) }}</span>
+			</div>
+			<div class="detail-grid">
+				<div><strong>姓名</strong><p>{{ selectedResident.name || '-' }}</p></div>
+				<div><strong>手机号</strong><p>{{ selectedResident.mobile || '-' }}</p></div>
+				<div><strong>房号</strong><p>{{ selectedResident.house || '-' }}</p></div>
+				<div><strong>状态</strong><p>{{ statusLabel(selectedResident) }}</p></div>
+				<div><strong>住户类型</strong><p>{{ selectedResident.identityType === 'tenant' ? '租户' : '业主' }}</p></div>
+				<div><strong>小区</strong><p>{{ selectedResident.communityName || workspace.activeCommunity?.name || '-' }}</p></div>
+			</div>
+		</div>
+	</section>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue';
+import { buildResidentDisplayLabel, matchesResidentKeyword } from '../utils/residentDirectory.js';
+import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
+
+const workspace = useAdminWorkspaceStore();
+const actionHint = ref('');
+
+const ownerRows = computed(() => workspace.ownerRecords.map((item) => ({
+	id: item.id,
+	identityType: 'owner',
+	name: item.name,
+	mobile: item.mobile,
+	house: item.house,
+	communityName: item.communityName,
+	status: item.auditStatus || 'pending',
+	raw: item
+})));
+
+const tenantRows = computed(() => workspace.tenantRecords.map((item) => ({
+	id: item.id,
+	identityType: 'tenant',
+	name: item.name,
+	mobile: item.mobile,
+	house: item.house,
+	communityName: item.communityName,
+	status: item.status || 'active',
+	raw: item
+})));
+
+const allRows = computed(() => [...ownerRows.value, ...tenantRows.value]);
+
+const tabs = computed(() => [
+	{ key: 'owner_audit', label: '业主审核', count: ownerRows.value.filter((item) => ['pending', 'rejected'].includes(item.status)).length },
+	{ key: 'owners', label: '业主管理', count: ownerRows.value.length },
+	{ key: 'tenants', label: '租户管理', count: tenantRows.value.length },
+	{ key: 'logs', label: '变更记录', count: workspace.residentChangeLogs.length }
+]);
+
+const visibleRows = computed(() => allRows.value.filter((item) => {
+	if (workspace.residentActiveTab === 'owner_audit' && (item.identityType !== 'owner' || !['pending', 'rejected'].includes(item.status))) return false;
+	if (workspace.residentActiveTab === 'owners' && item.identityType !== 'owner') return false;
+	if (workspace.residentActiveTab === 'tenants' && item.identityType !== 'tenant') return false;
+	if (workspace.residentTypeFilter !== 'all' && item.identityType !== workspace.residentTypeFilter) return false;
+	if (workspace.residentStatusFilter && item.status !== workspace.residentStatusFilter) return false;
+	return matchesResidentKeyword(item, workspace.residentSearchKeyword);
+}));
+
+const visibleLogs = computed(() => workspace.residentChangeLogs.filter((item) => {
+	if (workspace.residentTypeFilter !== 'all' && item.residentType !== workspace.residentTypeFilter) return false;
+	return matchesResidentKeyword({
+		mobile: item.afterValue,
+		house: item.afterValue,
+		name: item.operatorName
+	}, workspace.residentSearchKeyword);
+}));
+
+const selectedResident = computed(() => allRows.value.find((item) =>
+	`${item.identityType}-${item.id}` === workspace.residentSelectedId
+) || null);
+
+function selectResident(item) {
+	workspace.residentSelectedId = `${item.identityType}-${item.id}`;
+	actionHint.value = '';
+}
+
+function statusLabel(item) {
+	if (item.identityType === 'tenant') {
+		return {
+			active: '租住中',
+			moved_out: '已迁出',
+			disabled: '已冻结'
+		}[item.status] || item.status;
+	}
+	return workspace.statusText(item.status);
+}
+
+function canManage(item) {
+	return item.identityType === 'tenant' ? workspace.canAction('tenant:manage') : workspace.canAction('owner:manage');
+}
+
+function recordPendingAction(item, action) {
+	selectResident(item);
+	actionHint.value = `${action} 功能将在导入与详情闭环步骤补齐`;
+}
+</script>
+
+<style scoped>
+.residents-page {
+	display: grid;
+	gap: 16px;
+}
+
+.panel-subtitle {
+	margin-top: 6px;
+	color: #6b7280;
+	line-height: 1.6;
+}
+
+.resident-tabs {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(120px, 1fr));
+	gap: 10px;
+}
+
+.resident-tabs button {
+	border: 1px solid #e8eeea;
+	border-radius: 12px;
+	padding: 12px;
+	background: #f9fbfa;
+	text-align: left;
+	color: #1f2933;
+}
+
+.resident-tabs button.active {
+	border-color: #13b35d;
+	background: #eaf7ef;
+	color: #0f7a43;
+}
+
+.resident-tabs strong,
+.resident-tabs small {
+	display: block;
+}
+
+.resident-tabs small {
+	margin-top: 4px;
+	color: #6b7280;
+}
+
+.resident-filters {
+	grid-template-columns: minmax(240px, 2fr) minmax(140px, 1fr) minmax(140px, 1fr);
+}
+
+.resident-actions {
+	flex-wrap: wrap;
+}
+
+.resident-actions button {
+	padding: 7px 10px;
+}
+
+.resident-actions button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+.resident-detail {
+	border-left: 4px solid #13b35d;
+}
+
+@media (max-width: 960px) {
+	.resident-tabs,
+	.resident-filters {
+		grid-template-columns: 1fr;
+	}
+}
+</style>
