@@ -889,8 +889,10 @@ function selectNoticeRecord(item) {
 }
 
 async function reload() {
-	await loadAdminDirectory();
-	await loadAccessProfile();
+	await Promise.all([
+		loadAdminDirectory(),
+		loadAccessProfile()
+	]);
 	if (!isLoggedIn.value) {
 		return;
 	}

@@ -83,6 +83,8 @@ const currentPageComponent = computed(() => pageMap[workspace.activeRoute] || Da
 
 onMounted(async () => {
 	workspace.start();
-	await workspace.reload();
+	if (workspace.isLoggedIn) {
+		await workspace.reload();
+	}
 });
 </script>
