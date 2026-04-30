@@ -36,6 +36,10 @@
 					<input v-model="workspace.feeForm.ownerName" type="text" placeholder="请输入业主姓名" />
 				</label>
 				<label class="field">
+					<span>业主手机号</span>
+					<input v-model="workspace.feeForm.ownerMobile" type="text" placeholder="用于绑定业主账号" />
+				</label>
+				<label class="field">
 					<span>房屋</span>
 					<input v-model="workspace.feeForm.house" type="text" placeholder="例如 1-2-301" />
 				</label>
@@ -72,6 +76,7 @@
 				<tr>
 					<th>账单号</th>
 					<th>业主</th>
+					<th>手机号</th>
 					<th>房屋</th>
 					<th>类型</th>
 					<th>金额</th>
@@ -83,6 +88,7 @@
 				<tr v-for="item in filteredFees" :key="item.id" class="clickable-row" @click="selectFee(item)">
 					<td>{{ item.billNo }}</td>
 					<td>{{ item.ownerName }}</td>
+					<td>{{ item.ownerMobile || '-' }}</td>
 					<td>{{ item.house }}</td>
 					<td>{{ item.billType }}</td>
 					<td>{{ workspace.money(item.amount) }}</td>
@@ -104,6 +110,7 @@
 			<div class="detail-grid">
 				<div><strong>账单号</strong><p>{{ selectedFee.billNo || '-' }}</p></div>
 				<div><strong>业主</strong><p>{{ selectedFee.ownerName || '-' }}</p></div>
+				<div><strong>手机号</strong><p>{{ selectedFee.ownerMobile || '-' }}</p></div>
 				<div><strong>房屋</strong><p>{{ selectedFee.house || '-' }}</p></div>
 				<div><strong>类型</strong><p>{{ selectedFee.billType || '-' }}</p></div>
 				<div><strong>金额</strong><p>{{ workspace.money(selectedFee.amount) }}</p></div>
@@ -205,7 +212,7 @@ const paymentKeyword = ref('');
 const paymentStatus = ref('');
 
 const filteredFees = computed(() => workspace.fees.filter((item) => {
-	const text = `${item.billNo || ''} ${item.ownerName || ''} ${item.house || ''} ${item.title || ''}`.toLowerCase();
+	const text = `${item.billNo || ''} ${item.ownerName || ''} ${item.ownerMobile || ''} ${item.house || ''} ${item.title || ''}`.toLowerCase();
 	return (!keyword.value || text.includes(keyword.value.trim().toLowerCase())) && (!status.value || item.status === status.value);
 }));
 
@@ -214,7 +221,7 @@ const selectedFeePayments = computed(() => {
 });
 
 const filteredPayments = computed(() => workspace.paymentRecords.filter((item) => {
-	const text = `${item.paymentNo || ''} ${item.transactionId || ''} ${item.billNo || ''} ${item.title || ''} ${item.ownerName || ''} ${item.house || ''}`.toLowerCase();
+	const text = `${item.paymentNo || ''} ${item.transactionId || ''} ${item.billNo || ''} ${item.title || ''} ${item.ownerName || ''} ${item.ownerMobile || ''} ${item.house || ''}`.toLowerCase();
 	const keywordMatched = !paymentKeyword.value || text.includes(paymentKeyword.value.trim().toLowerCase());
 	const statusMatched = !paymentStatus.value || item.status === paymentStatus.value;
 	return keywordMatched && statusMatched;

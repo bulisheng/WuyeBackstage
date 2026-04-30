@@ -35,10 +35,10 @@
 						<div class="role-preview span-2">
 							<div class="preview-head">
 								<h4>默认菜单</h4>
-								<span>{{ workspace.adminRoleAccess.note }}</span>
-							</div>
-							<div class="chip-row">
-								<span v-for="item in workspace.adminRoleAccess.menuLabels" :key="item" class="chip">{{ item }}</span>
+							<span>{{ workspace.adminRoleAccess.note || '默认权限预览' }}</span>
+						</div>
+						<div class="chip-row">
+							<span v-for="item in (workspace.adminRoleAccess.menuLabels || [])" :key="item" class="chip">{{ item }}</span>
 							</div>
 						</div>
 						<label class="field">
@@ -75,7 +75,7 @@
 								<span>决定该管理员在当前小区能看到哪些后台菜单</span>
 							</div>
 							<div class="chip-row selectable">
-								<button v-for="item in workspace.adminMenuOptions" :key="item.key" type="button" class="chip chip-button" :class="{ selected: workspace.adminPermissionAccess.menus.includes(item.key) }" @click="workspace.toggleAdminMenu(item.key)">
+								<button v-for="item in workspace.adminMenuOptions" :key="item.key" type="button" class="chip chip-button" :class="{ selected: (workspace.adminPermissionAccess.menus || []).includes(item.key) }" @click="workspace.toggleAdminMenu(item.key)">
 									{{ item.label }}
 								</button>
 							</div>
@@ -86,12 +86,12 @@
 								<span>决定该管理员在当前小区能执行哪些按钮动作</span>
 							</div>
 							<div class="chip-row selectable">
-								<button v-for="item in workspace.adminActionOptions" :key="item.key" type="button" class="chip chip-button" :class="{ selected: workspace.adminPermissionAccess.actions.includes('*') || workspace.adminPermissionAccess.actions.includes(item.key) }" @click="workspace.toggleAdminAction(item.key)">
+								<button v-for="item in workspace.adminActionOptions" :key="item.key" type="button" class="chip chip-button" :class="{ selected: (workspace.adminPermissionAccess.actions || []).includes('*') || (workspace.adminPermissionAccess.actions || []).includes(item.key) }" @click="workspace.toggleAdminAction(item.key)">
 									{{ item.label }}
 								</button>
 							</div>
-							<p class="helper-text">当前拒绝菜单：{{ workspace.adminPermissionAccess.deniedMenuLabels.join('、') || '无' }}</p>
-							<p class="helper-text">当前拒绝动作：{{ workspace.adminPermissionAccess.deniedActionLabels.join('、') || '无' }}</p>
+							<p class="helper-text">当前拒绝菜单：{{ deniedMenuText }}</p>
+							<p class="helper-text">当前拒绝动作：{{ deniedActionText }}</p>
 						</div>
 					</div>
 					<div class="form-actions">
@@ -215,7 +215,22 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
+
+const deniedMenuText = computed(() => {
+	const labels = workspace.adminPermissionAccess && Array.isArray(workspace.adminPermissionAccess.deniedMenuLabels)
+		? workspace.adminPermissionAccess.deniedMenuLabels
+		: [];
+	return labels.join('、') || '无';
+});
+
+const deniedActionText = computed(() => {
+	const labels = workspace.adminPermissionAccess && Array.isArray(workspace.adminPermissionAccess.deniedActionLabels)
+		? workspace.adminPermissionAccess.deniedActionLabels
+		: [];
+	return labels.join('、') || '无';
+});
 </script>

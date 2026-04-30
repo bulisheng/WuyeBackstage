@@ -113,6 +113,7 @@ function emptyFee() {
 	return {
 		billNo: '',
 		title: '',
+		ownerMobile: '',
 		ownerName: '',
 		house: '',
 		billType: '物业费',
@@ -305,11 +306,13 @@ function syncSelectedAdminId(adminId) {
 }
 
 function selectedAdminMenus() {
-	return new Set(adminPermissionAccess.value.menus || []);
+	const access = adminPermissionAccess.value || {};
+	return new Set(Array.isArray(access.menus) ? access.menus : []);
 }
 
 function selectedAdminActions() {
-	const actions = adminPermissionAccess.value.actions || [];
+	const access = adminPermissionAccess.value || {};
+	const actions = Array.isArray(access.actions) ? access.actions : [];
 	if (actions.includes('*')) {
 		return new Set(adminActionOptions.value.map((item) => item.key));
 	}
@@ -705,6 +708,7 @@ async function saveFee() {
 		id: editingFeeId.value || undefined,
 		billNo: feeForm.value.billNo,
 		title: feeForm.value.title,
+		ownerMobile: feeForm.value.ownerMobile,
 		houseId: null,
 		userId: null,
 		ownerName: feeForm.value.ownerName,
@@ -725,6 +729,7 @@ function editFee(item) {
 	feeForm.value = {
 		billNo: item.billNo || '',
 		title: item.title || '',
+		ownerMobile: item.ownerMobile || '',
 		ownerName: item.ownerName || '',
 		house: item.house || '',
 		billType: item.billType || '物业费',
