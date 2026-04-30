@@ -76,6 +76,7 @@ export const adminApi = {
 	dashboard: () => request('admin/dashboard'),
 	ownerList: () => request('admin/owner/list'),
 	ownerLookup: (payload) => request('admin/owner/lookup', payload),
+	feeOwnerLookup: (payload) => request('admin/fee/owner_lookup', payload),
 	auditOwner: (id, auditStatus) => request('admin/owner/audit', { id, auditStatus }),
 	communityList: () => request('admin/community/list'),
 	bootstrapCommunityList: () => request('bootstrap/communities'),

@@ -783,7 +783,7 @@ async function resolveFeeOwnerByMobile(mobileValue = feeForm.value.ownerMobile, 
 	try {
 		feeLookupLoading.value = true;
 		feeOwnerLookupText.value = '正在查询业主信息...';
-		const result = await adminApi.ownerLookup({ mobile });
+		const result = await adminApi.feeOwnerLookup({ mobile });
 		const owner = result.owner || null;
 		if (!owner) {
 			feeForm.value.ownerName = '';
