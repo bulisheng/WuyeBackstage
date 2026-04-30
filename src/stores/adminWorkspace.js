@@ -705,6 +705,8 @@ async function saveFee() {
 		id: editingFeeId.value || undefined,
 		billNo: feeForm.value.billNo,
 		title: feeForm.value.title,
+		houseId: null,
+		userId: null,
 		ownerName: feeForm.value.ownerName,
 		house: feeForm.value.house,
 		billType: feeForm.value.billType,
