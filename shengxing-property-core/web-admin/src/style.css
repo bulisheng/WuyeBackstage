@@ -177,6 +177,10 @@ p {
 	margin-bottom: 16px;
 }
 
+.panel-head.compact {
+	margin-bottom: 12px;
+}
+
 .panel-head span {
 	color: #6b7280;
 }
@@ -323,6 +327,34 @@ th {
 	margin-bottom: 18px;
 }
 
+.permission-panel {
+	display: grid;
+	gap: 18px;
+}
+
+.permission-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+.permission-card {
+	padding: 16px;
+	border: 1px solid #edf0ee;
+	border-radius: 8px;
+	background: #f8faf9;
+	display: grid;
+	gap: 14px;
+}
+
+.spaced-table {
+	margin-top: 4px;
+}
+
+.spaced-table + .spaced-table {
+	margin-top: 0;
+}
+
 .announcement-panel {
 	display: grid;
 	gap: 18px;
@@ -434,5 +466,9 @@ th {
 
 	.span-2 {
 		grid-column: span 1;
+	}
+
+	.permission-grid {
+		grid-template-columns: 1fr;
 	}
 }

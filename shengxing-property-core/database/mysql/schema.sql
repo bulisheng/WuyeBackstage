@@ -33,6 +33,22 @@ CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`admin_users` (
 	UNIQUE KEY uk_admin_users_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `cloudbase-d9g78eneac709f5a5`.`admin_community_permissions` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	admin_id BIGINT UNSIGNED NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	role ENUM('super_admin','admin','finance','customer_service','repairman') NOT NULL DEFAULT 'admin',
+	permissions_json TEXT DEFAULT '',
+	active TINYINT(1) NOT NULL DEFAULT 1,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	UNIQUE KEY uk_admin_community_permissions (admin_id, community_id),
+	KEY idx_admin_community_permissions_community (community_id),
+	KEY idx_admin_community_permissions_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 INSERT INTO `cloudbase-d9g78eneac709f5a5`.`communities` (code, name, schema_name, sort, active)
 VALUES
 	('rzb-001', '荣尊堡', 'rzb', 1, 1),

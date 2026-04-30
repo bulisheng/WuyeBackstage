@@ -15,6 +15,13 @@ const DEFAULT_COMMUNITIES = [
 	{ code: 'rzb-001', name: '荣尊堡', schemaName: 'rzb', sort: 1 },
 	{ code: 'oljd-001', name: '欧陆经典', schemaName: 'oljd', sort: 2 }
 ];
+const ADMIN_ROLES = [
+	{ value: 'super_admin', label: '超级管理员' },
+	{ value: 'admin', label: '管理员' },
+	{ value: 'finance', label: '财务' },
+	{ value: 'customer_service', label: '客服' },
+	{ value: 'repairman', label: '维修' }
+];
 const TENANT_TABLES = [
 	'owners',
 	'login_sessions',
@@ -156,6 +163,26 @@ async function queryRows(sql, params = {}) {
 	return rowsFromResult(await runSql(sql, params));
 }
 
+async function ensureGlobalRegistryTables() {
+	await runSql(
+		`CREATE TABLE IF NOT EXISTS ${globalTable('admin_community_permissions')} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			_openid VARCHAR(64) DEFAULT '' NOT NULL,
+			admin_id BIGINT UNSIGNED NOT NULL,
+			community_id BIGINT UNSIGNED NOT NULL,
+			role ENUM('super_admin','admin','finance','customer_service','repairman') NOT NULL DEFAULT 'admin',
+			permissions_json TEXT DEFAULT '',
+			active TINYINT(1) NOT NULL DEFAULT 1,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uk_admin_community_permissions (admin_id, community_id),
+			KEY idx_admin_community_permissions_community (community_id),
+			KEY idx_admin_community_permissions_role (role)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+	);
+}
+
 async function init() {
 	for (const item of DEFAULT_COMMUNITIES) {
 		await runSql(
@@ -165,6 +192,7 @@ async function init() {
 			item
 		);
 	}
+	await ensureGlobalRegistryTables();
 	return { ok: true, database: 'mysql' };
 }
 
@@ -1177,6 +1205,55 @@ function communityDto(item) {
 	};
 }
 
+function roleLabel(role) {
+	const found = ADMIN_ROLES.find((item) => item.value === String(role || '').trim());
+	return found ? found.label : String(role || '').trim();
+}
+
+function parsePermissionsJson(value) {
+	if (!value) return [];
+	if (Array.isArray(value)) return value;
+	if (typeof value === 'string') {
+		try {
+			const parsed = JSON.parse(value);
+			return Array.isArray(parsed) ? parsed : [];
+		} catch (err) {
+			return String(value).split(/[\s,，]+/).map((item) => item.trim()).filter(Boolean);
+		}
+	}
+	return [];
+}
+
+function adminUserDto(item) {
+	return {
+		id: Number(item.id),
+		username: item.username || '',
+		role: item.role || 'admin',
+		roleLabel: roleLabel(item.role || 'admin'),
+		communityId: item.community_id ? Number(item.community_id) : 0,
+		active: Boolean(Number(item.active)),
+		lastLoginAt: item.last_login_at || '',
+		createdAt: item.created_at || '',
+		updatedAt: item.updated_at || ''
+	};
+}
+
+function adminPermissionDto(item) {
+	return {
+		id: Number(item.id),
+		adminId: Number(item.admin_id),
+		username: item.username || '',
+		communityId: Number(item.community_id),
+		communityName: item.community_name || '',
+		role: item.role || 'admin',
+		roleLabel: roleLabel(item.role || 'admin'),
+		permissions: parsePermissionsJson(item.permissions_json),
+		active: Boolean(Number(item.active)),
+		createdAt: item.created_at || '',
+		updatedAt: item.updated_at || ''
+	};
+}
+
 async function adminDashboard(params = {}) {
 	await init();
 	const community = await resolveCommunityContext(params);
@@ -1290,6 +1367,149 @@ async function adminCommunityDelete(params = {}) {
 		{ id }
 	);
 	return await adminCommunityList();
+}
+
+async function adminRoleList() {
+	await init();
+	return {
+		list: ADMIN_ROLES.map((item) => Object.assign({}, item))
+	};
+}
+
+async function adminUserList() {
+	await init();
+	const rows = await queryRows(
+		`SELECT id, username, role, community_id, active, last_login_at, created_at, updated_at
+		FROM ${globalTable('admin_users')}
+		ORDER BY id DESC`
+	);
+	return { list: rows.map(adminUserDto) };
+}
+
+async function adminUserSave(params = {}) {
+	await init();
+	const id = sqlNumber(params.id);
+	const username = String(params.username || '').trim();
+	const password = String(params.password || '').trim();
+	const role = String(params.role || 'admin').trim();
+	const communityId = params.communityId ? sqlNumber(params.communityId, 0) : null;
+	const active = params.active === false || params.active === 0 || params.active === '0' ? 0 : 1;
+	if (!username) throw new Error('管理员账号不能为空');
+	if (!ADMIN_ROLES.some((item) => item.value === role)) throw new Error('管理员角色无效');
+	if (id) {
+		if (password) {
+			await runSql(
+				`UPDATE ${globalTable('admin_users')}
+				SET username = {{username}}, password_hash = {{passwordHash}}, role = {{role}}, community_id = {{communityId}}, active = {{active}}
+				WHERE id = {{id}}`,
+				{
+					id,
+					username,
+					passwordHash: crypto.createHash('sha256').update(password).digest('hex'),
+					role,
+					communityId,
+					active
+				}
+			);
+		} else {
+			await runSql(
+				`UPDATE ${globalTable('admin_users')}
+				SET username = {{username}}, role = {{role}}, community_id = {{communityId}}, active = {{active}}
+				WHERE id = {{id}}`,
+				{ id, username, role, communityId, active }
+			);
+		}
+	} else {
+		if (!password) throw new Error('新增管理员需要设置密码');
+		await runSql(
+			`INSERT INTO ${globalTable('admin_users')}
+			(_openid, username, password_hash, role, community_id, active)
+			VALUES ({{openid}}, {{username}}, {{passwordHash}}, {{role}}, {{communityId}}, {{active}})`,
+			{
+				openid: getOpenId(),
+				username,
+				passwordHash: crypto.createHash('sha256').update(password).digest('hex'),
+				role,
+				communityId,
+				active
+			}
+		);
+	}
+	return await adminUserList();
+}
+
+async function adminUserDelete(params = {}) {
+	await init();
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('管理员ID无效');
+	await runSql(
+		`UPDATE ${globalTable('admin_users')} SET active = 0 WHERE id = {{id}}`,
+		{ id }
+	);
+	return await adminUserList();
+}
+
+async function adminPermissionList() {
+	await init();
+	const rows = await queryRows(
+		`SELECT p.id, p.admin_id, p.community_id, p.role, p.permissions_json, p.active,
+			p.created_at, p.updated_at, u.username, c.name AS community_name
+		FROM ${globalTable('admin_community_permissions')} p
+		LEFT JOIN ${globalTable('admin_users')} u ON u.id = p.admin_id
+		LEFT JOIN ${globalTable('communities')} c ON c.id = p.community_id
+		ORDER BY p.id DESC`
+	);
+	return { list: rows.map(adminPermissionDto) };
+}
+
+async function adminPermissionSave(params = {}) {
+	await init();
+	const id = sqlNumber(params.id);
+	const adminId = sqlNumber(params.adminId || params.admin_id);
+	const communityId = sqlNumber(params.communityId || params.community_id);
+	const role = String(params.role || 'admin').trim();
+	const permissions = parsePermissionsJson(params.permissions || params.permissionsJson || []);
+	const active = params.active === false || params.active === 0 || params.active === '0' ? 0 : 1;
+	if (!adminId) throw new Error('管理员ID无效');
+	if (!communityId) throw new Error('小区ID无效');
+	if (!ADMIN_ROLES.some((item) => item.value === role)) throw new Error('管理员角色无效');
+	const permissionsJson = JSON.stringify(permissions);
+	if (id) {
+		await runSql(
+			`UPDATE ${globalTable('admin_community_permissions')}
+			SET admin_id = {{adminId}}, community_id = {{communityId}}, role = {{role}},
+				permissions_json = {{permissionsJson}}, active = {{active}}
+			WHERE id = {{id}}`,
+			{ id, adminId, communityId, role, permissionsJson, active }
+		);
+	} else {
+		await runSql(
+			`INSERT INTO ${globalTable('admin_community_permissions')}
+			(_openid, admin_id, community_id, role, permissions_json, active)
+			VALUES ({{openid}}, {{adminId}}, {{communityId}}, {{role}}, {{permissionsJson}}, {{active}})
+			ON DUPLICATE KEY UPDATE role = VALUES(role), permissions_json = VALUES(permissions_json), active = VALUES(active)`,
+			{
+				openid: getOpenId(),
+				adminId,
+				communityId,
+				role,
+				permissionsJson,
+				active
+			}
+		);
+	}
+	return await adminPermissionList();
+}
+
+async function adminPermissionDelete(params = {}) {
+	await init();
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('权限记录ID无效');
+	await runSql(
+		`DELETE FROM ${globalTable('admin_community_permissions')} WHERE id = {{id}}`,
+		{ id }
+	);
+	return await adminPermissionList();
 }
 
 async function adminRepairList(params = {}) {
@@ -1438,6 +1658,13 @@ exports.main = async (event) => {
 			else if (route === 'admin/community/list') data = await adminCommunityList();
 			else if (route === 'admin/community/save') data = await adminCommunitySave(params);
 			else if (route === 'admin/community/delete') data = await adminCommunityDelete(params);
+			else if (route === 'admin/role/list') data = await adminRoleList();
+			else if (route === 'admin/user/list') data = await adminUserList();
+			else if (route === 'admin/user/save') data = await adminUserSave(params);
+			else if (route === 'admin/user/delete') data = await adminUserDelete(params);
+			else if (route === 'admin/permission/list') data = await adminPermissionList();
+			else if (route === 'admin/permission/save') data = await adminPermissionSave(params);
+			else if (route === 'admin/permission/delete') data = await adminPermissionDelete(params);
 			else if (route === 'admin/repair/list') data = await adminRepairList(params);
 			else if (route === 'admin/fee/list') data = await adminFeeList(params);
 			else if (route === 'admin/complaint/list') data = await adminComplaintList(params);

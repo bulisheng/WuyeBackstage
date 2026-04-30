@@ -17,6 +17,7 @@
 				<button :class="{ active: activeTab === 'complaints' }" @click="activeTab = 'complaints'">投诉建议</button>
 				<button :class="{ active: activeTab === 'notices' }" @click="activeTab = 'notices'">通知配置</button>
 				<button :class="{ active: activeTab === 'communities' }" @click="activeTab = 'communities'">小区配置</button>
+				<button :class="{ active: activeTab === 'permissions' }" @click="activeTab = 'permissions'">权限管理</button>
 			</nav>
 		</aside>
 
@@ -216,6 +217,150 @@
 				</div>
 			</section>
 
+			<section v-if="activeTab === 'permissions'" class="panel permission-panel">
+				<div class="panel-head">
+					<h2>权限管理</h2>
+					<span>{{ admins.length }} 个管理员 · {{ permissions.length }} 条小区权限</span>
+				</div>
+				<div class="permission-grid">
+					<div class="permission-card">
+						<div class="panel-head compact">
+							<h3>管理员账号</h3>
+							<span>{{ editingAdminId ? '编辑中' : '新增' }}</span>
+						</div>
+						<div class="form-grid">
+							<label class="field">
+								<span>账号</span>
+								<input v-model="adminForm.username" type="text" placeholder="例如 alice" />
+							</label>
+							<label class="field">
+								<span>密码</span>
+								<input v-model="adminForm.password" type="password" placeholder="新增必填，编辑可留空" />
+							</label>
+							<label class="field">
+								<span>角色</span>
+								<select v-model="adminForm.role">
+									<option v-for="item in roleOptions" :key="item.value" :value="item.value">
+										{{ item.label }}
+									</option>
+								</select>
+							</label>
+							<label class="field">
+								<span>默认小区</span>
+								<select v-model.number="adminForm.communityId">
+									<option :value="0">未设置</option>
+									<option v-for="item in communities" :key="item.id" :value="item.id">
+										{{ communityLabel(item) }}
+									</option>
+								</select>
+							</label>
+							<label class="field checkbox-field">
+								<input v-model="adminForm.active" :true-value="1" :false-value="0" type="checkbox" />
+								<span>启用</span>
+							</label>
+						</div>
+						<div class="form-actions">
+							<button class="primary" @click="saveAdmin">{{ editingAdminId ? '保存管理员' : '新增管理员' }}</button>
+							<button @click="resetAdminForm">重置</button>
+						</div>
+					</div>
+					<div class="permission-card">
+						<div class="panel-head compact">
+							<h3>小区权限</h3>
+							<span>{{ editingPermissionId ? '编辑中' : '新增' }}</span>
+						</div>
+						<div class="form-grid">
+							<label class="field">
+								<span>管理员</span>
+								<select v-model.number="permissionForm.adminId">
+									<option :value="0">请选择管理员</option>
+									<option v-for="item in admins" :key="item.id" :value="item.id">
+										{{ item.username }} · {{ item.roleLabel }}
+									</option>
+								</select>
+							</label>
+							<label class="field">
+								<span>小区</span>
+								<select v-model.number="permissionForm.communityId">
+									<option :value="0">请选择小区</option>
+									<option v-for="item in communities" :key="item.id" :value="item.id">
+										{{ communityLabel(item) }}
+									</option>
+								</select>
+							</label>
+							<label class="field">
+								<span>角色</span>
+								<select v-model="permissionForm.role">
+									<option v-for="item in roleOptions" :key="item.value" :value="item.value">
+										{{ item.label }}
+									</option>
+								</select>
+							</label>
+							<label class="field span-2">
+								<span>权限项</span>
+								<input v-model="permissionForm.permissions" type="text" placeholder="用逗号分隔，例如 repair,fee,notice" />
+							</label>
+							<label class="field checkbox-field">
+								<input v-model="permissionForm.active" :true-value="1" :false-value="0" type="checkbox" />
+								<span>启用</span>
+							</label>
+						</div>
+						<div class="form-actions">
+							<button class="primary" @click="savePermission">{{ editingPermissionId ? '保存权限' : '新增权限' }}</button>
+							<button @click="resetPermissionForm">重置</button>
+						</div>
+					</div>
+				</div>
+				<table class="spaced-table">
+					<thead>
+						<tr>
+							<th>账号</th>
+							<th>全局角色</th>
+							<th>默认小区</th>
+							<th>状态</th>
+							<th>操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="item in admins" :key="item.id">
+							<td>{{ item.username }}</td>
+							<td>{{ item.roleLabel }}</td>
+							<td>{{ communityNameById(item.communityId) }}</td>
+							<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
+							<td class="actions">
+								<button @click="editAdmin(item)">编辑</button>
+								<button class="danger" @click="removeAdmin(item)">停用</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<table class="spaced-table">
+					<thead>
+						<tr>
+							<th>管理员</th>
+							<th>小区</th>
+							<th>角色</th>
+							<th>权限项</th>
+							<th>状态</th>
+							<th>操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="item in permissions" :key="item.id">
+							<td>{{ item.username }}</td>
+							<td>{{ item.communityName }}</td>
+							<td>{{ item.roleLabel }}</td>
+							<td>{{ item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
+							<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
+							<td class="actions">
+								<button @click="editPermission(item)">编辑</button>
+								<button class="danger" @click="removePermission(item)">删除</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</section>
+
 			<section v-if="activeTab === 'repairs'" class="panel">
 				<div class="panel-head">
 					<h2>报修管理</h2>
@@ -335,6 +480,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { adminApi } from './api/admin.js';
 import { buildCommunityLabel, buildCommunityPayload, createCommunityForm } from './utils/community.js';
+import { buildPermissionRecord, listRoleOptions } from './utils/permissions.js';
 
 const activeTab = ref('dashboard');
 const stats = ref([]);
@@ -342,6 +488,13 @@ const owners = ref([]);
 const communities = ref([]);
 const communityForm = ref(createCommunityForm());
 const editingCommunityId = ref('');
+const admins = ref([]);
+const permissions = ref([]);
+const roleOptions = ref(listRoleOptions());
+const editingAdminId = ref('');
+const editingPermissionId = ref('');
+const adminForm = ref(emptyAdmin());
+const permissionForm = ref(emptyPermission());
 const announcements = ref([]);
 const repairs = ref([]);
 const fees = ref([]);
@@ -359,6 +512,7 @@ const pageTitle = computed(() => {
 	if (activeTab.value === 'complaints') return '投诉建议';
 	if (activeTab.value === 'notices') return '通知配置';
 	if (activeTab.value === 'communities') return '小区配置';
+	if (activeTab.value === 'permissions') return '权限管理';
 	return '数据看板';
 });
 
@@ -412,12 +566,37 @@ function emptyAnnouncement() {
 	};
 }
 
+function emptyAdmin() {
+	return {
+		username: '',
+		password: '',
+		role: 'admin',
+		communityId: 0,
+		active: 1
+	};
+}
+
+function emptyPermission() {
+	return {
+		adminId: 0,
+		communityId: 0,
+		role: 'admin',
+		permissions: '',
+		active: 1
+	};
+}
+
 function announcementStatusText(status) {
 	return {
 		draft: '草稿',
 		published: '发布',
 		archived: '归档'
 	}[status] || status;
+}
+
+function communityNameById(id) {
+	const item = communities.value.find((entry) => Number(entry.id) === Number(id));
+	return item ? communityLabel(item) : '未设置';
 }
 
 async function loadCommunities() {
@@ -429,6 +608,17 @@ async function loadCommunities() {
 			|| '';
 	}
 	adminApi.setSchemaName(selectedSchema.value);
+}
+
+async function loadPermissionData() {
+	const [roleData, adminData, permissionData] = await Promise.all([
+		adminApi.roleList(),
+		adminApi.adminList(),
+		adminApi.permissionList()
+	]);
+	roleOptions.value = roleData.list && roleData.list.length ? roleData.list : listRoleOptions();
+	admins.value = adminData.list || [];
+	permissions.value = permissionData.list || [];
 }
 
 function resetCommunityForm() {
@@ -534,6 +724,98 @@ async function removeAnnouncement(item) {
 	}
 }
 
+function resetAdminForm() {
+	editingAdminId.value = '';
+	adminForm.value = emptyAdmin();
+}
+
+function editAdmin(item) {
+	editingAdminId.value = String(item.id || '');
+	adminForm.value = {
+		username: item.username || '',
+		password: '',
+		role: item.role || 'admin',
+		communityId: Number(item.communityId || 0),
+		active: item.active ? 1 : 0
+	};
+	activeTab.value = 'permissions';
+}
+
+async function saveAdmin() {
+	try {
+		const payload = {
+			id: editingAdminId.value || undefined,
+			username: adminForm.value.username,
+			password: adminForm.value.password,
+			role: adminForm.value.role,
+			communityId: adminForm.value.communityId || undefined,
+			active: adminForm.value.active
+		};
+		const result = await adminApi.saveAdmin(payload);
+		admins.value = result.list || admins.value;
+		resetAdminForm();
+	} catch (err) {
+		window.alert(err.message || '保存失败');
+	}
+}
+
+async function removeAdmin(item) {
+	const confirmed = window.confirm(`确认停用管理员「${item.username}」？`);
+	if (!confirmed) return;
+	try {
+		await adminApi.deleteAdmin(item.id);
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '停用失败');
+	}
+}
+
+function resetPermissionForm() {
+	editingPermissionId.value = '';
+	permissionForm.value = emptyPermission();
+}
+
+function editPermission(item) {
+	editingPermissionId.value = String(item.id || '');
+	permissionForm.value = {
+		adminId: Number(item.adminId || 0),
+		communityId: Number(item.communityId || 0),
+		role: item.role || 'admin',
+		permissions: Array.isArray(item.permissions) ? item.permissions.join(', ') : '',
+		active: item.active ? 1 : 0
+	};
+	activeTab.value = 'permissions';
+}
+
+async function savePermission() {
+	try {
+		const payload = buildPermissionRecord(permissionForm.value);
+		const result = await adminApi.savePermission({
+			id: editingPermissionId.value || undefined,
+			adminId: payload.adminId,
+			communityId: payload.communityId,
+			role: payload.role,
+			permissions: payload.permissions,
+			active: payload.active
+		});
+		permissions.value = result.list || permissions.value;
+		resetPermissionForm();
+	} catch (err) {
+		window.alert(err.message || '保存失败');
+	}
+}
+
+async function removePermission(item) {
+	const confirmed = window.confirm(`确认删除权限记录「${item.username} / ${item.communityName}」？`);
+	if (!confirmed) return;
+	try {
+		await adminApi.deletePermission(item.id);
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '删除失败');
+	}
+}
+
 async function reload() {
 	await loadCommunities();
 	if (!selectedSchema.value) {
@@ -556,6 +838,7 @@ async function reload() {
 		adminApi.complaintList(),
 		adminApi.noticeConfigList()
 	]);
+	await loadPermissionData();
 	stats.value = dashboard.stats || [];
 	owners.value = ownerData.list || [];
 	announcements.value = announcementData.list || [];
