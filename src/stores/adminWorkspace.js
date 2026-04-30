@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, proxyRefs, ref } from 'vue';
 import { adminApi } from '../api/admin.js';
 import { buildCommunityLabel, buildCommunityPayload, createCommunityForm } from '../utils/community.js';
 import { MODULE_CATALOG, buildModuleMatrix, buildModuleToggleSummary } from '../utils/modules.js';
@@ -970,7 +970,7 @@ function stop() {
 }
 
 export function useAdminWorkspaceStore() {
-	return {
+	return proxyRefs({
 		routeLabels,
 		routeOrder,
 		activeRoute,
@@ -1085,5 +1085,5 @@ export function useAdminWorkspaceStore() {
 		retryNotice,
 		selectNoticeRecord,
 		onSchemaChange
-	};
+	});
 }
