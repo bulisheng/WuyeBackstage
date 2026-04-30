@@ -79,7 +79,7 @@ const pageMap = {
 	login: LoginPage
 };
 
-const currentPageComponent = computed(() => pageMap[workspace.activeRoute.value] || DashboardPage);
+const currentPageComponent = computed(() => pageMap[workspace.activeRoute] || DashboardPage);
 
 onMounted(async () => {
 	workspace.start();
