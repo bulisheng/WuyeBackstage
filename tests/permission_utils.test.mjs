@@ -3,6 +3,7 @@ import {
 	buildEffectiveAccess,
 	buildPermissionMatrix,
 	buildPermissionRecord,
+	buildPermissionTokensFromSelections,
 	buildRoleAccessProfile,
 	listRoleOptions
 } from '../src/utils/permissions.js';
@@ -34,6 +35,12 @@ const mergedAccess = buildEffectiveAccess('repairman', ['repair:close', 'repair:
 assert.ok(mergedAccess.menus.includes('repairs'));
 assert.ok(mergedAccess.actions.includes('repair:close'));
 assert.ok(mergedAccess.extraActions.includes('repair:escalate'));
+
+const selectedTokens = buildPermissionTokensFromSelections('customer_service', ['dashboard', 'repairs'], ['repair:view']);
+assert.ok(selectedTokens.includes('!menu:owners'));
+assert.ok(selectedTokens.includes('!action:owner:audit'));
+assert.equal(buildEffectiveAccess('customer_service', selectedTokens).menus.includes('owners'), false);
+assert.equal(buildEffectiveAccess('customer_service', selectedTokens).actions.includes('owner:audit'), false);
 
 const matrix = buildPermissionMatrix(
 	[

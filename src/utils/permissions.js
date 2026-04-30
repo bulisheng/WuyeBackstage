@@ -130,7 +130,17 @@ function splitPermissionTokens(value) {
 	const tokens = parsePermissions(value);
 	const menuTokens = [];
 	const actionTokens = [];
+	const deniedMenus = [];
+	const deniedActions = [];
 	tokens.forEach((token) => {
+		if (token.startsWith('!menu:')) {
+			deniedMenus.push(token.slice(6));
+			return;
+		}
+		if (token.startsWith('!action:')) {
+			deniedActions.push(token.slice(8));
+			return;
+		}
 		if (token.startsWith('menu:')) {
 			menuTokens.push(token.slice(5));
 			return;
@@ -141,14 +151,18 @@ function splitPermissionTokens(value) {
 		}
 		actionTokens.push(token);
 	});
-	return { menuTokens, actionTokens };
+	return { menuTokens, actionTokens, deniedMenus, deniedActions };
 }
 
 function buildEffectiveAccess(role, permissions = []) {
 	const profile = buildRoleAccessProfile(role);
-	const { menuTokens, actionTokens } = splitPermissionTokens(permissions);
-	const menus = [...new Set([...profile.menus, ...menuTokens])];
-	const actions = [...new Set([...profile.actions, ...actionTokens])];
+	const { menuTokens, actionTokens, deniedMenus, deniedActions } = splitPermissionTokens(permissions);
+	const deniedMenuSet = new Set(deniedMenus);
+	const deniedActionSet = new Set(deniedActions);
+	const menus = [...new Set([...profile.menus, ...menuTokens])].filter((item) => !deniedMenuSet.has(item));
+	const actions = profile.actions.includes('*') && deniedActionSet.has('*')
+		? [...new Set(actionTokens)].filter((item) => !deniedActionSet.has(item))
+		: [...new Set([...profile.actions, ...actionTokens])].filter((item) => !deniedActionSet.has(item));
 	const extraMenus = menuTokens.filter((item) => !profile.menus.includes(item));
 	const extraActions = actionTokens.filter((item) => !profile.actions.includes(item));
 	return {
@@ -161,8 +175,32 @@ function buildEffectiveAccess(role, permissions = []) {
 		extraMenus,
 		extraMenuLabels: extraMenus.map((item) => buildMenuLabel(item)),
 		extraActions,
-		extraActionLabels: extraActions.map((item) => buildActionLabel(item))
+		extraActionLabels: extraActions.map((item) => buildActionLabel(item)),
+		deniedMenus,
+		deniedMenuLabels: deniedMenus.map((item) => buildMenuLabel(item)),
+		deniedActions,
+		deniedActionLabels: deniedActions.map((item) => buildActionLabel(item))
 	};
+}
+
+function buildPermissionTokensFromSelections(role, selectedMenus = [], selectedActions = []) {
+	const profile = buildRoleAccessProfile(role);
+	const selectedMenuSet = new Set(parsePermissions(selectedMenus));
+	const selectedActionSet = new Set(parsePermissions(selectedActions));
+	const tokens = [];
+	selectedMenuSet.forEach((item) => {
+		if (!profile.menus.includes(item)) tokens.push(`menu:${item}`);
+	});
+	profile.menus.forEach((item) => {
+		if (!selectedMenuSet.has(item)) tokens.push(`!menu:${item}`);
+	});
+	selectedActionSet.forEach((item) => {
+		if (!profile.actions.includes(item)) tokens.push(`action:${item}`);
+	});
+	profile.actions.forEach((item) => {
+		if (!selectedActionSet.has(item)) tokens.push(`!action:${item}`);
+	});
+	return tokens;
 }
 
 function summarizePermissions(records = []) {
@@ -214,6 +252,7 @@ export {
 	buildActionLabel,
 	buildRoleAccessProfile,
 	buildEffectiveAccess,
+	buildPermissionTokensFromSelections,
 	parsePermissions,
 	buildPermissionMatrix,
 	summarizePermissions

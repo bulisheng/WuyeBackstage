@@ -252,7 +252,7 @@
 								</label>
 								<label class="field">
 									<span>角色</span>
-									<select v-model="adminForm.role">
+									<select v-model="adminForm.role" @change="syncAdminPermissionRole">
 										<option v-for="item in roleOptions" :key="item.value" :value="item.value">
 											{{ item.label }}
 										</option>
@@ -280,9 +280,69 @@
 									<input v-model="adminForm.active" :true-value="1" :false-value="0" type="checkbox" />
 									<span>启用</span>
 								</label>
+								<label class="field">
+									<span>权限小区</span>
+									<select v-model.number="adminForm.permissionCommunityId" @change="loadAdminPermissionForForm">
+										<option :value="0">跟随默认小区</option>
+										<option v-for="item in communities" :key="item.id" :value="item.id">
+											{{ communityLabel(item) }}
+										</option>
+									</select>
+								</label>
+								<label class="field">
+									<span>小区角色</span>
+									<select v-model="adminForm.permissionRole" @change="adminForm.permissions = ''">
+										<option v-for="item in roleOptions" :key="item.value" :value="item.value">
+											{{ item.label }}
+										</option>
+									</select>
+								</label>
+								<label class="field checkbox-field">
+									<input v-model="adminForm.permissionActive" :true-value="1" :false-value="0" type="checkbox" />
+									<span>启用当前小区权限</span>
+								</label>
+								<div class="role-preview span-2">
+									<div class="preview-head">
+										<h4>展示模块</h4>
+										<span>决定该管理员在当前小区能看到哪些后台菜单</span>
+									</div>
+									<div class="chip-row selectable">
+										<button
+											v-for="item in adminMenuOptions"
+											:key="item.key"
+											type="button"
+											class="chip chip-button"
+											:class="{ selected: adminPermissionAccess.menus.includes(item.key) }"
+											@click="toggleAdminMenu(item.key)"
+										>
+											{{ item.label }}
+										</button>
+									</div>
+								</div>
+								<div class="role-preview span-2">
+									<div class="preview-head">
+										<h4>操作权限</h4>
+										<span>决定该管理员在当前小区能执行哪些按钮动作</span>
+									</div>
+									<div class="chip-row selectable">
+										<button
+											v-for="item in adminActionOptions"
+											:key="item.key"
+											type="button"
+											class="chip chip-button"
+											:class="{ selected: adminPermissionAccess.actions.includes('*') || adminPermissionAccess.actions.includes(item.key) }"
+											@click="toggleAdminAction(item.key)"
+										>
+											{{ item.label }}
+										</button>
+									</div>
+									<p class="helper-text">当前拒绝菜单：{{ adminPermissionAccess.deniedMenuLabels.join('、') || '无' }}</p>
+									<p class="helper-text">当前拒绝动作：{{ adminPermissionAccess.deniedActionLabels.join('、') || '无' }}</p>
+								</div>
 							</div>
 							<div class="form-actions">
 								<button class="primary" :disabled="!canAction('admin:user:manage')" @click="saveAdmin">{{ editingAdminId ? '保存管理员' : '新增管理员' }}</button>
+								<button @click="resetAdminPermissionToRole">重置权限</button>
 								<button @click="resetAdminForm">重置</button>
 							</div>
 						</div>
@@ -737,8 +797,10 @@ import { MODULE_CATALOG, buildModuleMatrix, buildModuleToggleSummary } from './u
 import {
 	buildActionLabel,
 	buildEffectiveAccess,
+	buildMenuLabel,
 	buildPermissionMatrix,
 	buildPermissionRecord,
+	buildPermissionTokensFromSelections,
 	buildRoleAccessProfile,
 	listRoleOptions,
 	parsePermissions
@@ -800,6 +862,7 @@ const currentCommunityModuleMatrix = computed(() => {
 const currentCommunityModules = computed(() => currentCommunityModuleMatrix.value.rows[0]?.modules || []);
 const currentCommunityModuleSummary = computed(() => buildModuleToggleSummary(currentCommunityModules.value));
 const adminRoleAccess = computed(() => buildRoleAccessProfile(adminForm.value.role));
+const adminPermissionAccess = computed(() => buildEffectiveAccess(adminForm.value.permissionRole || adminForm.value.role, adminForm.value.permissions));
 const permissionRoleAccess = computed(() => buildRoleAccessProfile(permissionForm.value.role));
 const permissionAccess = computed(() => buildEffectiveAccess(permissionForm.value.role, permissionForm.value.permissions));
 const allowedMenus = computed(() => (adminAccess.value && adminAccess.value.access && Array.isArray(adminAccess.value.access.menus)
@@ -824,6 +887,15 @@ const quickPermissionTokens = [
 	'complaint:handle',
 	'notice:publish'
 ];
+const adminMenuOptions = computed(() => MODULE_CATALOG.map((item) => ({
+	key: item.key,
+	label: item.name || buildMenuLabel(item.key),
+	description: item.description || ''
+})));
+const adminActionOptions = computed(() => quickPermissionTokens.map((item) => ({
+	key: item,
+	label: buildActionLabel(item)
+})));
 
 function statusText(status) {
 	return {
@@ -891,6 +963,11 @@ function emptyAdmin() {
 		password: '',
 		role: 'admin',
 		communityId: 0,
+		permissionId: '',
+		permissionCommunityId: 0,
+		permissionRole: 'admin',
+		permissions: '',
+		permissionActive: 1,
 		active: 1
 	};
 }
@@ -966,21 +1043,76 @@ function appendPermissionToken(token) {
 	permissionForm.value.permissions = next.join(', ');
 }
 
+function selectedAdminMenus() {
+	return new Set(adminPermissionAccess.value.menus || []);
+}
+
+function selectedAdminActions() {
+	const actions = adminPermissionAccess.value.actions || [];
+	if (actions.includes('*')) {
+		return new Set(adminActionOptions.value.map((item) => item.key));
+	}
+	return new Set(actions);
+}
+
+function updateAdminPermissionSelections(nextMenus, nextActions) {
+	const tokens = buildPermissionTokensFromSelections(
+		adminForm.value.permissionRole || adminForm.value.role,
+		Array.from(nextMenus),
+		Array.from(nextActions)
+	);
+	adminForm.value.permissions = tokens.join(', ');
+}
+
+function toggleAdminMenu(menuKey) {
+	const menus = selectedAdminMenus();
+	const actions = selectedAdminActions();
+	if (menus.has(menuKey)) menus.delete(menuKey);
+	else menus.add(menuKey);
+	updateAdminPermissionSelections(menus, actions);
+}
+
+function toggleAdminAction(actionKey) {
+	const menus = selectedAdminMenus();
+	const actions = selectedAdminActions();
+	if (actions.has(actionKey)) actions.delete(actionKey);
+	else actions.add(actionKey);
+	updateAdminPermissionSelections(menus, actions);
+}
+
+function resetAdminPermissionToRole() {
+	adminForm.value.permissionRole = adminForm.value.role;
+	adminForm.value.permissions = '';
+	adminForm.value.permissionActive = 1;
+}
+
+function syncAdminPermissionRole() {
+	resetAdminPermissionToRole();
+}
+
 function openMatrixCell(row, cell) {
 	const activeRecord = cell.records.find((item) => item.active !== false && item.active !== 0 && item.active !== '0');
 	if (activeRecord) {
-		editPermission(activeRecord);
+		const admin = admins.value.find((item) => Number(item.id) === Number(activeRecord.adminId));
+		if (admin) {
+			editAdmin(admin);
+			applyPermissionToAdminForm(activeRecord);
+		} else {
+			activePermissionTab.value = 'admins';
+			adminForm.value = Object.assign(emptyAdmin(), {
+				communityId: row.communityId,
+				permissionCommunityId: row.communityId,
+				permissionRole: cell.role
+			});
+		}
 		return;
 	}
-	editingPermissionId.value = '';
-	activePermissionTab.value = 'permissions';
-	permissionForm.value = {
-		adminId: 0,
-		communityId: row.communityId,
-		role: cell.role,
-		permissions: '',
-		active: 1
-	};
+	resetAdminForm();
+	adminForm.value.communityId = row.communityId;
+	adminForm.value.permissionCommunityId = row.communityId;
+	adminForm.value.permissionRole = cell.role;
+	adminForm.value.role = cell.role;
+	activePermissionTab.value = 'admins';
 	activeTab.value = 'permissions';
 }
 
@@ -1262,9 +1394,47 @@ function editAdmin(item) {
 		password: '',
 		role: item.role || 'admin',
 		communityId: Number(item.communityId || 0),
+		permissionId: '',
+		permissionCommunityId: Number(item.communityId || activeCommunity.value?.id || 0),
+		permissionRole: item.role || 'admin',
+		permissions: '',
+		permissionActive: 1,
 		active: item.active ? 1 : 0
 	};
+	loadAdminPermissionForForm();
 	activeTab.value = 'permissions';
+}
+
+function applyPermissionToAdminForm(item) {
+	editingPermissionId.value = String(item.id || '');
+	adminForm.value.permissionId = String(item.id || '');
+	adminForm.value.permissionCommunityId = Number(item.communityId || adminForm.value.communityId || 0);
+	adminForm.value.permissionRole = item.role || adminForm.value.role || 'admin';
+	adminForm.value.permissions = Array.isArray(item.permissions) ? item.permissions.join(', ') : '';
+	adminForm.value.permissionActive = item.active ? 1 : 0;
+}
+
+function loadAdminPermissionForForm() {
+	if (!editingAdminId.value) {
+		adminForm.value.permissionId = '';
+		adminForm.value.permissionRole = adminForm.value.role || 'admin';
+		adminForm.value.permissions = '';
+		adminForm.value.permissionActive = 1;
+		return;
+	}
+	const communityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
+	const record = permissions.value.find((item) =>
+		Number(item.adminId) === Number(editingAdminId.value) && Number(item.communityId) === communityId
+	);
+	if (record) {
+		applyPermissionToAdminForm(record);
+		return;
+	}
+	adminForm.value.permissionId = '';
+	adminForm.value.permissionCommunityId = communityId;
+	adminForm.value.permissionRole = adminForm.value.role || 'admin';
+	adminForm.value.permissions = '';
+	adminForm.value.permissionActive = 1;
 }
 
 async function saveAdmin() {
@@ -1279,6 +1449,26 @@ async function saveAdmin() {
 		};
 		const result = await adminApi.saveAdmin(payload);
 		admins.value = result.list || admins.value;
+		const savedAdminId = Number(editingAdminId.value || (admins.value.find((item) => item.username === adminForm.value.username) || {}).id || 0);
+		const permissionCommunityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
+		if (savedAdminId && permissionCommunityId && canAction('admin:permission:manage')) {
+			const permissionPayload = buildPermissionRecord({
+				adminId: savedAdminId,
+				communityId: permissionCommunityId,
+				role: adminForm.value.permissionRole || adminForm.value.role,
+				permissions: adminForm.value.permissions,
+				active: adminForm.value.permissionActive
+			});
+			const permissionResult = await adminApi.savePermission({
+				id: adminForm.value.permissionId || undefined,
+				adminId: permissionPayload.adminId,
+				communityId: permissionPayload.communityId,
+				role: permissionPayload.role,
+				permissions: permissionPayload.permissions,
+				active: permissionPayload.active
+			});
+			permissions.value = permissionResult.list || permissions.value;
+		}
 		resetAdminForm();
 		await reload();
 	} catch (err) {
@@ -1303,6 +1493,12 @@ function resetPermissionForm() {
 }
 
 function editPermission(item) {
+	const admin = admins.value.find((entry) => Number(entry.id) === Number(item.adminId));
+	if (admin) {
+		editAdmin(admin);
+		applyPermissionToAdminForm(item);
+		return;
+	}
 	editingPermissionId.value = String(item.id || '');
 	activePermissionTab.value = 'permissions';
 	permissionForm.value = {

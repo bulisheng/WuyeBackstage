@@ -483,6 +483,18 @@ th {
 	background: #d1fae5;
 }
 
+.chip-row.selectable .chip-button {
+	background: #fff;
+	color: #51605a;
+	border-color: #d9e1dc;
+}
+
+.chip-row.selectable .chip-button.selected {
+	background: #0f5132;
+	color: #fff;
+	border-color: #0f5132;
+}
+
 .spaced-table {
 	margin-top: 4px;
 }
