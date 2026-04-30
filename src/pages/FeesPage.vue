@@ -25,23 +25,23 @@
 			<div class="form-grid">
 				<label class="field">
 					<span>账单号</span>
-					<input v-model="workspace.feeForm.billNo" type="text" placeholder="不填则自动生成" />
+					<input v-model="workspace.feeForm.billNo" type="text" placeholder="不填则自动生成，系统保证唯一" />
 				</label>
 				<label class="field">
 					<span>标题</span>
 					<input v-model="workspace.feeForm.title" type="text" placeholder="例如 2026年4月物业费" />
 				</label>
 				<label class="field">
-					<span>业主</span>
-					<input v-model="workspace.feeForm.ownerName" type="text" placeholder="请输入业主姓名" />
-				</label>
-				<label class="field">
 					<span>业主手机号</span>
-					<input v-model="workspace.feeForm.ownerMobile" type="text" placeholder="用于绑定业主账号" />
+					<input v-model="workspace.feeForm.ownerMobile" type="text" placeholder="输入手机号后自动查询业主" @blur="workspace.resolveFeeOwnerByMobile()" />
 				</label>
-				<label class="field">
+				<label class="field readonly-field">
+					<span>业主姓名</span>
+					<input :value="workspace.feeForm.ownerName || '输入手机号后自动带出'" type="text" readonly />
+				</label>
+				<label class="field readonly-field">
 					<span>房屋</span>
-					<input v-model="workspace.feeForm.house" type="text" placeholder="例如 1-2-301" />
+					<input :value="workspace.feeForm.house || '输入手机号后自动带出'" type="text" readonly />
 				</label>
 				<label class="field">
 					<span>类型</span>
@@ -66,8 +66,9 @@
 					<input v-model="workspace.feeForm.dueDate" type="date" />
 				</label>
 			</div>
+			<p class="field-hint">{{ workspace.feeOwnerLookupText }}</p>
 			<div class="form-actions">
-				<button class="primary" :disabled="!workspace.canAction('fee:manage')" @click="workspace.saveFee">{{ workspace.editingFeeId ? '保存账单' : '新增账单' }}</button>
+				<button class="primary" :disabled="!workspace.canAction('fee:manage') || workspace.feeSaving || workspace.feeLookupLoading" @click="workspace.saveFee">{{ workspace.editingFeeId ? '保存账单' : '新增账单' }}</button>
 				<button @click="workspace.resetFeeForm">重置</button>
 			</div>
 		</div>

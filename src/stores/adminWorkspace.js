@@ -58,6 +58,9 @@ const paymentRecords = ref([]);
 const selectedFeePayments = ref([]);
 const feeForm = ref(emptyFee());
 const editingFeeId = ref('');
+const feeOwnerLookupText = ref('请输入手机号后自动带出姓名和房号');
+const feeSaving = ref(false);
+const feeLookupLoading = ref(false);
 const noticeConfigs = ref([]);
 const noticeRecords = ref([]);
 const noticeConfigForm = ref(emptyNoticeConfig());
@@ -704,24 +707,41 @@ async function restoreAllModules() {
 }
 
 async function saveFee() {
-	const payload = {
-		id: editingFeeId.value || undefined,
-		billNo: feeForm.value.billNo,
-		title: feeForm.value.title,
-		ownerMobile: feeForm.value.ownerMobile,
-		houseId: null,
-		userId: null,
-		ownerName: feeForm.value.ownerName,
-		house: feeForm.value.house,
-		billType: feeForm.value.billType,
-		amount: feeForm.value.amount,
-		status: feeForm.value.status,
-		dueDate: feeForm.value.dueDate
-	};
-	const result = await adminApi.saveFee(payload);
-	fees.value = result.list || fees.value;
-	resetFeeForm();
-	await loadFeePayments();
+	if (feeSaving.value) return;
+	try {
+		feeSaving.value = true;
+		const mobile = String(feeForm.value.ownerMobile || '').trim();
+		if (!editingFeeId.value && mobile.length < 11) {
+			throw new Error('请输入完整的 11 位业主手机号');
+		}
+		const owner = mobile ? await resolveFeeOwnerByMobile(mobile, { silent: true }) : null;
+		if (mobile && !owner) {
+			throw new Error('请输入有效的业主手机号，并先完成手机号匹配');
+		}
+		const payload = {
+			id: editingFeeId.value || undefined,
+			billNo: feeForm.value.billNo,
+			title: feeForm.value.title,
+			ownerMobile: feeForm.value.ownerMobile,
+			houseId: owner.houseId || null,
+			userId: owner.id || null,
+			ownerName: feeForm.value.ownerName,
+			house: feeForm.value.house,
+			billType: feeForm.value.billType,
+			amount: feeForm.value.amount,
+			status: feeForm.value.status,
+			dueDate: feeForm.value.dueDate
+		};
+		const result = await adminApi.saveFee(payload);
+		fees.value = result.list || fees.value;
+		window.alert(`账单已保存${result.billNo ? `，账单号：${result.billNo}` : ''}`);
+		resetFeeForm();
+		await loadFeePayments();
+	} catch (err) {
+		window.alert(err.message || '保存账单失败');
+	} finally {
+		feeSaving.value = false;
+	}
 }
 
 function editFee(item) {
@@ -737,11 +757,58 @@ function editFee(item) {
 		status: item.status || 'pending',
 		dueDate: item.dueDate || ''
 	};
+	feeOwnerLookupText.value = item.ownerName || item.house ? `已匹配：${item.ownerName || '-'} / ${item.house || '-'}` : '请输入手机号后自动带出姓名和房号';
 }
 
 function resetFeeForm() {
 	editingFeeId.value = '';
 	feeForm.value = emptyFee();
+	feeOwnerLookupText.value = '请输入手机号后自动带出姓名和房号';
+}
+
+async function resolveFeeOwnerByMobile(mobileValue = feeForm.value.ownerMobile, options = {}) {
+	const mobile = String(mobileValue || '').trim();
+	if (!mobile) {
+		feeForm.value.ownerName = '';
+		feeForm.value.house = '';
+		feeOwnerLookupText.value = '请输入手机号后自动带出姓名和房号';
+		return null;
+	}
+	if (mobile.length < 11) {
+		feeForm.value.ownerName = '';
+		feeForm.value.house = '';
+		feeOwnerLookupText.value = '请输入完整的 11 位手机号';
+		return null;
+	}
+	try {
+		feeLookupLoading.value = true;
+		feeOwnerLookupText.value = '正在查询业主信息...';
+		const result = await adminApi.ownerLookup({ mobile });
+		const owner = result.owner || null;
+		if (!owner) {
+			feeForm.value.ownerName = '';
+			feeForm.value.house = '';
+			feeOwnerLookupText.value = '未找到对应业主，请核对手机号或先完成业主认证';
+			if (!options.silent) {
+				window.alert('未找到对应业主，请核对手机号或先完成业主认证');
+			}
+			return null;
+		}
+		feeForm.value.ownerName = owner.name || '';
+		feeForm.value.house = owner.primaryHouse || owner.house || '';
+		feeOwnerLookupText.value = `已匹配：${feeForm.value.ownerName || '-'} / ${feeForm.value.house || '-'}`;
+		return owner;
+	} catch (err) {
+		feeForm.value.ownerName = '';
+		feeForm.value.house = '';
+		feeOwnerLookupText.value = err.message || '业主信息查询失败';
+		if (!options.silent) {
+			window.alert(err.message || '业主信息查询失败');
+		}
+		return null;
+	} finally {
+		feeLookupLoading.value = false;
+	}
 }
 
 async function removeFee(item) {
@@ -1011,6 +1078,9 @@ export function useAdminWorkspaceStore() {
 		selectedFeePayments,
 		feeForm,
 		editingFeeId,
+		feeOwnerLookupText,
+		feeSaving,
+		feeLookupLoading,
 		noticeConfigs,
 		noticeRecords,
 		noticeConfigForm,
@@ -1080,6 +1150,7 @@ export function useAdminWorkspaceStore() {
 		saveRepairAction,
 		editFee,
 		saveFee,
+		resolveFeeOwnerByMobile,
 		removeFee,
 		remindFee,
 		selectFee,
