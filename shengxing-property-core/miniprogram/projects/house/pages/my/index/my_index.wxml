@@ -1,0 +1,82 @@
+<view class="page">
+	<view class="card profile">
+		<view class="avatar">{{user.name}}</view>
+		<view class="profile-main">
+			<view class="profile-name">{{user.name}}</view>
+			<view class="status-line">
+				<text class="subtle">认证状态</text>
+				<text class="status-tag status-{{statusCode}}">{{user.status}}</text>
+			</view>
+			<text class="subtle">当前小区：{{currentCommunity && currentCommunity.name ? currentCommunity.name : '未选择'}}</text>
+		</view>
+		<button wx:if="{{!isLoggedIn}}" size="mini" class="btn-primary" bindtap="auth">去登录</button>
+		<button wx:else size="mini" class="btn-ghost" bindtap="logout">退出登录</button>
+	</view>
+
+	<view wx:if="{{!isLoggedIn}}">
+		<view class="section-title">登录</view>
+		<view class="card auth-card" bindtap="auth">
+			<view>
+				<view class="menu-title">去登录</view>
+				<text class="subtle">手机号和验证码登录后，再回来做业主认证</text>
+			</view>
+			<text class="subtle">进入</text>
+		</view>
+	</view>
+
+	<view wx:elif="{{!isOwnerAuthed}}">
+		<view class="section-title">业主认证</view>
+		<view class="card bind-card">
+			<view class="picker-box">
+				<text>当前小区：{{currentCommunity && currentCommunity.name ? currentCommunity.name : '未选择'}}</text>
+				<text class="subtle">已登录后补充资料</text>
+			</view>
+			<input class="field" placeholder="姓名" value="{{authForm.name}}" data-key="name" bindinput="bindAuthInput" />
+			<input class="field" placeholder="房号，例如 1栋2单元1201" value="{{authForm.house}}" data-key="house" bindinput="bindAuthInput" />
+			<button class="btn-primary bind-btn" bindtap="submitOwnerAuth">提交业主认证</button>
+		</view>
+		<view class="card auth-card" bindtap="auth">
+			<view>
+				<view class="menu-title">去登录</view>
+				<text class="subtle">手机号和验证码登录后再回来补业主认证</text>
+			</view>
+			<text class="subtle">进入</text>
+		</view>
+	</view>
+
+	<view wx:if="{{isOwnerAuthed}}">
+		<view class="section-title">房屋</view>
+		<view class="card house-card">
+			<view wx:for="{{houses}}" wx:key="name" class="house-item">
+				<view>
+					<view class="house-name">{{item.name}}</view>
+					<text class="subtle">{{item.desc}}</text>
+				</view>
+				<text class="house-action">联系物业</text>
+			</view>
+			<view wx:if="{{!houses.length}}" class="empty-line">暂无绑定房屋</view>
+		</view>
+
+		<view class="section-title">绑定房屋</view>
+		<view class="card bind-card">
+			<input class="field" placeholder="输入房号，例如 1栋2单元1201" value="{{houseInput}}" bindinput="bindHouseInput" />
+			<button class="btn-primary bind-btn" bindtap="bindHouse">绑定房屋</button>
+		</view>
+	</view>
+
+	<view class="section-title">个人中心</view>
+	<view class="grid">
+		<view wx:for="{{menus}}" wx:key="*this" class="card menu-item">
+			<view class="menu-title">{{item}}</view>
+			<text class="subtle">后续补齐详情页</text>
+		</view>
+	</view>
+
+	<view wx:if="{{isOwnerAuthed}}">
+		<view class="section-title">管理入口</view>
+		<view class="card admin-entry" bindtap="openAdmin">
+			<view class="menu-title">后台管理</view>
+			<text class="subtle">查看后台首页、工单、通知与配置骨架</text>
+		</view>
+	</view>
+</view>

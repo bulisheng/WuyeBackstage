@@ -1,0 +1,31 @@
+<view class="page">
+	<view wx:if="{{blocked}}" class="card empty">
+		<view class="intro-title">需要认证业主</view>
+		<text class="subtle">完成认证后可提交报修并查看工单。</text>
+	</view>
+
+	<view wx:else>
+		<view class="card form-card">
+			<view class="section-title">提交报修</view>
+			<input class="field" placeholder="标题" value="{{form.title}}" data-key="title" bindinput="bindInput" />
+			<input class="field" placeholder="房号，例如 1栋2单元1201" value="{{form.house}}" data-key="house" bindinput="bindInput" />
+			<input class="field" placeholder="联系人" value="{{form.contact}}" data-key="contact" bindinput="bindInput" />
+			<input class="field" placeholder="联系电话" value="{{form.phone}}" data-key="phone" bindinput="bindInput" />
+			<textarea class="field textarea" placeholder="请描述问题" value="{{form.desc}}" data-key="desc" bindinput="bindInput" />
+			<button class="btn-primary" loading="{{loading}}" bindtap="submit">提交报修</button>
+		</view>
+
+		<view class="section-title">最近工单</view>
+		<view class="list">
+			<view wx:if="{{!list.length}}" class="card empty">当前没有报修记录。</view>
+			<view wx:for="{{list}}" wx:key="_id" class="card record">
+				<view class="record-top">
+					<view class="record-title">{{item.title}}</view>
+					<view class="chip status">{{item.status}}</view>
+				</view>
+				<text class="subtle">{{item.house}} · {{item.contact}} · {{item.phone}}</text>
+				<text class="subtle">{{item.desc}}</text>
+			</view>
+		</view>
+	</view>
+</view>

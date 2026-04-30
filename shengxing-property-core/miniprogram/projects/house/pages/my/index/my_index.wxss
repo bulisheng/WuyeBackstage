@@ -1,0 +1,147 @@
+.profile {
+	display: flex;
+	align-items: center;
+	gap: 18rpx;
+}
+
+.avatar {
+	width: 88rpx;
+	height: 88rpx;
+	border-radius: 50%;
+	background: #13b35d;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+}
+
+.profile-main {
+	flex: 1;
+}
+
+.profile-name {
+	font-size: 32rpx;
+	font-weight: 800;
+}
+
+.status-line {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	margin: 6rpx 0;
+}
+
+.status-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 4rpx 12rpx;
+	border-radius: 999rpx;
+	font-size: 22rpx;
+	background: #eef2f7;
+	color: #475569;
+}
+
+.status-pending {
+	background: #fff7ed;
+	color: #c2410c;
+}
+
+.status-approved {
+	background: #ecfdf3;
+	color: #067647;
+}
+
+.status-rejected,
+.status-disabled {
+	background: #fef2f2;
+	color: #b42318;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 16rpx;
+}
+
+.switch-card,
+.bind-card,
+.auth-card {
+	display: grid;
+	gap: 14rpx;
+}
+
+.picker-box,
+.auth-card {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.house-card {
+	display: grid;
+	gap: 16rpx;
+}
+
+.house-item {
+	min-height: 110rpx;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 1rpx solid #edf0ee;
+}
+
+.house-item:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
+}
+
+.house-action {
+	color: #7b8794;
+	font-size: 24rpx;
+}
+
+.menu-item {
+	min-height: 120rpx;
+}
+
+.house-name,
+.menu-title {
+	font-size: 30rpx;
+	font-weight: 700;
+	margin-bottom: 8rpx;
+}
+
+.admin-entry {
+	margin-top: 16rpx;
+	min-height: 128rpx;
+}
+
+.field {
+	width: 100%;
+	min-height: 80rpx;
+	padding: 0 18rpx;
+	border: 1rpx solid #e6ece8;
+	border-radius: 10rpx;
+	background: #fff;
+	font-size: 26rpx;
+}
+
+.bind-btn {
+	width: 100%;
+}
+
+.btn-ghost {
+	border: 1rpx solid #d9e2de;
+	background: #fff;
+	color: #1f2933;
+	border-radius: 10rpx;
+	font-size: 24rpx;
+}
+
+.empty-line {
+	color: #7b8794;
+	font-size: 24rpx;
+}

@@ -1,0 +1,41 @@
+<view class="page admin-page">
+	<view class="hero card">
+		<view class="hero-top">
+			<view>
+				<view class="hero-title">{{communityName}}</view>
+				<view class="subtle">查看待办、业务入口和配置</view>
+			</view>
+			<view class="hero-badge">管理端</view>
+		</view>
+		<view class="hero-banner">
+			<view class="banner-copy">
+				<view class="banner-title">后台管理</view>
+				<text>工单、缴费、通知、商城、系统</text>
+			</view>
+		</view>
+	</view>
+
+	<view class="section-title">关键数据</view>
+	<view class="stats">
+		<view wx:for="{{stats}}" wx:key="label" class="stat card">
+			<view class="stat-value">{{item.value}}</view>
+			<text>{{item.label}}</text>
+		</view>
+	</view>
+
+	<view class="section-title">待办事项</view>
+	<view class="card todo-list">
+		<view wx:for="{{todos}}" wx:key="*this" class="todo-item">
+			<view class="todo-dot"></view>
+			<text>{{item}}</text>
+		</view>
+	</view>
+
+	<view class="section-title">业务入口</view>
+	<view class="module-grid">
+		<view wx:for="{{modules}}" wx:key="title" class="card module-item" bindtap="openModule" data-type="{{item.type}}">
+			<view class="module-title">{{item.title}}</view>
+			<text class="subtle">{{item.desc}}</text>
+		</view>
+	</view>
+</view>

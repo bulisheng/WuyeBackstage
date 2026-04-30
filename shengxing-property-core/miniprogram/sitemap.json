@@ -1,0 +1,8 @@
+{
+	"descendant": [
+		{
+			"action": "allow",
+			"page": "*"
+		}
+	]
+}

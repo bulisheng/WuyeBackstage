@@ -1,0 +1,39 @@
+.admin-page {
+	padding-bottom: 140rpx;
+}
+
+.todo-list {
+	display: flex;
+	flex-direction: column;
+	gap: 14rpx;
+}
+
+.todo-item {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	font-size: 26rpx;
+}
+
+.todo-dot {
+	width: 12rpx;
+	height: 12rpx;
+	border-radius: 50%;
+	background: #13b35d;
+}
+
+.module-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 16rpx;
+}
+
+.module-item {
+	min-height: 136rpx;
+}
+
+.module-title {
+	font-size: 30rpx;
+	font-weight: 700;
+	margin-bottom: 8rpx;
+}

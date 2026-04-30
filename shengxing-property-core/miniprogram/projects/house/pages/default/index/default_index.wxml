@@ -1,0 +1,70 @@
+<view class="page home-page">
+	<view class="topbar">
+		<view class="community-switch" bindtap="openCommunity">
+			<text class="community-name">{{communityName}}</text>
+			<text class="community-arrow">▾</text>
+		</view>
+		<view class="notice-bell" bindtap="openAnnouncement">
+			<text class="bell-icon">🔔</text>
+			<view wx:if="{{announcements.length}}" class="bell-dot"></view>
+		</view>
+	</view>
+
+	<view class="search-bar" bindtap="openSearch">
+		<text class="search-icon">⌕</text>
+		<text class="search-placeholder">{{searchText}}</text>
+	</view>
+
+	<view class="banner card" style="{{bannerStyle}}" bindtap="openAnnouncement">
+		<view class="banner-copy">
+			<view class="banner-label">{{bannerLabel}}</view>
+			<view class="banner-title">{{bannerTitle}}</view>
+			<text class="banner-summary">{{bannerSummary}}</text>
+			<view class="banner-action">查看公告</view>
+		</view>
+		<view class="banner-art" aria-hidden="true">
+			<view class="art-sun"></view>
+			<view class="art-figure art-figure-one"></view>
+			<view class="art-figure art-figure-two"></view>
+			<view class="art-ground"></view>
+		</view>
+	</view>
+
+	<view class="service-grid">
+		<view wx:for="{{primaryServices}}" wx:key="title" class="service-card" bindtap="go" data-type="{{item.type}}">
+			<view class="service-icon icon-{{item.theme}}">{{item.mark}}</view>
+			<text class="service-title">{{item.title}}</text>
+			<text class="service-desc">{{item.desc}}</text>
+		</view>
+	</view>
+
+	<view class="notice-section card">
+		<view class="section-head">
+			<view>
+				<view class="section-name">社区公告</view>
+				<text class="subtle">公告、通知与重要提醒</text>
+			</view>
+			<text class="section-more" bindtap="openAnnouncement">更多 ></text>
+		</view>
+		<view wx:if="{{!announcements.length}}" class="empty-state">
+			<view class="empty-title">暂无公告</view>
+			<text class="subtle">后台发布后会在这里展示。</text>
+		</view>
+		<view wx:for="{{announcements}}" wx:key="id" class="notice-item">
+			<view class="notice-main">
+				<text class="notice-title">{{item.title}}</text>
+				<text class="notice-summary">{{item.summary || item.content}}</text>
+			</view>
+			<text class="notice-date">{{item.dateLabel}}</text>
+		</view>
+	</view>
+
+	<view class="section-title">便民服务</view>
+	<view class="convenience-grid">
+		<view wx:for="{{convenienceServices}}" wx:key="title" class="convenience-card card" bindtap="go" data-type="{{item.type}}">
+			<view class="convenience-icon icon-{{item.theme}}">{{item.mark}}</view>
+			<view class="convenience-title">{{item.title}}</view>
+			<text class="convenience-desc">{{item.desc}}</text>
+	</view>
+	</view>
+</view>

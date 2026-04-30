@@ -1,0 +1,54 @@
+.auth-hero {
+	background: linear-gradient(135deg, #13b35d 0%, #0f8d4b 100%);
+	color: #fff;
+}
+
+.title {
+	font-size: 38rpx;
+	font-weight: 800;
+	margin-bottom: 10rpx;
+}
+
+.form {
+	margin-top: 16rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.code-row {
+	display: flex;
+	gap: 12rpx;
+	align-items: center;
+}
+
+.field {
+	width: 100%;
+	min-height: 80rpx;
+	padding: 0 18rpx;
+	border: 1rpx solid #e6ece8;
+	border-radius: 10rpx;
+	background: #fff;
+	font-size: 26rpx;
+}
+
+.picker-field {
+	display: flex;
+	align-items: center;
+	color: #1f2933;
+}
+
+.code-input {
+	flex: 1;
+}
+
+.code-btn {
+	width: 220rpx;
+	font-size: 24rpx;
+	padding: 0;
+}
+
+.debug-code {
+	font-size: 24rpx;
+	color: #13b35d;
+}

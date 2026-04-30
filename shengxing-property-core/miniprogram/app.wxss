@@ -1,0 +1,50 @@
+page {
+	background: #f4f7f5;
+	color: #1f2933;
+	font-size: 28rpx;
+	font-family: Helvetica Neue, Helvetica, sans-serif;
+}
+
+view, text, image, button, input, textarea, scroll-view {
+	box-sizing: border-box;
+}
+
+.page {
+	padding: 24rpx;
+	padding-bottom: 140rpx;
+}
+
+.card {
+	background: #fff;
+	border-radius: 14rpx;
+	padding: 24rpx;
+	box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.06);
+}
+
+.section-title {
+	margin: 30rpx 4rpx 16rpx;
+	font-size: 30rpx;
+	font-weight: 800;
+	color: #1f2933;
+}
+
+.subtle {
+	color: #7b8794;
+	font-size: 24rpx;
+}
+
+.btn-primary {
+	background: #13b35d;
+	color: #fff;
+	border-radius: 10rpx;
+	font-size: 28rpx;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 6rpx 14rpx;
+	border-radius: 999rpx;
+	font-size: 22rpx;
+}

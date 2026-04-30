@@ -1,0 +1,54 @@
+.intro-title {
+	font-size: 34rpx;
+	font-weight: 800;
+	margin-bottom: 10rpx;
+}
+
+.form-card {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.field {
+	width: 100%;
+	min-height: 80rpx;
+	padding: 0 18rpx;
+	border: 1rpx solid #e6ece8;
+	border-radius: 10rpx;
+	background: #fff;
+	font-size: 26rpx;
+}
+
+.textarea {
+	padding-top: 18rpx;
+	min-height: 180rpx;
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.record {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+}
+
+.record-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.record-title {
+	font-size: 30rpx;
+	font-weight: 700;
+}
+
+.status {
+	background: #e8f7ef;
+	color: #13b35d;
+}

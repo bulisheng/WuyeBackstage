@@ -1,0 +1,20 @@
+<view class="page">
+	<view wx:if="{{blocked}}" class="card intro">
+		<view class="intro-title">需要认证业主</view>
+		<text class="subtle">完成认证后可使用生活服务。</text>
+	</view>
+
+	<view wx:else>
+		<view class="card intro">
+			<view class="intro-title">生活服务聚合页</view>
+		</view>
+
+		<view class="section-title">服务模块</view>
+		<view class="grid">
+			<view wx:for="{{menus}}" wx:key="title" class="item card" bindtap="openModule">
+				<view class="item-title">{{item.title}}</view>
+				<text>{{item.desc}}</text>
+			</view>
+		</view>
+	</view>
+</view>

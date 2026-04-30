@@ -1,0 +1,24 @@
+.intro-title {
+	font-size: 34rpx;
+	font-weight: 800;
+	margin-bottom: 10rpx;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 16rpx;
+}
+
+.item-title {
+	font-size: 30rpx;
+	font-weight: 700;
+	margin-bottom: 8rpx;
+}
+
+.item text {
+	display: block;
+	color: #7b8794;
+	font-size: 24rpx;
+	line-height: 1.5;
+}

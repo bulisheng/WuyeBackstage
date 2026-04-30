@@ -1,0 +1,16 @@
+{
+	"version": "2.0",
+	"envId": "cloudbase-d9g78eneac709f5a5",
+	"app": {
+		"serviceName": "sxwy-admin",
+		"root": "./web-admin",
+		"framework": "vite",
+		"installCommand": "npm install",
+		"buildCommand": "npm run build",
+		"outputDir": "./dist",
+		"deployPath": "/sxwy-admin",
+		"envVariables": {
+			"VITE_ADMIN_API_BASE": ""
+		}
+	}
+}

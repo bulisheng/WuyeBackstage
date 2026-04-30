@@ -1,0 +1,50 @@
+{
+	"pages": [
+		"projects/house/pages/auth/index/auth_index",
+		"projects/house/pages/default/index/default_index",
+		"projects/house/pages/life/index/life_index",
+		"projects/house/pages/repair/index/repair_index",
+		"projects/house/pages/my/index/my_index",
+		"projects/house/pages/admin/index/admin_index"
+	],
+	"window": {
+		"backgroundColor": "#f4f7f5",
+		"backgroundTextStyle": "dark",
+		"navigationBarBackgroundColor": "#13B35D",
+		"navigationBarTitleText": "盛兴物业",
+		"navigationBarTextStyle": "white"
+	},
+	"tabBar": {
+		"custom": false,
+		"backgroundColor": "#FFFFFF",
+		"color": "#8d95a1",
+		"selectedColor": "#13B35D",
+		"list": [
+			{
+				"pagePath": "projects/house/pages/default/index/default_index",
+				"text": "首页",
+				"iconPath": "/images/tabbar/home.png",
+				"selectedIconPath": "/images/tabbar/home_cur.png"
+			},
+			{
+				"pagePath": "projects/house/pages/life/index/life_index",
+				"text": "生活",
+				"iconPath": "/images/tabbar/life.png",
+				"selectedIconPath": "/images/tabbar/life_cur.png"
+			},
+			{
+				"pagePath": "projects/house/pages/repair/index/repair_index",
+				"text": "报修",
+				"iconPath": "/images/tabbar/repair.png",
+				"selectedIconPath": "/images/tabbar/repair_cur.png"
+			},
+			{
+				"pagePath": "projects/house/pages/my/index/my_index",
+				"text": "我的",
+				"iconPath": "/images/tabbar/my.png",
+				"selectedIconPath": "/images/tabbar/my_cur.png"
+			}
+		]
+	},
+	"sitemapLocation": "sitemap.json"
+}

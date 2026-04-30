@@ -1,0 +1,24 @@
+<view class="page">
+	<view class="card auth-hero">
+		<view class="title">登录</view>
+		<text class="subtle">先完成手机号、小区和验证码登录，之后去个人中心继续业主认证。</text>
+	</view>
+
+	<view class="card form">
+		<picker mode="selector" range="{{communityNames}}" value="{{communityIndex}}" bindchange="bindCommunityChange">
+			<view class="field picker-field">
+				<text wx:if="{{communities.length}}">小区：{{selectedCommunityName}}</text>
+				<text wx:else>请选择小区</text>
+			</view>
+		</picker>
+		<input class="field" placeholder="手机号" value="{{form.mobile}}" data-key="mobile" bindinput="bindInput" />
+		<view class="code-row">
+			<input class="field code-input" placeholder="验证码" value="{{form.code}}" data-key="code" bindinput="bindInput" />
+			<button class="btn-ghost code-btn" loading="{{sendingCode}}" disabled="{{countdown > 0}}" bindtap="sendCode">
+				{{countdown > 0 ? countdown + 's' : '获取验证码'}}
+			</button>
+		</view>
+		<view wx:if="{{debugCode}}" class="debug-code">测试验证码：{{debugCode}}</view>
+		<button class="btn-primary" loading="{{submitting}}" bindtap="submit">登录</button>
+	</view>
+</view>
