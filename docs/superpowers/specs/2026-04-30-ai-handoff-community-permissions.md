@@ -1,72 +1,72 @@
-# AI Handoff: Community Permissions State
+# 社区权限交接说明
 
-> This document is for the next AI agent that continues work on the Shengxing Property admin SaaS. Read this before making changes.
+> 本文档是给下一位继续推进盛兴物业后台 SaaS 的 AI 使用的。开始修改前请先阅读。
 
-## What has already been done
+## 已经完成了什么
 
-### Stage 1 foundation
-- Community switching has been introduced in the admin backend.
-- Current community selection is persisted.
-- Community CRUD exists in the admin UI.
-- Static hosting has been updated with the latest `web-admin/dist`.
+### 第一阶段基础能力
+- 后台已经支持小区切换。
+- 当前小区选择已经持久化。
+- 后台已经有小区增删改查。
+- 静态站点已经更新到最新的 `web-admin/dist`。
 
-### Permission system
-- Admins, community permissions, and roles are already modeled in the backend and admin UI.
-- The permissions page now shows a community-by-role matrix.
-- Role defaults are already defined in the frontend helper:
+### 权限系统
+- 后端和后台页面已经有管理员、小区权限、角色的基础模型。
+- 权限页已经展示按小区 / 按角色的矩阵。
+- 前端辅助函数里已经定义了角色默认值：
   - `super_admin`
   - `admin`
   - `finance`
   - `customer_service`
   - `repairman`
-- Role-level menu presets and action-level presets now exist in:
+- 角色级菜单预设和动作级预设已经放在：
   - `web-admin/src/utils/permissions.js`
-- The permissions page already has:
-  - a role default-menu preview
-  - a quick action token panel
-  - clickable matrix cells that jump into the matching permission record
+- 权限页现在已经有：
+  - 角色默认菜单预览
+  - 快速动作 token 面板
+  - 可点击的矩阵单元格，点击后可以直接跳转到对应权限记录编辑
 
-### Latest commits
+### 最近提交
 - `c10d783 feat: 优化权限规则交互`
 - `562a9dd 文档: 新增角色权限规则实施计划`
 
-## What should happen next
+## 下一步应该做什么
 
-### Priority 1: move permission enforcement into the backend
-The current work mainly improves UI and frontend rule previews. The next real milestone is backend enforcement.
+### 优先级 1：把权限校验下沉到后端
+当前工作主要是在 UI 和前端规则预览层。下一步真正要做的是后端拦截。
 
-Implement these checks in the relevant admin/business endpoints:
+请在相关的后台业务接口里实现这些校验：
 - `checkCommunityPermission`
 - `checkModuleEnabled`
 - `checkRolePermission`
 
-The backend should treat permissions in this order:
-- role decides the default visible menu range
-- community permissions override to action/button level
-- community scope always wins when the user is restricted to specific communities
+后端判断权限时，建议按这个顺序：
+- 角色先决定默认可见菜单范围
+- 小区权限再覆盖到按钮 / 动作级
+- 用户只要被限制在指定小区，小区范围就应该始终优先生效
 
-### Priority 2: connect the permission model to real menu visibility
-The admin UI currently previews role menus, but most navigation is still static.
-Next step:
-- derive visible modules from the active role
-- hide or disable entries that are not allowed
-- show a clear reason when a button is hidden or disabled
+### 优先级 2：把权限模型真正接到菜单显示上
+现在后台只是预览了角色菜单，但大多数导航还是静态的。
+下一步应该：
+- 从当前角色推导出可见模块
+- 隐藏或禁用没有权限的入口
+- 按钮被隐藏或禁用时，要给出明确原因
 
-### Priority 3: make community overrides explicit
-Add or improve UI so an operator can tell:
-- which permissions come from the role default
-- which permissions are added by the community override
-- which actions are still missing and need to be granted
+### 优先级 3：把小区覆盖项做得更明确
+继续完善页面，让操作人员能看清楚：
+- 哪些权限来自角色默认值
+- 哪些权限来自小区覆盖
+- 哪些动作还缺失，需要补授权
 
-## What to watch out for
+## 注意事项
 
-- Do not overwrite the existing `web-admin/dist` without rebuilding first.
-- Do not replace the role-default/menu model with a per-page ad hoc check.
-- Do not let community permissions erase the role defaults entirely. Community permissions should override or extend at action level, not remove the baseline menu structure.
-- Keep Chinese commit messages. This repo already uses Chinese commit summaries for feature work.
-- When updating backend and database changes, keep CloudBase and Git in sync in the same change set.
+- 不要在没有重新构建的情况下直接覆盖现有 `web-admin/dist`。
+- 不要把“角色默认菜单”模型替换成每个页面各写各的临时判断。
+- 不要让小区权限把角色默认值完全抹掉。小区权限应该是在动作级做覆盖或扩展，而不是删掉基础菜单结构。
+- 提交记录请继续使用中文。这个仓库的功能提交已经采用中文总结。
+- 后端和数据库改动时，要保持 CloudBase 和 Git 同步，并放在同一个改动集合里处理。
 
-## Files that matter most
+## 最重要的文件
 
 - `web-admin/src/utils/permissions.js`
 - `web-admin/src/App.vue`
@@ -74,10 +74,10 @@ Add or improve UI so an operator can tell:
 - `web-admin/tests/permission_utils.test.mjs`
 - `web-admin/dist/`
 
-## Suggested next implementation order
+## 建议的下一步顺序
 
-1. Add backend permission middleware.
-2. Wire permission middleware into the admin endpoints.
-3. Make the menu layer consume role defaults.
-4. Make button/action layer consume community overrides.
-5. Rebuild and publish `web-admin/dist`.
+1. 增加后端权限中间件。
+2. 把权限中间件接到后台接口里。
+3. 让菜单层消费角色默认值。
+4. 让按钮 / 动作层消费小区覆盖项。
+5. 重新构建并发布 `web-admin/dist`。
