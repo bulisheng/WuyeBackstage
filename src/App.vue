@@ -712,18 +712,18 @@
 				<div class="form-grid login-grid">
 					<label class="field span-2">
 						<span>账号</span>
-						<input v-model="loginForm.username" type="text" placeholder="例如 super_admin" />
+						<input v-model="loginForm.username" type="text" placeholder="请输入管理员账号" />
 					</label>
 					<label class="field span-2">
 						<span>密码</span>
-						<input v-model="loginForm.password" type="password" placeholder="请输入管理员密码" />
+						<input v-model="loginForm.password" type="password" placeholder="请输入密码" />
 					</label>
 				</div>
 				<div class="form-actions">
 					<button class="primary" @click="loginAdmin">登录</button>
 					<button @click="resetLoginForm">重置</button>
 				</div>
-				<p class="helper-text">默认超级管理员：`super_admin` / `Admin@123456`，如已配置环境变量则以环境变量为准。</p>
+				<p class="helper-text">请手动输入管理员账号和密码，不在页面展示默认口令。</p>
 			</section>
 		</main>
 	</div>
@@ -757,7 +757,7 @@ const moduleRecords = ref([]);
 const roleOptions = ref(listRoleOptions());
 const currentAdminId = ref(adminApi.getCurrentAdminId());
 const adminAccess = ref(null);
-const loginForm = ref({ username: 'super_admin', password: 'Admin@123456' });
+const loginForm = ref({ username: '', password: '' });
 const editingAdminId = ref('');
 const editingPermissionId = ref('');
 const activePermissionTab = ref('admins');
@@ -1031,7 +1031,7 @@ async function loadAccessProfile() {
 }
 
 function resetLoginForm() {
-	loginForm.value = { username: 'super_admin', password: '' };
+	loginForm.value = { username: '', password: '' };
 }
 
 async function loginAdmin() {
