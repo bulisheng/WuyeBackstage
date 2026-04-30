@@ -245,6 +245,15 @@
 									</option>
 								</select>
 							</label>
+							<div class="role-preview span-2">
+								<div class="preview-head">
+									<h4>默认菜单</h4>
+									<span>{{ adminRoleAccess.note }}</span>
+								</div>
+								<div class="chip-row">
+									<span v-for="item in adminRoleAccess.menuLabels" :key="item" class="chip">{{ item }}</span>
+								</div>
+							</div>
 							<label class="field">
 								<span>默认小区</span>
 								<select v-model.number="adminForm.communityId">
@@ -309,6 +318,36 @@
 							<button class="primary" @click="savePermission">{{ editingPermissionId ? '保存权限' : '新增权限' }}</button>
 							<button @click="resetPermissionForm">重置</button>
 						</div>
+						<div class="access-preview">
+							<div class="preview-block">
+								<div class="preview-head">
+									<h4>角色默认菜单</h4>
+									<span>{{ permissionRoleAccess.note }}</span>
+								</div>
+								<div class="chip-row">
+									<span v-for="item in permissionRoleAccess.menuLabels" :key="item" class="chip">{{ item }}</span>
+								</div>
+							</div>
+							<div class="preview-block">
+								<div class="preview-head">
+									<h4>动作级覆盖</h4>
+									<span>点击动作可快速追加到权限项</span>
+								</div>
+								<div class="chip-row">
+									<button
+										v-for="item in quickPermissionTokens"
+										:key="item"
+										type="button"
+										class="chip chip-button"
+										@click="appendPermissionToken(item)"
+									>
+										{{ buildActionLabel(item) }}
+									</button>
+								</div>
+								<p class="helper-text">当前生效动作：{{ permissionAccess.actionLabels.join('、') || '无' }}</p>
+								<p class="helper-text">社区覆盖项：{{ permissionAccess.extraActionLabels.join('、') || '无' }}</p>
+							</div>
+						</div>
 					</div>
 				</div>
 				<div class="matrix-panel">
@@ -334,10 +373,10 @@
 									</div>
 								</td>
 								<td v-for="cell in row.cells" :key="cell.role">
-									<div class="matrix-cell">
+									<button type="button" class="matrix-cell matrix-cell-button" @click="openMatrixCell(row, cell)">
 										<strong>{{ cell.count ? `${cell.count} 条` : '无' }}</strong>
 										<span>{{ cell.summary }}</span>
-									</div>
+									</button>
 								</td>
 							</tr>
 						</tbody>
@@ -512,7 +551,15 @@
 import { computed, onMounted, ref } from 'vue';
 import { adminApi } from './api/admin.js';
 import { buildCommunityLabel, buildCommunityPayload, createCommunityForm } from './utils/community.js';
-import { buildPermissionMatrix, buildPermissionRecord, listRoleOptions } from './utils/permissions.js';
+import {
+	buildActionLabel,
+	buildEffectiveAccess,
+	buildPermissionMatrix,
+	buildPermissionRecord,
+	buildRoleAccessProfile,
+	listRoleOptions,
+	parsePermissions
+} from './utils/permissions.js';
 
 const activeTab = ref('dashboard');
 const stats = ref([]);
@@ -553,7 +600,25 @@ const pendingCount = computed(() => owners.value.filter((item) => item.auditStat
 const activeCommunities = computed(() => communities.value.filter((item) => item.active));
 const activeCommunity = computed(() => communities.value.find((item) => item.schemaName === selectedSchema.value) || null);
 const permissionMatrix = computed(() => buildPermissionMatrix(communities.value, permissions.value, roleOptions.value));
+const adminRoleAccess = computed(() => buildRoleAccessProfile(adminForm.value.role));
+const permissionRoleAccess = computed(() => buildRoleAccessProfile(permissionForm.value.role));
+const permissionAccess = computed(() => buildEffectiveAccess(permissionForm.value.role, permissionForm.value.permissions));
 const communityLabel = buildCommunityLabel;
+const quickPermissionTokens = [
+	'community:edit',
+	'announcement:publish',
+	'owner:audit',
+	'repair:view',
+	'repair:assign',
+	'repair:update',
+	'repair:close',
+	'fee:view',
+	'fee:collect',
+	'fee:remind',
+	'fee:export',
+	'complaint:handle',
+	'notice:publish'
+];
 
 function statusText(status) {
 	return {
@@ -630,6 +695,31 @@ function announcementStatusText(status) {
 function communityNameById(id) {
 	const item = communities.value.find((entry) => Number(entry.id) === Number(id));
 	return item ? communityLabel(item) : '未设置';
+}
+
+function appendPermissionToken(token) {
+	const next = parsePermissions(permissionForm.value.permissions);
+	if (!next.includes(token)) {
+		next.push(token);
+	}
+	permissionForm.value.permissions = next.join(', ');
+}
+
+function openMatrixCell(row, cell) {
+	const activeRecord = cell.records.find((item) => item.active !== false && item.active !== 0 && item.active !== '0');
+	if (activeRecord) {
+		editPermission(activeRecord);
+		return;
+	}
+	editingPermissionId.value = '';
+	permissionForm.value = {
+		adminId: 0,
+		communityId: row.communityId,
+		role: cell.role,
+		permissions: '',
+		active: 1
+	};
+	activeTab.value = 'permissions';
 }
 
 async function loadCommunities() {

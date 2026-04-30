@@ -352,6 +352,70 @@ th {
 	gap: 14px;
 }
 
+.role-preview,
+.access-preview {
+	display: grid;
+	gap: 10px;
+	padding: 12px;
+	border: 1px solid #e5ece8;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.preview-block {
+	display: grid;
+	gap: 8px;
+}
+
+.preview-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.preview-head h4 {
+	margin: 0;
+	font-size: 14px;
+}
+
+.preview-head span,
+.helper-text {
+	color: #6b7280;
+	font-size: 12px;
+	line-height: 1.5;
+	margin: 0;
+}
+
+.chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 6px 10px;
+	border-radius: 999px;
+	border: 1px solid #d9e1dc;
+	background: #f8faf9;
+	color: #27533b;
+	font-size: 12px;
+	line-height: 1;
+}
+
+.chip-button {
+	cursor: pointer;
+	background: #ecfdf3;
+	color: #0f5132;
+}
+
+.chip-button:hover {
+	background: #d1fae5;
+}
+
 .spaced-table {
 	margin-top: 4px;
 }
@@ -382,6 +446,21 @@ th {
 .matrix-cell {
 	display: grid;
 	gap: 4px;
+}
+
+.matrix-cell-button {
+	width: 100%;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	padding: 10px 12px;
+	background: #fff;
+	text-align: left;
+	cursor: pointer;
+}
+
+.matrix-cell-button:hover {
+	border-color: #b8d7c6;
+	background: #f8faf9;
 }
 
 .matrix-community span,
