@@ -1,9 +1,0 @@
-page { background: #f7f8fa; }
-.page { padding: 20rpx 24rpx; }
-.tabs { display: flex; justify-content: space-around; height: 72rpx; color: #8b95a1; font-size: 27rpx; }
-.tabs .active { color: #13b35d; font-weight: 800; border-bottom: 6rpx solid #13b35d; }
-.record { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 26rpx 24rpx; border-radius: 14rpx; margin-top: 18rpx; }
-.title { font-size: 29rpx; font-weight: 700; color: #202124; margin-bottom: 10rpx; }
-.record text { color: #8b95a1; font-size: 23rpx; }
-.amount { font-size: 29rpx; color: #202124; }
-.empty { text-align: center; color: #a0a7b0; padding: 50rpx 0; }

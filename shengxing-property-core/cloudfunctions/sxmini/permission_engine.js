@@ -6,7 +6,7 @@ const ROLE_ACCESS_PRESETS = {
 	},
 	admin: {
 		menus: ['dashboard', 'owners', 'announcements', 'communities', 'permissions', 'repairs', 'fees', 'complaints', 'notices'],
-		actions: ['community:view', 'community:edit', 'community:delete', 'community:module:view', 'community:module:manage', 'announcement:view', 'announcement:publish', 'announcement:delete', 'owner:view', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
+		actions: ['community:view', 'community:edit', 'community:delete', 'community:module:view', 'community:module:manage', 'announcement:view', 'announcement:publish', 'announcement:delete', 'owner:view', 'owner:audit', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:manage', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
 		note: '管理员默认可见全部业务菜单'
 	},
 	finance: {
@@ -46,11 +46,17 @@ const ROUTE_RULES = {
 	'admin/audit/list': { module: 'permissions', action: 'admin:audit:view' },
 	'admin/repair/list': { module: 'repairs', action: 'repair:view' },
 	'admin/fee/list': { module: 'fees', action: 'fee:view' },
+	'admin/fee/save': { module: 'fees', action: 'fee:manage' },
+	'admin/fee/delete': { module: 'fees', action: 'fee:manage' },
+	'admin/fee/remind': { module: 'fees', action: 'fee:remind' },
 	'admin/complaint/list': { module: 'complaints', action: 'complaint:view' },
 	'admin/notice_config/list': { module: 'notices', action: 'notice:view' },
 	'admin/announcement/list': { module: 'announcements', action: 'announcement:view' },
 	'admin/announcement/save': { module: 'announcements', action: 'announcement:publish' },
 	'admin/announcement/delete': { module: 'announcements', action: 'announcement:delete' },
+	'user/billing/list': { module: 'fees', action: 'fee:view' },
+	'user/billing/detail': { module: 'fees', action: 'fee:view' },
+	'user/billing/pay': { module: 'fees', action: 'fee:collect' },
 	'user/community_switch': { module: 'communities', action: 'community:switch' },
 	'user/house_bind': { module: 'owners', action: 'owner:bind_house' },
 	'user/house_unbind': { module: 'owners', action: 'owner:unbind_house' },

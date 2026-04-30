@@ -4,10 +4,16 @@
 			"path": "."
 		},
 		{
+			"path": "./shengxing-property-core"
+		},
+		{
 			"path": "../WK-main"
 		},
 		{
 			"path": "../drivermini-master"
+		},
+		{
+			"path": "../WuyeBackstage"
 		}
 	],
 	"settings": {}

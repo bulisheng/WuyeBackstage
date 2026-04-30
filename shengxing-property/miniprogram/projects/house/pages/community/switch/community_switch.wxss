@@ -1,5 +1,0 @@
-page { background: #f7f8fa; }
-.page { padding: 24rpx; }
-.community-row { height: 96rpx; background: #fff; border-radius: 14rpx; padding: 0 26rpx; display: flex; align-items: center; justify-content: space-between; margin-bottom: 18rpx; font-size: 29rpx; color: #1f2933; }
-.current { color: #19b45b; font-size: 24rpx; font-weight: 700; }
-.add-btn { position: fixed; left: 24rpx; right: 24rpx; bottom: 48rpx; height: 88rpx; line-height: 88rpx; border-radius: 16rpx; background: #fff; color: #18b55f; font-size: 29rpx; }

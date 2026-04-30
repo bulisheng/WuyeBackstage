@@ -9,6 +9,24 @@
 			<view class="intro-title">生活服务聚合页</view>
 		</view>
 
+		<view class="section-title">待缴账单</view>
+		<view wx:if="{{!bills.length}}" class="card empty">
+			<text class="subtle">当前没有待缴账单。</text>
+		</view>
+		<view wx:for="{{bills}}" wx:key="id" class="card bill-card" bindtap="openBill" data-id="{{item.id}}">
+			<view class="bill-row">
+				<view>
+					<view class="item-title">{{item.title}}</view>
+					<text class="subtle">{{item.house || '未绑定房屋'}} · {{item.billNo}}</text>
+				</view>
+				<view class="bill-meta">
+					<text class="bill-amount">¥{{item.amount}}</text>
+					<text class="bill-status">{{item.status}}</text>
+					<button wx:if="{{item.status === 'pending' || item.status === 'unpaid' || item.status === 'overdue'}}" class="pay-btn" catchtap="payBill" data-id="{{item.id}}">立即支付</button>
+				</view>
+			</view>
+		</view>
+
 		<view class="section-title">服务模块</view>
 		<view class="grid">
 			<view wx:for="{{menus}}" wx:key="title" class="item card" bindtap="openModule">

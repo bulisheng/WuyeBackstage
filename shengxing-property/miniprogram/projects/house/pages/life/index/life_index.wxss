@@ -1,6 +1,0 @@
-page { background: #f7f8fa; }
-.page { padding: 24rpx; }
-.life-card { background: #fff; border-radius: 16rpx; min-height: 118rpx; padding: 24rpx; display: flex; align-items: center; justify-content: space-between; margin-bottom: 18rpx; }
-.title { font-size: 31rpx; color: #202124; font-weight: 800; margin-bottom: 12rpx; }
-.life-card text { color: #8b95a1; font-size: 24rpx; }
-.icon-right { color: #c1c7d0 !important; }

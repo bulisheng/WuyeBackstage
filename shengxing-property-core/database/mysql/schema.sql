@@ -231,6 +231,81 @@ CREATE TABLE IF NOT EXISTS `rzb`.`task_images` (
 	KEY idx_task_images_community (community_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `rzb`.`bills` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	house_id BIGINT UNSIGNED DEFAULT NULL,
+	user_id BIGINT UNSIGNED DEFAULT NULL,
+	owner_name VARCHAR(80) DEFAULT '',
+	house VARCHAR(120) DEFAULT '',
+	bill_no VARCHAR(80) NOT NULL,
+	title VARCHAR(160) NOT NULL,
+	bill_type VARCHAR(60) NOT NULL DEFAULT '物业费',
+	amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+	status ENUM('pending','paid','overdue','cancelled','refunded') NOT NULL DEFAULT 'pending',
+	due_date DATE NULL,
+	paid_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	UNIQUE KEY uk_bills_bill_no (bill_no),
+	KEY idx_bills_community_status (community_id, status),
+	KEY idx_bills_user (user_id),
+	KEY idx_bills_house (house_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `rzb`.`bill_items` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	bill_id BIGINT UNSIGNED NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	name VARCHAR(120) NOT NULL,
+	amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+	remark VARCHAR(255) DEFAULT '',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	KEY idx_bill_items_bill (bill_id),
+	KEY idx_bill_items_community (community_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `rzb`.`payments` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	user_id BIGINT UNSIGNED DEFAULT NULL,
+	house_id BIGINT UNSIGNED DEFAULT NULL,
+	bill_id BIGINT UNSIGNED NOT NULL,
+	payment_no VARCHAR(80) NOT NULL,
+	amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+	channel ENUM('wechat','cash','system') NOT NULL DEFAULT 'wechat',
+	status ENUM('pending','success','failed','cancelled','refunded') NOT NULL DEFAULT 'pending',
+	transaction_id VARCHAR(120) DEFAULT '',
+	paid_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	UNIQUE KEY uk_payments_payment_no (payment_no),
+	KEY idx_payments_bill (bill_id),
+	KEY idx_payments_community_status (community_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `rzb`.`bill_reminders` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	bill_id BIGINT UNSIGNED NOT NULL,
+	user_id BIGINT UNSIGNED DEFAULT NULL,
+	channel ENUM('wechat','sms','dingtalk','phone_task','system') NOT NULL DEFAULT 'system',
+	title VARCHAR(160) NOT NULL,
+	content TEXT,
+	status ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
+	sent_at DATETIME NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	KEY idx_bill_reminders_bill (bill_id),
+	KEY idx_bill_reminders_community (community_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `rzb`.`repairs` (
 	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 	_openid VARCHAR(64) DEFAULT '' NOT NULL,

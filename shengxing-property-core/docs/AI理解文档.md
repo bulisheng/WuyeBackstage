@@ -58,6 +58,27 @@
 
 这三个模块决定系统能不能真正上线收钱、接单、处理日常物业事务。
 
+### 4.1 当前进度
+
+第二阶段 P1 已经开始落地，当前状态是：
+
+- 已新增统一工单底座 `tasks / task_logs / task_images`
+- 已新增缴费底座 `bills / bill_items / payments / bill_reminders`
+- 住户侧已经接入 `user/billing/list`、`user/billing/detail`、`user/billing/pay`
+- 后台“缴费管理”页已经补了账单创建、删除、催缴
+- CloudBase MySQL 已初始化账单相关表
+- `sxmini` 云函数已经同步到 CloudBase
+- 静态站点已经重新发布
+- 后台已经改成登录/退出模式，不再要求先选择操作对象，直接用管理员账号登录即可
+- 系统会自动种一个超级管理员，默认账号是 `super_admin`
+- 默认超级管理员的密码由环境变量控制，未配置时使用 `Admin@123456`
+
+当前还在继续补的内容：
+
+- 账单更完整的支付记录和催缴视图
+- 报修系统页面和状态流转
+- 把报修和缴费进一步统一到工单状态机里
+
 ## 5. 业务状态要先理解清楚
 
 ### 5.1 缴费系统
@@ -71,6 +92,13 @@
 - 催缴机制
 
 这是收入闭环，不是展示页。
+
+当前代码里已经先补了最小闭环：
+
+- 后台可以创建 / 删除 / 催缴账单
+- 住户侧可以看到待缴账单
+- 住户侧可以发起支付落库
+- 账单详情页能看到明细和支付记录
 
 ### 5.2 报修系统
 
@@ -101,6 +129,8 @@
 - `cloudfunctions/sxmini/permission_engine.js`
 - `cloudfunctions/sxmini/community_modules.js`
 - `cloudfunctions/sxmini/admin_audit.js`
+- `cloudfunctions/sxmini/billing_engine.js`
+- `cloudfunctions/sxmini/task_engine.js`
 
 ### 数据库
 - `database/mysql/schema.sql`
@@ -113,6 +143,7 @@
 ### 小程序
 - `miniprogram/projects/house/pages/default/index/default_index.js`
 - `miniprogram/utils/modules.js`
+- `miniprogram/projects/house/pages/life/index/life_index.js`
 
 ## 7. 现在的权限判断顺序
 
@@ -162,3 +193,12 @@
 - 第一阶段已经完成
 - 第二阶段从缴费、报修、统一工单开始
 - 后续所有改动都要继续遵守多小区 SaaS、权限、模块开关和审计原则
+
+## 12. 第二阶段提醒
+
+- 现在不要把缴费做成单纯列表页，必须围绕账单、支付、支付记录、催缴这条链路来做。
+- 现在不要把报修做成孤立页面，后面要能落到统一工单底座。
+- 新增后端路由时，记得同步 `permission_engine.js`，否则模块拦截会漏。
+- 新增数据库表时，记得同步 CloudBase MySQL 和 `database/mysql/schema.sql`。
+- 新增完成后，记得同步更新这个 AI 理解文档，不要让下一位 AI 读到旧状态。
+- 后台现在靠登录态决定可见界面，超级管理员负责创建和管理其他管理员，不要再依赖“选择操作对象”这个旧入口。

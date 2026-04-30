@@ -12,3 +12,12 @@ $RECYCLE.BIN/
 
 # Node.js
 node_modules/
+
+# Backstage has been split into a separate repository
+shengxing-property-core/web-admin/
+
+# CloudBase / local tool scratch directories
+shengxing-property-core/.cloudbase-mcp/
+shengxing-property-core/.config/
+shengxing-property-core/AppData/
+shengxing-property-core/cloudbase-framework/

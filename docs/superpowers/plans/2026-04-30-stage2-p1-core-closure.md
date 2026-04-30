@@ -8,6 +8,8 @@
 
 **Tech Stack:** CloudBase MySQL, CloudBase cloud functions, WeChat Mini Program, Vue admin, vanilla Node.js, existing static hosting.
 
+**Current progress:** Task 1 is completed. Task 2 is partially completed with the billing schema, backend routes, admin fee page, user billing routes, CloudBase MySQL sync, cloud function sync, and static hosting sync already in place. Task 3+ remain to be finished.
+
 ---
 
 ### Task 1: Add the unified task foundation that billing and repair can share
@@ -147,6 +149,8 @@ Expected: FAIL because the test file is not implemented yet and billing engine s
 // Expose admin routes for list/detail/create/submit-reminder.
 // Expose user routes for list/detail and payment record lookup.
 ```
+
+> Note: the repository now already contains a live billing implementation on this path. Keep this section as the intended contract and use it to drive the remaining polish work rather than redoing the foundation.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -293,4 +297,3 @@ Verify the cloud function detail and database resource state show the latest ver
 - [ ] **Step 4: Commit any final doc-only follow-up**
 
 If docs need a last pass, commit it in Chinese with a short summary.
-

@@ -10,6 +10,46 @@
 	gap: 16rpx;
 }
 
+.bill-card {
+	margin-bottom: 20rpx;
+}
+
+.bill-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.bill-meta {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6rpx;
+}
+
+.bill-amount {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: #0f7a43;
+}
+
+.bill-status {
+	font-size: 22rpx;
+	color: #64748b;
+}
+
+.pay-btn {
+	margin-top: 10rpx;
+	padding: 0 18rpx;
+	height: 54rpx;
+	line-height: 54rpx;
+	font-size: 24rpx;
+	border-radius: 999rpx;
+	background: #0f7a43;
+	color: #fff;
+}
+
 .item-title {
 	font-size: 30rpx;
 	font-weight: 700;

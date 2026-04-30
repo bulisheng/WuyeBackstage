@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const permissionEngine = require('./permission_engine.js');
 const communityModules = require('./community_modules.js');
 const taskEngine = require('./task_engine.js');
+const billingEngine = require('./billing_engine.js');
 
 cloud.init({
 	env: cloud.DYNAMIC_CURRENT_ENV
@@ -26,6 +27,8 @@ const ADMIN_ROLES = [
 	{ value: 'customer_service', label: '客服' },
 	{ value: 'repairman', label: '维修' }
 ];
+const ADMIN_BOOTSTRAP_USERNAME = process.env.ADMIN_BOOTSTRAP_USERNAME || 'super_admin';
+const ADMIN_BOOTSTRAP_PASSWORD = process.env.ADMIN_BOOTSTRAP_PASSWORD || 'Admin@123456';
 const TENANT_TABLES = [
 	'owners',
 	'login_sessions',
@@ -35,15 +38,18 @@ const TENANT_TABLES = [
 	'tasks',
 	'task_logs',
 	'task_images',
+	'bills',
+	'bill_items',
+	'payments',
+	'bill_reminders',
 	'fee_bills',
 	'complaints',
 	'service_orders',
 	'notice_configs',
 	'announcements'
 ];
-const ADMIN_BOOTSTRAP_ROUTES = new Set(['admin/access/operators', 'admin/role/list']);
+const ADMIN_BOOTSTRAP_ROUTES = new Set(['admin/role/list']);
 const MODULE_CHECK_EXEMPT_ROUTES = new Set([
-	'admin/access/operators',
 	'admin/access/profile',
 	'admin/community/list',
 	'admin/community/save',
@@ -70,6 +76,10 @@ function token(openid) {
 	return crypto.createHash('sha1').update(`${openid}:${Date.now()}:${Math.random()}`).digest('hex');
 }
 
+function sha256(value) {
+	return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
 function code() {
 	return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -91,6 +101,18 @@ function formatDateLabel(value) {
 	const m = String(raw.getMonth() + 1).padStart(2, '0');
 	const d = String(raw.getDate()).padStart(2, '0');
 	return `${y}-${m}-${d}`;
+}
+
+function toSqlDateTime(value = new Date()) {
+	const raw = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(raw.getTime())) return '';
+	const y = raw.getFullYear();
+	const m = String(raw.getMonth() + 1).padStart(2, '0');
+	const d = String(raw.getDate()).padStart(2, '0');
+	const hh = String(raw.getHours()).padStart(2, '0');
+	const mm = String(raw.getMinutes()).padStart(2, '0');
+	const ss = String(raw.getSeconds()).padStart(2, '0');
+	return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
 }
 
 function normalizeHouse(value) {
@@ -279,6 +301,20 @@ async function ensureGlobalRegistryTables() {
 	);
 }
 
+async function ensureBootstrapAdmin() {
+	await runSql(
+		`INSERT INTO ${globalTable('admin_users')}
+		(_openid, username, password_hash, role, community_id, active)
+		VALUES ({{openid}}, {{username}}, {{passwordHash}}, 'super_admin', NULL, 1)
+		ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = VALUES(role), community_id = VALUES(community_id), active = 1`,
+		{
+			openid: getOpenId(),
+			username: ADMIN_BOOTSTRAP_USERNAME,
+			passwordHash: sha256(ADMIN_BOOTSTRAP_PASSWORD)
+		}
+	);
+}
+
 async function init() {
 	for (const item of DEFAULT_COMMUNITIES) {
 		await runSql(
@@ -289,6 +325,7 @@ async function init() {
 		);
 	}
 	await ensureGlobalRegistryTables();
+	await ensureBootstrapAdmin();
 	await syncCommunityModulesForAllCommunities();
 	return { ok: true, database: 'mysql' };
 }
@@ -507,6 +544,89 @@ async function ensureTenantSchema(schemaName) {
 					PRIMARY KEY (id),
 					KEY idx_task_images_task (task_id),
 					KEY idx_task_images_community (community_id)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'bills') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					house_id BIGINT UNSIGNED DEFAULT NULL,
+					user_id BIGINT UNSIGNED DEFAULT NULL,
+					owner_name VARCHAR(80) DEFAULT '',
+					house VARCHAR(120) DEFAULT '',
+					bill_no VARCHAR(80) NOT NULL,
+					title VARCHAR(160) NOT NULL,
+					bill_type VARCHAR(60) NOT NULL DEFAULT '物业费',
+					amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+					status ENUM('pending','paid','overdue','cancelled','refunded') NOT NULL DEFAULT 'pending',
+					due_date DATE NULL,
+					paid_at DATETIME NULL,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+					PRIMARY KEY (id),
+					UNIQUE KEY uk_bills_bill_no (bill_no),
+					KEY idx_bills_community_status (community_id, status),
+					KEY idx_bills_user (user_id),
+					KEY idx_bills_house (house_id)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'bill_items') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					bill_id BIGINT UNSIGNED NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					name VARCHAR(120) NOT NULL,
+					amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+					remark VARCHAR(255) DEFAULT '',
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (id),
+					KEY idx_bill_items_bill (bill_id),
+					KEY idx_bill_items_community (community_id)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'payments') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					user_id BIGINT UNSIGNED DEFAULT NULL,
+					house_id BIGINT UNSIGNED DEFAULT NULL,
+					bill_id BIGINT UNSIGNED NOT NULL,
+					payment_no VARCHAR(80) NOT NULL,
+					amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+					channel ENUM('wechat','cash','system') NOT NULL DEFAULT 'wechat',
+					status ENUM('pending','success','failed','cancelled','refunded') NOT NULL DEFAULT 'pending',
+					transaction_id VARCHAR(120) DEFAULT '',
+					paid_at DATETIME NULL,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (id),
+					UNIQUE KEY uk_payments_payment_no (payment_no),
+					KEY idx_payments_bill (bill_id),
+					KEY idx_payments_community_status (community_id, status)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'bill_reminders') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					bill_id BIGINT UNSIGNED NOT NULL,
+					user_id BIGINT UNSIGNED DEFAULT NULL,
+					channel ENUM('wechat','sms','dingtalk','phone_task','system') NOT NULL DEFAULT 'system',
+					title VARCHAR(160) NOT NULL,
+					content TEXT,
+					status ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
+					sent_at DATETIME NULL,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (id),
+					KEY idx_bill_reminders_bill (bill_id),
+					KEY idx_bill_reminders_community (community_id)
 				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 			);
 		} else if (table === 'repairs') {
@@ -1283,7 +1403,7 @@ async function home(params = {}) {
 			{ label: '报修工单', value: await scalarCount(community.schemaName, 'repairs') },
 			{ label: '通知记录', value: await scalarCount(community.schemaName, 'notice_configs') },
 			{ label: '认证业主', value: await scalarCount(community.schemaName, 'owners') },
-			{ label: '待处理事项', value: 0 }
+			{ label: '待缴账单', value: (await scalarCount(community.schemaName, 'bills')) + (await scalarCount(community.schemaName, 'fee_bills')) }
 		],
 		announcements,
 		notices: announcements.map((item) => ({
@@ -1327,6 +1447,246 @@ async function repairCreate(params = {}) {
 			type: params.type || '',
 			description: params.desc || params.description || ''
 		}
+	);
+	return { ok: true };
+}
+
+function formatBillItems(items = []) {
+	return (Array.isArray(items) ? items : [])
+		.map((item) => billingEngine.buildBillItemRecord(Object.assign({}, item)))
+		.filter((item) => item.name || item.amount);
+}
+
+function billDto(item = {}) {
+	return {
+		id: Number(item.id || 0),
+		communityId: Number(item.community_id || item.communityId || 0),
+		houseId: item.house_id != null ? Number(item.house_id) : item.houseId != null ? Number(item.houseId) : 0,
+		userId: item.user_id != null ? Number(item.user_id) : item.userId != null ? Number(item.userId) : item.owner_id != null ? Number(item.owner_id) : item.ownerId != null ? Number(item.ownerId) : 0,
+		ownerName: item.owner_name || item.ownerName || '',
+		house: item.house || '',
+		billNo: item.bill_no || item.billNo || '',
+		title: item.title || '',
+		billType: item.bill_type || item.billType || '物业费',
+		amount: Number(item.amount || 0),
+		status: item.status || 'pending',
+		dueDate: item.due_date || item.dueDate || '',
+		paidAt: item.paid_at || item.paidAt || '',
+		createdAt: item.created_at || item.createdAt || '',
+		updatedAt: item.updated_at || item.updatedAt || ''
+	};
+}
+
+async function listBillingRows(schemaName) {
+	const modernRows = await queryRows(
+		`SELECT id, community_id, house_id, user_id, owner_name, house, bill_no, title, bill_type, amount, status, due_date, paid_at, created_at, updated_at
+		FROM ${tenantTable(schemaName, 'bills')}
+		ORDER BY id DESC`
+	).catch(() => []);
+	const legacyRows = await queryRows(
+		`SELECT id, community_id, owner_id, owner_name, house, bill_no, bill_type, amount, status, due_date, created_at, updated_at
+		FROM ${tenantTable(schemaName, 'fee_bills')}
+		ORDER BY id DESC`
+	).catch(() => []);
+	return [...modernRows.map(billDto), ...legacyRows.map(billDto)];
+}
+
+async function listBillingRowsForOwner(schemaName, owner) {
+	if (!owner) return [];
+	const ownerId = Number(owner.id || 0);
+	const ownerName = owner.name || '';
+	const house = owner.house || '';
+	return (await listBillingRows(schemaName)).filter((item) => {
+		const userMatch = item.userId && Number(item.userId) === ownerId;
+		const nameMatch = ownerName && item.ownerName && item.ownerName === ownerName;
+		const houseMatch = house && item.house && item.house === house;
+		return userMatch || nameMatch || houseMatch;
+	});
+}
+
+async function billingList(params = {}) {
+	await init();
+	const community = await resolveCommunityContext(params, { openid: getOpenId() });
+	const owner = await getOwnerByOpenid(community.schemaName, getOpenId());
+	return {
+		list: (await listBillingRowsForOwner(community.schemaName, owner)).filter((item) => ['pending', 'unpaid', 'overdue'].includes(String(item.status || '')))
+	};
+}
+
+async function billingDetail(params = {}) {
+	await init();
+	const community = await resolveCommunityContext(params, { openid: getOpenId() });
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('账单ID无效');
+	const rows = await queryRows(
+		`SELECT id, community_id, house_id, user_id, owner_name, house, bill_no, title, bill_type, amount, status, due_date, paid_at, created_at, updated_at
+		FROM ${tenantTable(community.schemaName, 'bills')}
+		WHERE id = {{id}}
+		LIMIT 1`,
+		{ id }
+	);
+	let bill = rows[0] ? billDto(rows[0]) : null;
+	if (!bill) {
+		const legacyRows = await queryRows(
+			`SELECT id, community_id, owner_id, owner_name, house, bill_no, bill_type, amount, status, due_date, created_at, updated_at
+			FROM ${tenantTable(community.schemaName, 'fee_bills')}
+			WHERE id = {{id}}
+			LIMIT 1`,
+			{ id }
+		);
+		bill = legacyRows[0] ? billDto(legacyRows[0]) : null;
+	}
+	if (!bill) throw new Error('账单不存在');
+	const items = await queryRows(
+		`SELECT id, bill_id, community_id, name, amount, remark, created_at
+		FROM ${tenantTable(community.schemaName, 'bill_items')}
+		WHERE bill_id = {{billId}}
+		ORDER BY id ASC`,
+		{ billId: bill.id }
+	).catch(() => []);
+	const payments = await queryRows(
+		`SELECT id, community_id, user_id, house_id, bill_id, payment_no, amount, channel, status, transaction_id, paid_at, created_at
+		FROM ${tenantTable(community.schemaName, 'payments')}
+		WHERE bill_id = {{billId}}
+		ORDER BY id DESC`,
+		{ billId: bill.id }
+	).catch(() => []);
+	return {
+		bill,
+		items,
+		payments
+	};
+}
+
+async function adminFeeSave(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/fee/save');
+	}
+	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
+	const id = sqlNumber(params.id);
+	const bill = billingEngine.buildBillRecord({
+		communityId: community.id,
+		houseId: params.houseId || params.house_id || null,
+		userId: params.userId || params.user_id || null,
+		ownerName: params.ownerName || params.owner_name || '',
+		house: params.house || '',
+		billNo: params.billNo || params.bill_no || '',
+		title: params.title || '',
+		billType: params.billType || params.bill_type || '物业费',
+		amount: params.amount,
+		status: params.status || 'pending',
+		dueDate: params.dueDate || params.due_date || null,
+		paidAt: params.paidAt || params.paid_at || null
+	});
+	if (!bill.billNo) {
+		bill.billNo = `BILL-${Date.now()}`;
+	}
+	const items = formatBillItems(params.items || params.billItems || []);
+	if (id) {
+		await runSql(
+			`UPDATE ${tenantTable(community.schemaName, 'bills')}
+			SET house_id = {{houseId}}, user_id = {{userId}}, owner_name = {{ownerName}}, house = {{house}},
+				bill_no = {{billNo}}, title = {{title}}, bill_type = {{billType}}, amount = {{amount}},
+				status = {{status}}, due_date = {{dueDate}}, paid_at = {{paidAt}}
+			WHERE id = {{id}}`,
+			Object.assign({ id }, bill)
+		);
+		await runSql(`DELETE FROM ${tenantTable(community.schemaName, 'bill_items')} WHERE bill_id = {{billId}}`, { billId: id });
+		for (const item of items) {
+			await runSql(
+				`INSERT INTO ${tenantTable(community.schemaName, 'bill_items')}
+				(_openid, bill_id, community_id, name, amount, remark)
+				VALUES ({{openid}}, {{billId}}, {{communityId}}, {{name}}, {{amount}}, {{remark}})`,
+				{
+					openid: getOpenId(),
+					billId: id,
+					communityId: community.id,
+					name: item.name,
+					amount: item.amount,
+					remark: item.remark
+				}
+			);
+		}
+	} else {
+		await runSql(
+			`INSERT INTO ${tenantTable(community.schemaName, 'bills')}
+			(_openid, community_id, house_id, user_id, owner_name, house, bill_no, title, bill_type, amount, status, due_date, paid_at)
+			VALUES ({{openid}}, {{communityId}}, {{houseId}}, {{userId}}, {{ownerName}}, {{house}}, {{billNo}},
+				{{title}}, {{billType}}, {{amount}}, {{status}}, {{dueDate}}, {{paidAt}})`,
+			Object.assign({
+				openid: getOpenId(),
+				communityId: community.id
+			}, bill)
+		);
+		const insertedRows = await queryRows(
+			`SELECT id FROM ${tenantTable(community.schemaName, 'bills')} WHERE bill_no = {{billNo}} ORDER BY id DESC LIMIT 1`,
+			{ billNo: bill.billNo }
+		);
+		const billId = sqlNumber(insertedRows[0] && insertedRows[0].id);
+		if (!billId) throw new Error('账单保存失败');
+		for (const item of items) {
+			await runSql(
+				`INSERT INTO ${tenantTable(community.schemaName, 'bill_items')}
+				(_openid, bill_id, community_id, name, amount, remark)
+				VALUES ({{openid}}, {{billId}}, {{communityId}}, {{name}}, {{amount}}, {{remark}})`,
+				{
+					openid: getOpenId(),
+					billId,
+					communityId: community.id,
+					name: item.name,
+					amount: item.amount,
+					remark: item.remark
+				}
+			);
+		}
+	}
+	return await adminFeeList(params, accessContext);
+}
+
+async function adminFeeDelete(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/fee/delete');
+	}
+	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('账单ID无效');
+	await runSql(`DELETE FROM ${tenantTable(community.schemaName, 'bill_items')} WHERE bill_id = {{billId}}`, { billId: id });
+	await runSql(`DELETE FROM ${tenantTable(community.schemaName, 'payments')} WHERE bill_id = {{billId}}`, { billId: id });
+	await runSql(`DELETE FROM ${tenantTable(community.schemaName, 'bill_reminders')} WHERE bill_id = {{billId}}`, { billId: id });
+	await runSql(`DELETE FROM ${tenantTable(community.schemaName, 'bills')} WHERE id = {{id}}`, { id });
+	await runSql(`DELETE FROM ${tenantTable(community.schemaName, 'fee_bills')} WHERE id = {{id}}`, { id });
+	return { ok: true };
+}
+
+async function adminFeeRemind(params = {}, accessContext = null) {
+	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/fee/remind');
+	}
+	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('账单ID无效');
+	const bill = await billingDetail(Object.assign({}, params, { id }));
+	const reminder = billingEngine.buildBillReminderRecord({
+		communityId: community.id,
+		billId: id,
+		userId: bill.bill ? bill.bill.userId || null : null,
+		channel: params.channel || 'system',
+		title: params.title || (bill.bill ? bill.bill.title : '缴费提醒'),
+		content: params.content || `您有一笔账单待缴：${bill.bill ? bill.bill.title : ''}`,
+		status: params.status || (params.sendNow === false ? 'pending' : 'sent'),
+		sentAt: params.sendNow === false ? null : toSqlDateTime()
+	});
+	await runSql(
+		`INSERT INTO ${tenantTable(community.schemaName, 'bill_reminders')}
+		(_openid, community_id, bill_id, user_id, channel, title, content, status, sent_at)
+		VALUES ({{openid}}, {{communityId}}, {{billId}}, {{userId}}, {{channel}}, {{title}}, {{content}}, {{status}}, {{sentAt}})`,
+		Object.assign({ openid: getOpenId() }, reminder)
 	);
 	return { ok: true };
 }
@@ -1422,10 +1782,10 @@ async function resolveAdminAccess(headers, params = {}, route = '') {
 	requireAdminToken(headers);
 	if (ADMIN_BOOTSTRAP_ROUTES.has(route)) return null;
 	const adminUserId = readAdminUserId(headers);
-	if (!adminUserId) throw new Error('请先选择当前操作员');
+	if (!adminUserId) throw new Error('请先登录管理员');
 	const adminUser = await getAdminUserById(adminUserId);
 	if (!adminUser || !Number(adminUser.active)) {
-		throw new Error('当前操作员不存在或已停用');
+		throw new Error('当前管理员不存在或已停用');
 	}
 	const permissions = await getActiveAdminPermissions(adminUser.id);
 	const communities = await listActiveCommunities();
@@ -1827,23 +2187,35 @@ async function adminRoleList(accessContext = null) {
 	};
 }
 
-async function adminOperatorList() {
+async function adminLogin(params = {}) {
 	await init();
+	const username = String(params.username || '').trim();
+	const password = String(params.password || '').trim();
+	if (!username || !password) throw new Error('账号和密码不能为空');
 	const rows = await queryRows(
-		`SELECT u.id, u.username, u.role, u.community_id, u.active, u.last_login_at, u.created_at, u.updated_at, c.name AS community_name
-		FROM ${globalTable('admin_users')} u
-		LEFT JOIN ${globalTable('communities')} c ON c.id = u.community_id
-		ORDER BY u.id DESC`
+		`SELECT id, username, role, community_id, active, last_login_at, created_at, updated_at, password_hash
+		FROM ${globalTable('admin_users')}
+		WHERE username = {{username}}
+		LIMIT 1`,
+		{ username }
+	);
+	const user = rows[0] || null;
+	if (!user || !Number(user.active)) throw new Error('账号或密码错误');
+	if (String(user.password_hash || '') !== sha256(password)) throw new Error('账号或密码错误');
+	await runSql(
+		`UPDATE ${globalTable('admin_users')} SET last_login_at = NOW() WHERE id = {{id}}`,
+		{ id: sqlNumber(user.id) }
 	);
 	return {
-		list: rows.filter((item) => Number(item.active)).map(adminUserDto)
+		admin: adminUserDto(user),
+		ok: true
 	};
 }
 
 async function adminAccessProfile(params = {}, accessContext = null) {
 	await init();
 	if (!accessContext) {
-		throw new Error('请先选择当前操作员');
+		throw new Error('请先登录管理员');
 	}
 	const communityRows = await queryRows(
 		`SELECT id, code, name, schema_name AS schemaName, address, phone, active, sort, created_at, updated_at
@@ -2122,13 +2494,52 @@ async function adminFeeList(params = {}, accessContext = null) {
 	}
 	const community = await resolveCommunityContext(params);
 	checkCommunityAccess(accessContext, community);
-	const rows = await queryRows(
-		`SELECT id, bill_no AS billNo, owner_name AS ownerName, house, bill_type AS billType, amount, status
-		FROM ${tenantTable(community.schemaName, 'fee_bills')}
-		ORDER BY id DESC
-		LIMIT 100`
+	return { list: await listBillingRows(community.schemaName) };
+}
+
+async function userBillingPay(params = {}) {
+	await init();
+	const community = await resolveCommunityContext(params, { openid: getOpenId() });
+	checkCommunityAccess(null, community);
+	const owner = await getOwnerByOpenid(community.schemaName, getOpenId());
+	if (!owner) throw new Error('请先完成业主认证');
+	const id = sqlNumber(params.id);
+	if (!id) throw new Error('账单ID无效');
+	const billDetailData = await billingDetail(Object.assign({}, params, { id, schemaName: community.schemaName }));
+	const bill = billDetailData.bill;
+	if (!bill) throw new Error('账单不存在');
+	const paymentRecord = billingEngine.buildPaymentRecord({
+		communityId: community.id,
+		userId: owner.id,
+		houseId: bill.houseId || owner.house_id || null,
+		billId: bill.id,
+		paymentNo: params.paymentNo || `PAY-${Date.now()}-${bill.id}`,
+		amount: bill.amount,
+		channel: params.channel || 'wechat',
+		status: 'success',
+		transactionId: params.transactionId || `TX-${Date.now()}-${bill.id}`,
+		paidAt: toSqlDateTime()
+	});
+	await runSql(
+		`INSERT INTO ${tenantTable(community.schemaName, 'payments')}
+		(_openid, community_id, user_id, house_id, bill_id, payment_no, amount, channel, status, transaction_id, paid_at)
+		VALUES ({{openid}}, {{communityId}}, {{userId}}, {{houseId}}, {{billId}}, {{paymentNo}}, {{amount}}, {{channel}}, {{status}}, {{transactionId}}, {{paidAt}})`,
+		Object.assign({ openid: getOpenId() }, paymentRecord)
 	);
-	return { list: rows };
+	const paidAt = paymentRecord.paidAt || toSqlDateTime();
+	await runSql(
+		`UPDATE ${tenantTable(community.schemaName, 'bills')}
+		SET status = 'paid', paid_at = {{paidAt}}
+		WHERE id = {{id}}`,
+		{ id, paidAt }
+	);
+	await runSql(
+		`UPDATE ${tenantTable(community.schemaName, 'fee_bills')}
+		SET status = 'paid'
+		WHERE id = {{id}}`,
+		{ id }
+	).catch(() => {});
+	return { ok: true, payment: paymentRecord, bill: Object.assign({}, bill, { status: 'paid', paidAt }) };
 }
 
 async function adminComplaintList(params = {}, accessContext = null) {
@@ -2259,12 +2670,16 @@ exports.main = async (event) => {
 		else if (route === 'bootstrap/auth_submit') data = await submitAuth(params);
 		else if (route === 'bootstrap/owner_submit') data = await submitAuth(params);
 		else if (route === 'bootstrap/home') data = await home(params);
+		else if (route === 'admin/login') data = await adminLogin(params);
 		else if (routeRule && !MODULE_CHECK_EXEMPT_ROUTES.has(route) && !route.startsWith('admin/')) {
 			const community = await resolveCommunityContext(params, { openid: getOpenId() });
 			await checkCommunityModuleEnabled(community, routeRule.module);
 			if (route === 'user/community_switch') data = await switchCommunity(params);
 			else if (route === 'user/house_bind') data = await bindHouse(params);
 			else if (route === 'user/house_unbind') data = await unbindHouse(params);
+			else if (route === 'user/billing/list') data = await billingList(params);
+			else if (route === 'user/billing/detail') data = await billingDetail(params);
+			else if (route === 'user/billing/pay') data = await userBillingPay(params);
 			else if (route === 'repair/list') data = await repairList(params);
 			else if (route === 'repair/create') data = await repairCreate(params);
 			else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
@@ -2279,7 +2694,6 @@ exports.main = async (event) => {
 				if (route === 'admin/dashboard') data = await adminDashboard(params, adminAccess);
 				else if (route === 'admin/owner/list') data = await adminOwnerList(params, adminAccess);
 				else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params, adminAccess);
-				else if (route === 'admin/access/operators') data = await adminOperatorList();
 				else if (route === 'admin/community/list') data = await adminCommunityList(adminAccess);
 				else if (route === 'admin/community/save') data = await adminCommunitySave(params, adminAccess);
 				else if (route === 'admin/community/delete') data = await adminCommunityDelete(params, adminAccess);
@@ -2297,6 +2711,9 @@ exports.main = async (event) => {
 				else if (route === 'admin/audit/list') data = await adminAuditList(params, adminAccess);
 				else if (route === 'admin/repair/list') data = await adminRepairList(params, adminAccess);
 				else if (route === 'admin/fee/list') data = await adminFeeList(params, adminAccess);
+				else if (route === 'admin/fee/save') data = await adminFeeSave(params, adminAccess);
+				else if (route === 'admin/fee/delete') data = await adminFeeDelete(params, adminAccess);
+				else if (route === 'admin/fee/remind') data = await adminFeeRemind(params, adminAccess);
 				else if (route === 'admin/complaint/list') data = await adminComplaintList(params, adminAccess);
 				else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params, adminAccess);
 				else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params, adminAccess);
