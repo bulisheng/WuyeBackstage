@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk');
 const cloudbase = require('@cloudbase/node-sdk');
 const crypto = require('crypto');
+const permissionEngine = require('./permission_engine.js');
 
 cloud.init({
 	env: cloud.DYNAMIC_CURRENT_ENV
@@ -34,6 +35,7 @@ const TENANT_TABLES = [
 	'notice_configs',
 	'announcements'
 ];
+const ADMIN_BOOTSTRAP_ROUTES = new Set(['admin/user/list', 'admin/role/list']);
 
 function getOpenId() {
 	const ctx = cloud.getWXContext ? cloud.getWXContext() : {};
@@ -892,6 +894,7 @@ async function sendCode(params = {}) {
 	const mobile = String(params.mobile || '').trim();
 	if (!mobile) throw new Error('mobile required');
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const schemaName = community.schemaName;
 	const prev = await latestCode(schemaName, openid, mobile);
 	if (prev && isFutureDate(prev.expires_at) && !Number(prev.used)) {
@@ -911,6 +914,7 @@ async function loginSubmit(params = {}) {
 	const openid = getOpenId();
 	if (!openid) throw new Error('openid missing');
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const schemaName = community.schemaName;
 	const mobile = String(params.mobile || '').trim();
 	const inputCode = String(params.code || '').trim();
@@ -1171,11 +1175,113 @@ function readHeader(headers, name) {
 	return '';
 }
 
-function requireAdmin(headers) {
+function requireAdminToken(headers) {
 	const expected = process.env.ADMIN_API_TOKEN || '';
 	if (!expected) throw new Error('后台管理令牌未配置');
 	const actual = readHeader(headers, 'x-sxwy-admin-token');
 	if (!actual || actual !== expected) throw new Error('后台管理令牌无效');
+}
+
+function readAdminUserId(headers) {
+	return String(readHeader(headers, 'x-sxwy-admin-user-id') || '').trim();
+}
+
+async function getAdminUserById(adminId) {
+	const id = sqlNumber(adminId);
+	if (!id) return null;
+	const rows = await queryRows(
+		`SELECT id, username, role, community_id, active, last_login_at, created_at, updated_at
+		FROM ${globalTable('admin_users')}
+		WHERE id = {{id}}
+		LIMIT 1`,
+		{ id }
+	);
+	return rows[0] || null;
+}
+
+async function getActiveAdminPermissions(adminId) {
+	const id = sqlNumber(adminId);
+	if (!id) return [];
+	const rows = await queryRows(
+		`SELECT id, admin_id, community_id, role, permissions_json, active
+		FROM ${globalTable('admin_community_permissions')}
+		WHERE admin_id = {{adminId}} AND active = 1
+		ORDER BY id DESC`,
+		{ adminId: id }
+	);
+	return rows.map((item) => ({
+		id: Number(item.id),
+		adminId: Number(item.admin_id),
+		communityId: Number(item.community_id),
+		role: item.role || 'admin',
+		permissions: parsePermissionsJson(item.permissions_json),
+		active: Boolean(Number(item.active))
+	}));
+}
+
+function buildAdminAccessContext(adminUser, permissions, communities, currentCommunityPermissions) {
+	const access = permissionEngine.buildEffectiveAccess(
+		adminUser.role || 'admin',
+		currentCommunityPermissions || []
+	);
+	const accessibleCommunityIds = permissionEngine.buildAccessibleCommunityIds(adminUser, permissions, communities);
+	return {
+		admin: adminUser,
+		access: Object.assign({}, access, {
+			communityIds: accessibleCommunityIds,
+			role: adminUser.role || 'admin',
+			roleLabel: roleLabel(adminUser.role || 'admin')
+		}),
+		accessibleCommunityIds,
+		currentCommunityPermissions: currentCommunityPermissions || []
+	};
+}
+
+async function resolveAdminAccess(headers, params = {}, route = '') {
+	requireAdminToken(headers);
+	if (ADMIN_BOOTSTRAP_ROUTES.has(route)) return null;
+	const adminUserId = readAdminUserId(headers);
+	if (!adminUserId) throw new Error('请先选择当前操作员');
+	const adminUser = await getAdminUserById(adminUserId);
+	if (!adminUser || !Number(adminUser.active)) {
+		throw new Error('当前操作员不存在或已停用');
+	}
+	const permissions = await getActiveAdminPermissions(adminUser.id);
+	const communities = await listActiveCommunities();
+	let currentCommunity = null;
+	let currentCommunityPermissions = [];
+	if (params && (params.schemaName || params.schema || params.communityId || params.communityName)) {
+		currentCommunity = await resolveCommunityContext(params);
+		currentCommunityPermissions = permissions.filter((item) => Number(item.communityId) === Number(currentCommunity.id));
+	}
+	const context = buildAdminAccessContext(adminUser, permissions, communities, currentCommunityPermissions.flatMap((item) => item.permissions || []));
+	if (currentCommunity && !permissionEngine.hasCommunityAccess(context.access, currentCommunity.id)) {
+		throw new Error('无权访问该小区');
+	}
+	return context;
+}
+
+function getRoutePermission(route) {
+	return permissionEngine.getRouteRule(route);
+}
+
+function checkAdminAccess(context, route) {
+	if (!context) return;
+	const rule = getRoutePermission(route);
+	if (!rule) return;
+	if (!permissionEngine.hasModuleAccess(context.access, rule.module)) {
+		throw new Error('当前角色无权访问该模块');
+	}
+	if (!permissionEngine.hasActionAccess(context.access, rule.action)) {
+		throw new Error('当前角色无权执行该操作');
+	}
+}
+
+function checkCommunityAccess(context, community) {
+	if (!context || !community) return;
+	if (!permissionEngine.hasCommunityAccess(context.access, community.id)) {
+		throw new Error('无权访问该小区');
+	}
 }
 
 function ownerDto(item) {
@@ -1254,9 +1360,13 @@ function adminPermissionDto(item) {
 	};
 }
 
-async function adminDashboard(params = {}) {
+async function adminDashboard(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/dashboard');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const pendingRows = await queryRows(
 		`SELECT COUNT(*) AS total FROM ${tenantTable(community.schemaName, 'owners')} WHERE audit_status = 'pending'`
 	);
@@ -1277,9 +1387,13 @@ async function adminDashboard(params = {}) {
 	};
 }
 
-async function adminOwnerList(params = {}) {
+async function adminOwnerList(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/owner/list');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const rows = await queryRows(
 		`SELECT id, name, mobile, community_name, house, audit_status, created_at
 		FROM ${tenantTable(community.schemaName, 'owners')}
@@ -1289,9 +1403,13 @@ async function adminOwnerList(params = {}) {
 	return { list: rows.map(ownerDto) };
 }
 
-async function adminOwnerAudit(params = {}) {
+async function adminOwnerAudit(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/owner/audit');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const id = sqlNumber(params.id);
 	const auditStatus = String(params.auditStatus || '').trim();
 	if (!id) throw new Error('业主ID无效');
@@ -1306,18 +1424,25 @@ async function adminOwnerAudit(params = {}) {
 	return { ok: true };
 }
 
-async function adminCommunityList() {
+async function adminCommunityList(accessContext = null) {
 	await init();
 	const rows = await queryRows(
 		`SELECT id, code, name, schema_name AS schemaName, address, phone, active, sort, created_at, updated_at
 		FROM ${globalTable('communities')}
 		ORDER BY sort ASC, id ASC`
 	);
-	return { list: rows.map(communityDto) };
+	const list = rows.map(communityDto);
+	if (!accessContext) return { list };
+	const allowed = new Set((accessContext.accessibleCommunityIds || []).map((item) => String(item)));
+	if (!allowed.size) return { list: [] };
+	return { list: list.filter((item) => allowed.has(String(item.id))) };
 }
 
-async function adminCommunitySave(params = {}) {
+async function adminCommunitySave(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/community/save');
+	}
 	const id = sqlNumber(params.id);
 	const code = String(params.code || '').trim();
 	const name = String(params.name || '').trim();
@@ -1330,6 +1455,16 @@ async function adminCommunitySave(params = {}) {
 	if (!code) throw new Error('小区编码不能为空');
 	if (!name) throw new Error('小区名称不能为空');
 	if (!schemaName) throw new Error('schemaName invalid');
+	if (id) {
+		const currentRows = await queryRows(
+			`SELECT id FROM ${globalTable('communities')} WHERE id = {{id}} LIMIT 1`,
+			{ id }
+		);
+		if (!currentRows.length) throw new Error('小区不存在');
+		if (accessContext) {
+			checkCommunityAccess(accessContext, { id: currentRows[0].id });
+		}
+	}
 	if (id) {
 		await runSql(
 			`UPDATE ${globalTable('communities')}
@@ -1355,39 +1490,83 @@ async function adminCommunitySave(params = {}) {
 		);
 	}
 	await ensureTenantSchema(schemaName);
-	return await adminCommunityList();
+	return await adminCommunityList(accessContext);
 }
 
-async function adminCommunityDelete(params = {}) {
+async function adminCommunityDelete(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/community/delete');
+	}
 	const id = sqlNumber(params.id);
 	if (!id) throw new Error('小区ID无效');
+	if (accessContext) {
+		const currentRows = await queryRows(
+			`SELECT id FROM ${globalTable('communities')} WHERE id = {{id}} LIMIT 1`,
+			{ id }
+		);
+		if (!currentRows.length) throw new Error('小区不存在');
+		checkCommunityAccess(accessContext, { id: currentRows[0].id });
+	}
 	await runSql(
 		`UPDATE ${globalTable('communities')} SET active = 0 WHERE id = {{id}}`,
 		{ id }
 	);
-	return await adminCommunityList();
+	return await adminCommunityList(accessContext);
 }
 
-async function adminRoleList() {
+async function adminRoleList(accessContext = null) {
 	await init();
 	return {
 		list: ADMIN_ROLES.map((item) => Object.assign({}, item))
 	};
 }
 
-async function adminUserList() {
+async function adminAccessProfile(params = {}, accessContext = null) {
+	await init();
+	if (!accessContext) {
+		throw new Error('请先选择当前操作员');
+	}
+	const communityRows = await queryRows(
+		`SELECT id, code, name, schema_name AS schemaName, address, phone, active, sort, created_at, updated_at
+		FROM ${globalTable('communities')}
+		ORDER BY sort ASC, id ASC`
+	);
+	const communities = communityRows.map(communityDto).filter((item) => {
+		const allowed = new Set((accessContext.accessibleCommunityIds || []).map((next) => String(next)));
+		return allowed.size ? allowed.has(String(item.id)) : false;
+	});
+	return {
+		admin: accessContext.admin,
+		access: Object.assign({}, accessContext.access, {
+			communities
+		}),
+		communities
+	};
+}
+
+async function adminUserList(accessContext = null) {
 	await init();
 	const rows = await queryRows(
 		`SELECT id, username, role, community_id, active, last_login_at, created_at, updated_at
 		FROM ${globalTable('admin_users')}
 		ORDER BY id DESC`
 	);
-	return { list: rows.map(adminUserDto) };
+	const list = rows.map(adminUserDto);
+	if (!accessContext) return { list };
+	if (String(accessContext.admin && accessContext.admin.role || '') === 'super_admin') return { list };
+	return {
+		list: list.filter((item) => {
+			const allowed = new Set((accessContext.accessibleCommunityIds || []).map((next) => String(next)));
+			if (!allowed.size) return item.id === Number(accessContext.admin && accessContext.admin.id);
+			return allowed.has(String(item.communityId || ''));
+		})
+	};
 }
 
-async function adminUserSave(params = {}) {
+async function adminUserSave(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) checkAdminAccess(accessContext, 'admin/user/save');
 	const id = sqlNumber(params.id);
 	const username = String(params.username || '').trim();
 	const password = String(params.password || '').trim();
@@ -1396,6 +1575,9 @@ async function adminUserSave(params = {}) {
 	const active = params.active === false || params.active === 0 || params.active === '0' ? 0 : 1;
 	if (!username) throw new Error('管理员账号不能为空');
 	if (!ADMIN_ROLES.some((item) => item.value === role)) throw new Error('管理员角色无效');
+	if (accessContext && communityId) {
+		checkCommunityAccess(accessContext, { id: communityId });
+	}
 	if (id) {
 		if (password) {
 			await runSql(
@@ -1435,21 +1617,30 @@ async function adminUserSave(params = {}) {
 			}
 		);
 	}
-	return await adminUserList();
+	return await adminUserList(accessContext);
 }
 
-async function adminUserDelete(params = {}) {
+async function adminUserDelete(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) checkAdminAccess(accessContext, 'admin/user/delete');
 	const id = sqlNumber(params.id);
 	if (!id) throw new Error('管理员ID无效');
+	if (accessContext) {
+		const rows = await queryRows(
+			`SELECT community_id FROM ${globalTable('admin_users')} WHERE id = {{id}} LIMIT 1`,
+			{ id }
+		);
+		if (!rows.length) throw new Error('管理员不存在');
+		checkCommunityAccess(accessContext, { id: rows[0].community_id || 0 });
+	}
 	await runSql(
 		`UPDATE ${globalTable('admin_users')} SET active = 0 WHERE id = {{id}}`,
 		{ id }
 	);
-	return await adminUserList();
+	return await adminUserList(accessContext);
 }
 
-async function adminPermissionList() {
+async function adminPermissionList(accessContext = null) {
 	await init();
 	const rows = await queryRows(
 		`SELECT p.id, p.admin_id, p.community_id, p.role, p.permissions_json, p.active,
@@ -1459,11 +1650,16 @@ async function adminPermissionList() {
 		LEFT JOIN ${globalTable('communities')} c ON c.id = p.community_id
 		ORDER BY p.id DESC`
 	);
-	return { list: rows.map(adminPermissionDto) };
+	const list = rows.map(adminPermissionDto);
+	if (!accessContext) return { list };
+	const allowed = new Set((accessContext.accessibleCommunityIds || []).map((item) => String(item)));
+	if (!allowed.size) return { list: [] };
+	return { list: list.filter((item) => allowed.has(String(item.communityId))) };
 }
 
-async function adminPermissionSave(params = {}) {
+async function adminPermissionSave(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) checkAdminAccess(accessContext, 'admin/permission/save');
 	const id = sqlNumber(params.id);
 	const adminId = sqlNumber(params.adminId || params.admin_id);
 	const communityId = sqlNumber(params.communityId || params.community_id);
@@ -1473,6 +1669,9 @@ async function adminPermissionSave(params = {}) {
 	if (!adminId) throw new Error('管理员ID无效');
 	if (!communityId) throw new Error('小区ID无效');
 	if (!ADMIN_ROLES.some((item) => item.value === role)) throw new Error('管理员角色无效');
+	if (accessContext) {
+		checkCommunityAccess(accessContext, { id: communityId });
+	}
 	const permissionsJson = JSON.stringify(permissions);
 	if (id) {
 		await runSql(
@@ -1498,23 +1697,36 @@ async function adminPermissionSave(params = {}) {
 			}
 		);
 	}
-	return await adminPermissionList();
+	return await adminPermissionList(accessContext);
 }
 
-async function adminPermissionDelete(params = {}) {
+async function adminPermissionDelete(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) checkAdminAccess(accessContext, 'admin/permission/delete');
 	const id = sqlNumber(params.id);
 	if (!id) throw new Error('权限记录ID无效');
+	if (accessContext) {
+		const rows = await queryRows(
+			`SELECT community_id FROM ${globalTable('admin_community_permissions')} WHERE id = {{id}} LIMIT 1`,
+			{ id }
+		);
+		if (!rows.length) throw new Error('权限记录不存在');
+		checkCommunityAccess(accessContext, { id: rows[0].community_id || 0 });
+	}
 	await runSql(
 		`DELETE FROM ${globalTable('admin_community_permissions')} WHERE id = {{id}}`,
 		{ id }
 	);
-	return await adminPermissionList();
+	return await adminPermissionList(accessContext);
 }
 
-async function adminRepairList(params = {}) {
+async function adminRepairList(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/repair/list');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const rows = await queryRows(
 		`SELECT id, title, type, contact, phone, status, assignee
 		FROM ${tenantTable(community.schemaName, 'repairs')}
@@ -1524,9 +1736,13 @@ async function adminRepairList(params = {}) {
 	return { list: rows };
 }
 
-async function adminFeeList(params = {}) {
+async function adminFeeList(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/fee/list');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const rows = await queryRows(
 		`SELECT id, bill_no AS billNo, owner_name AS ownerName, house, bill_type AS billType, amount, status
 		FROM ${tenantTable(community.schemaName, 'fee_bills')}
@@ -1536,9 +1752,13 @@ async function adminFeeList(params = {}) {
 	return { list: rows };
 }
 
-async function adminComplaintList(params = {}) {
+async function adminComplaintList(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/complaint/list');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const rows = await queryRows(
 		`SELECT id, title, contact, phone, status, assignee
 		FROM ${tenantTable(community.schemaName, 'complaints')}
@@ -1548,9 +1768,13 @@ async function adminComplaintList(params = {}) {
 	return { list: rows };
 }
 
-async function adminNoticeConfigList(params = {}) {
+async function adminNoticeConfigList(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/notice_config/list');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const rows = await queryRows(
 		`SELECT id, scene, channel, template_name AS templateName, enabled, robot_name AS robotName
 		FROM ${tenantTable(community.schemaName, 'notice_configs')}
@@ -1560,9 +1784,13 @@ async function adminNoticeConfigList(params = {}) {
 	return { list: rows.map((item) => Object.assign({}, item, { enabled: Boolean(Number(item.enabled)) })) };
 }
 
-async function adminAnnouncementList(params = {}) {
+async function adminAnnouncementList(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/announcement/list');
+	}
 	const community = await resolveCommunityContext(params);
+	checkCommunityAccess(accessContext, community);
 	const rows = await queryRows(
 		`SELECT id, title, summary, content, cover_url, is_pinned, status, sort, publish_at, created_at, updated_at
 		FROM ${tenantTable(community.schemaName, 'announcements')}
@@ -1572,8 +1800,11 @@ async function adminAnnouncementList(params = {}) {
 	return { list: rows.map(announcementDto) };
 }
 
-async function adminAnnouncementSave(params = {}) {
+async function adminAnnouncementSave(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/announcement/save');
+	}
 	const community = await resolveCommunityContext(params);
 	const id = sqlNumber(params.id);
 	const title = String(params.title || '').trim();
@@ -1616,8 +1847,11 @@ async function adminAnnouncementSave(params = {}) {
 	return await adminAnnouncementList(params);
 }
 
-async function adminAnnouncementDelete(params = {}) {
+async function adminAnnouncementDelete(params = {}, accessContext = null) {
 	await init();
+	if (accessContext) {
+		checkAdminAccess(accessContext, 'admin/announcement/delete');
+	}
 	const community = await resolveCommunityContext(params);
 	const id = sqlNumber(params.id);
 	if (!id) throw new Error('公告ID无效');
@@ -1651,27 +1885,28 @@ exports.main = async (event) => {
 		else if (route === 'repair/list') data = await repairList(params);
 		else if (route === 'repair/create') data = await repairCreate(params);
 		else if (route.startsWith('admin/')) {
-			requireAdmin(normalized.headers);
-			if (route === 'admin/dashboard') data = await adminDashboard(params);
-			else if (route === 'admin/owner/list') data = await adminOwnerList(params);
-			else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params);
-			else if (route === 'admin/community/list') data = await adminCommunityList();
-			else if (route === 'admin/community/save') data = await adminCommunitySave(params);
-			else if (route === 'admin/community/delete') data = await adminCommunityDelete(params);
-			else if (route === 'admin/role/list') data = await adminRoleList();
-			else if (route === 'admin/user/list') data = await adminUserList();
-			else if (route === 'admin/user/save') data = await adminUserSave(params);
-			else if (route === 'admin/user/delete') data = await adminUserDelete(params);
-			else if (route === 'admin/permission/list') data = await adminPermissionList();
-			else if (route === 'admin/permission/save') data = await adminPermissionSave(params);
-			else if (route === 'admin/permission/delete') data = await adminPermissionDelete(params);
-			else if (route === 'admin/repair/list') data = await adminRepairList(params);
-			else if (route === 'admin/fee/list') data = await adminFeeList(params);
-			else if (route === 'admin/complaint/list') data = await adminComplaintList(params);
-			else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params);
-			else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params);
-			else if (route === 'admin/announcement/save') data = await adminAnnouncementSave(params);
-			else if (route === 'admin/announcement/delete') data = await adminAnnouncementDelete(params);
+			const adminAccess = await resolveAdminAccess(normalized.headers, params, route);
+			if (route === 'admin/dashboard') data = await adminDashboard(params, adminAccess);
+			else if (route === 'admin/owner/list') data = await adminOwnerList(params, adminAccess);
+			else if (route === 'admin/owner/audit') data = await adminOwnerAudit(params, adminAccess);
+			else if (route === 'admin/community/list') data = await adminCommunityList(adminAccess);
+			else if (route === 'admin/community/save') data = await adminCommunitySave(params, adminAccess);
+			else if (route === 'admin/community/delete') data = await adminCommunityDelete(params, adminAccess);
+			else if (route === 'admin/role/list') data = await adminRoleList(adminAccess);
+			else if (route === 'admin/access/profile') data = await adminAccessProfile(params, adminAccess);
+			else if (route === 'admin/user/list') data = await adminUserList(adminAccess);
+			else if (route === 'admin/user/save') data = await adminUserSave(params, adminAccess);
+			else if (route === 'admin/user/delete') data = await adminUserDelete(params, adminAccess);
+			else if (route === 'admin/permission/list') data = await adminPermissionList(adminAccess);
+			else if (route === 'admin/permission/save') data = await adminPermissionSave(params, adminAccess);
+			else if (route === 'admin/permission/delete') data = await adminPermissionDelete(params, adminAccess);
+			else if (route === 'admin/repair/list') data = await adminRepairList(params, adminAccess);
+			else if (route === 'admin/fee/list') data = await adminFeeList(params, adminAccess);
+			else if (route === 'admin/complaint/list') data = await adminComplaintList(params, adminAccess);
+			else if (route === 'admin/notice_config/list') data = await adminNoticeConfigList(params, adminAccess);
+			else if (route === 'admin/announcement/list') data = await adminAnnouncementList(params, adminAccess);
+			else if (route === 'admin/announcement/save') data = await adminAnnouncementSave(params, adminAccess);
+			else if (route === 'admin/announcement/delete') data = await adminAnnouncementDelete(params, adminAccess);
 			else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
 		}
 		else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);

@@ -9,15 +9,15 @@
 				</div>
 			</div>
 			<nav class="nav">
-				<button :class="{ active: activeTab === 'dashboard' }" @click="activeTab = 'dashboard'">数据看板</button>
-				<button :class="{ active: activeTab === 'owners' }" @click="activeTab = 'owners'">业主认证审核</button>
-				<button :class="{ active: activeTab === 'announcements' }" @click="activeTab = 'announcements'">公告管理</button>
-				<button :class="{ active: activeTab === 'repairs' }" @click="activeTab = 'repairs'">报修管理</button>
-				<button :class="{ active: activeTab === 'fees' }" @click="activeTab = 'fees'">缴费管理</button>
-				<button :class="{ active: activeTab === 'complaints' }" @click="activeTab = 'complaints'">投诉建议</button>
-				<button :class="{ active: activeTab === 'notices' }" @click="activeTab = 'notices'">通知配置</button>
-				<button :class="{ active: activeTab === 'communities' }" @click="activeTab = 'communities'">小区配置</button>
-				<button :class="{ active: activeTab === 'permissions' }" @click="activeTab = 'permissions'">权限管理</button>
+				<button v-if="canMenu('dashboard')" :class="{ active: activeTab === 'dashboard' }" @click="activeTab = 'dashboard'">数据看板</button>
+				<button v-if="canMenu('owners')" :class="{ active: activeTab === 'owners' }" @click="activeTab = 'owners'">业主认证审核</button>
+				<button v-if="canMenu('announcements')" :class="{ active: activeTab === 'announcements' }" @click="activeTab = 'announcements'">公告管理</button>
+				<button v-if="canMenu('repairs')" :class="{ active: activeTab === 'repairs' }" @click="activeTab = 'repairs'">报修管理</button>
+				<button v-if="canMenu('fees')" :class="{ active: activeTab === 'fees' }" @click="activeTab = 'fees'">缴费管理</button>
+				<button v-if="canMenu('complaints')" :class="{ active: activeTab === 'complaints' }" @click="activeTab = 'complaints'">投诉建议</button>
+				<button v-if="canMenu('notices')" :class="{ active: activeTab === 'notices' }" @click="activeTab = 'notices'">通知配置</button>
+				<button v-if="canMenu('communities')" :class="{ active: activeTab === 'communities' }" @click="activeTab = 'communities'">小区配置</button>
+				<button v-if="canMenu('permissions')" :class="{ active: activeTab === 'permissions' }" @click="activeTab = 'permissions'">权限管理</button>
 			</nav>
 		</aside>
 
@@ -28,6 +28,15 @@
 					<p>{{ activeCommunity ? communityLabel(activeCommunity) : 'CloudBase MySQL 公告与业务管理' }}</p>
 			</div>
 				<div class="toolbar">
+					<label class="schema-switch">
+						<span>当前操作员</span>
+						<select v-model="currentAdminId" @change="onAdminChange">
+							<option value="">请选择</option>
+							<option v-for="item in activeAdmins" :key="item.id" :value="String(item.id)">
+								{{ item.username }} · {{ item.roleLabel }}
+							</option>
+						</select>
+					</label>
 					<label class="schema-switch">
 						<span>当前小区</span>
 						<select v-model="selectedSchema" @change="onSchemaChange">
@@ -72,8 +81,8 @@
 							<td>{{ owner.house }}</td>
 							<td><span class="status" :class="owner.auditStatus">{{ statusText(owner.auditStatus) }}</span></td>
 							<td class="actions">
-								<button @click="audit(owner, 'approved')">通过</button>
-								<button @click="audit(owner, 'rejected')">驳回</button>
+								<button :disabled="!canAction('owner:audit')" @click="audit(owner, 'approved')">通过</button>
+								<button :disabled="!canAction('owner:audit')" @click="audit(owner, 'rejected')">驳回</button>
 							</td>
 						</tr>
 					</tbody>
@@ -121,7 +130,7 @@
 						</label>
 					</div>
 					<div class="form-actions">
-						<button class="primary" @click="saveAnnouncement">{{ editingAnnouncementId ? '保存修改' : '发布公告' }}</button>
+						<button class="primary" :disabled="!canAction('announcement:publish')" @click="saveAnnouncement">{{ editingAnnouncementId ? '保存修改' : '发布公告' }}</button>
 						<button @click="resetAnnouncementForm">重置</button>
 					</div>
 				</div>
@@ -151,8 +160,8 @@
 							<td>{{ item.sort }}</td>
 							<td>{{ item.dateLabel || '-' }}</td>
 							<td class="actions">
-								<button @click="editAnnouncement(item)">编辑</button>
-								<button class="danger" @click="removeAnnouncement(item)">删除</button>
+								<button :disabled="!canAction('announcement:publish')" @click="editAnnouncement(item)">编辑</button>
+								<button class="danger" :disabled="!canAction('announcement:delete')" @click="removeAnnouncement(item)">删除</button>
 							</td>
 						</tr>
 					</tbody>
@@ -196,7 +205,7 @@
 						</label>
 					</div>
 					<div class="form-actions">
-						<button class="primary" @click="saveCommunity">{{ editingCommunityId ? '保存修改' : '新增小区' }}</button>
+						<button class="primary" :disabled="!canAction('community:edit')" @click="saveCommunity">{{ editingCommunityId ? '保存修改' : '新增小区' }}</button>
 						<button @click="resetCommunityForm">重置</button>
 					</div>
 				</div>
@@ -209,9 +218,9 @@
 						</div>
 						<div class="community-actions">
 							<span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span>
-							<button @click="editCommunity(item)">编辑</button>
-							<button @click="toggleCommunityActive(item)">{{ item.active ? '停用' : '启用' }}</button>
-							<button class="danger" @click="removeCommunity(item)">删除</button>
+							<button :disabled="!canAction('community:edit')" @click="editCommunity(item)">编辑</button>
+							<button :disabled="!canAction('community:edit')" @click="toggleCommunityActive(item)">{{ item.active ? '停用' : '启用' }}</button>
+							<button class="danger" :disabled="!canAction('community:delete')" @click="removeCommunity(item)">删除</button>
 						</div>
 					</div>
 				</div>
@@ -269,7 +278,7 @@
 							</label>
 						</div>
 						<div class="form-actions">
-							<button class="primary" @click="saveAdmin">{{ editingAdminId ? '保存管理员' : '新增管理员' }}</button>
+							<button class="primary" :disabled="!canAction('admin:user:manage')" @click="saveAdmin">{{ editingAdminId ? '保存管理员' : '新增管理员' }}</button>
 							<button @click="resetAdminForm">重置</button>
 						</div>
 					</div>
@@ -315,7 +324,7 @@
 							</label>
 						</div>
 						<div class="form-actions">
-							<button class="primary" @click="savePermission">{{ editingPermissionId ? '保存权限' : '新增权限' }}</button>
+							<button class="primary" :disabled="!canAction('admin:permission:manage')" @click="savePermission">{{ editingPermissionId ? '保存权限' : '新增权限' }}</button>
 							<button @click="resetPermissionForm">重置</button>
 						</div>
 						<div class="access-preview">
@@ -339,6 +348,7 @@
 										:key="item"
 										type="button"
 										class="chip chip-button"
+										:disabled="!canAction('admin:permission:manage')"
 										@click="appendPermissionToken(item)"
 									>
 										{{ buildActionLabel(item) }}
@@ -399,8 +409,8 @@
 							<td>{{ communityNameById(item.communityId) }}</td>
 							<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
 							<td class="actions">
-								<button @click="editAdmin(item)">编辑</button>
-								<button class="danger" @click="removeAdmin(item)">停用</button>
+								<button :disabled="!canAction('admin:user:manage')" @click="editAdmin(item)">编辑</button>
+								<button class="danger" :disabled="!canAction('admin:user:manage')" @click="removeAdmin(item)">停用</button>
 							</td>
 						</tr>
 					</tbody>
@@ -424,8 +434,8 @@
 							<td>{{ item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
 							<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
 							<td class="actions">
-								<button @click="editPermission(item)">编辑</button>
-								<button class="danger" @click="removePermission(item)">删除</button>
+								<button :disabled="!canAction('admin:permission:manage')" @click="editPermission(item)">编辑</button>
+								<button class="danger" :disabled="!canAction('admin:permission:manage')" @click="removePermission(item)">删除</button>
 							</td>
 						</tr>
 					</tbody>
@@ -570,6 +580,8 @@ const editingCommunityId = ref('');
 const admins = ref([]);
 const permissions = ref([]);
 const roleOptions = ref(listRoleOptions());
+const currentAdminId = ref(adminApi.getCurrentAdminId());
+const adminAccess = ref(null);
 const editingAdminId = ref('');
 const editingPermissionId = ref('');
 const adminForm = ref(emptyAdmin());
@@ -598,11 +610,18 @@ const pageTitle = computed(() => {
 const pendingCount = computed(() => owners.value.filter((item) => item.auditStatus === 'pending').length);
 
 const activeCommunities = computed(() => communities.value.filter((item) => item.active));
+const activeAdmins = computed(() => admins.value.filter((item) => item.active));
 const activeCommunity = computed(() => communities.value.find((item) => item.schemaName === selectedSchema.value) || null);
 const permissionMatrix = computed(() => buildPermissionMatrix(communities.value, permissions.value, roleOptions.value));
 const adminRoleAccess = computed(() => buildRoleAccessProfile(adminForm.value.role));
 const permissionRoleAccess = computed(() => buildRoleAccessProfile(permissionForm.value.role));
 const permissionAccess = computed(() => buildEffectiveAccess(permissionForm.value.role, permissionForm.value.permissions));
+const allowedMenus = computed(() => (adminAccess.value && adminAccess.value.access && Array.isArray(adminAccess.value.access.menus)
+	? adminAccess.value.access.menus
+	: []));
+const allowedActions = computed(() => (adminAccess.value && adminAccess.value.access && Array.isArray(adminAccess.value.access.actions)
+	? adminAccess.value.access.actions
+	: []));
 const communityLabel = buildCommunityLabel;
 const quickPermissionTokens = [
 	'community:edit',
@@ -697,6 +716,30 @@ function communityNameById(id) {
 	return item ? communityLabel(item) : '未设置';
 }
 
+function canMenu(menu) {
+	if (!adminAccess.value) return true;
+	return allowedMenus.value.includes(menu);
+}
+
+function canAction(action) {
+	if (!adminAccess.value) return true;
+	return allowedActions.value.includes('*') || allowedActions.value.includes(action);
+}
+
+function syncSelectedAdminId(adminId) {
+	const next = String(adminId || '').trim();
+	currentAdminId.value = next;
+	adminApi.setCurrentAdminId(next);
+}
+
+function ensureVisibleTab() {
+	if (!canMenu(activeTab.value)) {
+		const fallback = ['dashboard', 'owners', 'announcements', 'communities', 'permissions', 'repairs', 'fees', 'complaints', 'notices']
+			.find((tab) => canMenu(tab));
+		activeTab.value = fallback || 'dashboard';
+	}
+}
+
 function appendPermissionToken(token) {
 	const next = parsePermissions(permissionForm.value.permissions);
 	if (!next.includes(token)) {
@@ -722,25 +765,52 @@ function openMatrixCell(row, cell) {
 	activeTab.value = 'permissions';
 }
 
-async function loadCommunities() {
-	const communityData = await adminApi.communityList();
-	communities.value = communityData.list || [];
-	const hasSelected = activeCommunities.value.some((item) => item.schemaName === selectedSchema.value);
-	if (!hasSelected) {
-		selectedSchema.value = activeCommunities.value[0]?.schemaName
-			|| '';
-	}
-	adminApi.setSchemaName(selectedSchema.value);
-}
-
-async function loadPermissionData() {
-	const [roleData, adminData, permissionData] = await Promise.all([
+async function loadAdminDirectory() {
+	const [roleData, adminData] = await Promise.all([
 		adminApi.roleList(),
-		adminApi.adminList(),
-		adminApi.permissionList()
+		adminApi.adminList()
 	]);
 	roleOptions.value = roleData.list && roleData.list.length ? roleData.list : listRoleOptions();
 	admins.value = adminData.list || [];
+	if (!currentAdminId.value || !admins.value.some((item) => String(item.id) === currentAdminId.value && item.active)) {
+		const preferred = admins.value.find((item) => item.active && item.role === 'super_admin')
+			|| admins.value.find((item) => item.active)
+			|| admins.value[0]
+			|| null;
+		syncSelectedAdminId(preferred ? preferred.id : '');
+	}
+}
+
+async function loadAccessProfile() {
+	if (!currentAdminId.value) {
+		adminAccess.value = null;
+		communities.value = [];
+		return;
+	}
+	let profile;
+	try {
+		profile = await adminApi.accessProfile();
+	} catch (err) {
+		if ((err.message || '').includes('无权访问该小区')) {
+			selectedSchema.value = '';
+			adminApi.setSchemaName('');
+			profile = await adminApi.accessProfile();
+		} else {
+			throw err;
+		}
+	}
+	adminAccess.value = profile;
+	communities.value = profile.communities || [];
+	const hasSelected = activeCommunities.value.some((item) => item.schemaName === selectedSchema.value);
+	if (!hasSelected) {
+		selectedSchema.value = activeCommunities.value[0]?.schemaName || '';
+	}
+	adminApi.setSchemaName(selectedSchema.value);
+	ensureVisibleTab();
+}
+
+async function loadPermissionTables() {
+	const permissionData = await adminApi.permissionList();
 	permissions.value = permissionData.list || [];
 }
 
@@ -764,7 +834,7 @@ async function saveCommunity() {
 		});
 		communities.value = result.list || communities.value;
 		resetCommunityForm();
-		await loadCommunities();
+		await reload();
 	} catch (err) {
 		window.alert(err.message || '保存失败');
 	}
@@ -877,6 +947,7 @@ async function saveAdmin() {
 		const result = await adminApi.saveAdmin(payload);
 		admins.value = result.list || admins.value;
 		resetAdminForm();
+		await reload();
 	} catch (err) {
 		window.alert(err.message || '保存失败');
 	}
@@ -923,6 +994,7 @@ async function savePermission() {
 		});
 		permissions.value = result.list || permissions.value;
 		resetPermissionForm();
+		await reload();
 	} catch (err) {
 		window.alert(err.message || '保存失败');
 	}
@@ -940,7 +1012,8 @@ async function removePermission(item) {
 }
 
 async function reload() {
-	await loadCommunities();
+	await loadAdminDirectory();
+	await loadAccessProfile();
 	if (!selectedSchema.value) {
 		stats.value = [];
 		owners.value = [];
@@ -949,19 +1022,24 @@ async function reload() {
 		fees.value = [];
 		complaints.value = [];
 		noticeConfigs.value = [];
+		permissions.value = [];
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
 	const [dashboard, ownerData, announcementData, repairData, feeData, complaintData, noticeData] = await Promise.all([
-		adminApi.dashboard(),
-		adminApi.ownerList(),
-		adminApi.announcementList(),
-		adminApi.repairList(),
-		adminApi.feeList(),
-		adminApi.complaintList(),
-		adminApi.noticeConfigList()
+		canMenu('dashboard') ? adminApi.dashboard() : Promise.resolve({ stats: [] }),
+		canMenu('owners') ? adminApi.ownerList() : Promise.resolve({ list: [] }),
+		canMenu('announcements') ? adminApi.announcementList() : Promise.resolve({ list: [] }),
+		canMenu('repairs') ? adminApi.repairList() : Promise.resolve({ list: [] }),
+		canMenu('fees') ? adminApi.feeList() : Promise.resolve({ list: [] }),
+		canMenu('complaints') ? adminApi.complaintList() : Promise.resolve({ list: [] }),
+		canMenu('notices') ? adminApi.noticeConfigList() : Promise.resolve({ list: [] })
 	]);
-	await loadPermissionData();
+	if (canMenu('permissions')) {
+		await loadPermissionTables();
+	} else {
+		permissions.value = [];
+	}
 	stats.value = dashboard.stats || [];
 	owners.value = ownerData.list || [];
 	announcements.value = announcementData.list || [];
@@ -969,6 +1047,11 @@ async function reload() {
 	fees.value = feeData.list || [];
 	complaints.value = complaintData.list || [];
 	noticeConfigs.value = noticeData.list || [];
+}
+
+async function onAdminChange() {
+	syncSelectedAdminId(currentAdminId.value);
+	await reload();
 }
 
 async function onSchemaChange() {

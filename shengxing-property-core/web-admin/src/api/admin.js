@@ -2,6 +2,7 @@ const API_BASE = import.meta.env.VITE_ADMIN_API_BASE
 	|| 'https://cloudbase-d9g78eneac709f5a5.service.tcloudbase.com/sxmini';
 
 const TOKEN_KEY = 'sxwy_admin_token';
+const ADMIN_ID_KEY = 'sxwy_admin_user_id';
 const SCHEMA_KEY = 'sxwy_admin_schema';
 
 function getAdminToken() {
@@ -15,6 +16,19 @@ function getAdminToken() {
 
 function getSchemaName() {
 	return window.localStorage.getItem(SCHEMA_KEY) || '';
+}
+
+function getCurrentAdminId() {
+	return window.localStorage.getItem(ADMIN_ID_KEY) || '';
+}
+
+function setCurrentAdminId(adminId) {
+	const next = String(adminId || '').trim();
+	if (next) {
+		window.localStorage.setItem(ADMIN_ID_KEY, next);
+	} else {
+		window.localStorage.removeItem(ADMIN_ID_KEY);
+	}
 }
 
 function setSchemaName(schemaName) {
@@ -32,7 +46,8 @@ async function request(route, params = {}) {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			'X-SXWY-ADMIN-TOKEN': getAdminToken()
+			'X-SXWY-ADMIN-TOKEN': getAdminToken(),
+			...(getCurrentAdminId() ? { 'X-SXWY-ADMIN-USER-ID': getCurrentAdminId() } : {})
 		},
 		body: JSON.stringify({
 			route,
@@ -55,6 +70,8 @@ async function request(route, params = {}) {
 export const adminApi = {
 	getSchemaName,
 	setSchemaName,
+	getCurrentAdminId,
+	setCurrentAdminId,
 	dashboard: () => request('admin/dashboard'),
 	ownerList: () => request('admin/owner/list'),
 	auditOwner: (id, auditStatus) => request('admin/owner/audit', { id, auditStatus }),
@@ -62,6 +79,7 @@ export const adminApi = {
 	saveCommunity: (payload) => request('admin/community/save', payload),
 	deleteCommunity: (id) => request('admin/community/delete', { id }),
 	roleList: () => request('admin/role/list'),
+	accessProfile: () => request('admin/access/profile'),
 	adminList: () => request('admin/user/list'),
 	saveAdmin: (payload) => request('admin/user/save', payload),
 	deleteAdmin: (id) => request('admin/user/delete', { id }),
