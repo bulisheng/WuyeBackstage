@@ -311,6 +311,38 @@
 						</div>
 					</div>
 				</div>
+				<div class="matrix-panel">
+					<div class="panel-head compact">
+						<h3>按小区 / 按角色权限矩阵</h3>
+						<span>行是小区，列是角色</span>
+					</div>
+					<table class="matrix-table">
+						<thead>
+							<tr>
+								<th>小区</th>
+								<th v-for="role in permissionMatrix.roleColumns" :key="role.value">
+									{{ role.label }}
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="row in permissionMatrix.communityRows" :key="row.communityId">
+								<td>
+									<div class="matrix-community">
+										<strong>{{ row.communityName }}</strong>
+										<span>{{ row.schemaName }}</span>
+									</div>
+								</td>
+								<td v-for="cell in row.cells" :key="cell.role">
+									<div class="matrix-cell">
+										<strong>{{ cell.count ? `${cell.count} 条` : '无' }}</strong>
+										<span>{{ cell.summary }}</span>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 				<table class="spaced-table">
 					<thead>
 						<tr>
@@ -480,7 +512,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { adminApi } from './api/admin.js';
 import { buildCommunityLabel, buildCommunityPayload, createCommunityForm } from './utils/community.js';
-import { buildPermissionRecord, listRoleOptions } from './utils/permissions.js';
+import { buildPermissionMatrix, buildPermissionRecord, listRoleOptions } from './utils/permissions.js';
 
 const activeTab = ref('dashboard');
 const stats = ref([]);
@@ -520,6 +552,7 @@ const pendingCount = computed(() => owners.value.filter((item) => item.auditStat
 
 const activeCommunities = computed(() => communities.value.filter((item) => item.active));
 const activeCommunity = computed(() => communities.value.find((item) => item.schemaName === selectedSchema.value) || null);
+const permissionMatrix = computed(() => buildPermissionMatrix(communities.value, permissions.value, roleOptions.value));
 const communityLabel = buildCommunityLabel;
 
 function statusText(status) {

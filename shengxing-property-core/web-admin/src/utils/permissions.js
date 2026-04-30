@@ -42,10 +42,49 @@ function buildRoleLabel(role) {
 	return found ? found.label : normalizeText(role);
 }
 
+function summarizePermissions(records = []) {
+	if (!Array.isArray(records) || !records.length) return '无';
+	const activeCount = records.filter((item) => item && item.active !== false && item.active !== 0 && item.active !== '0').length;
+	const first = records[0] || {};
+	const scope = parsePermissions(first.permissions).slice(0, 3).join(', ');
+	const roleLabel = buildRoleLabel(first.role);
+	return `${roleLabel}${activeCount}/${records.length}${scope ? ` · ${scope}` : ''}`;
+}
+
+function buildPermissionMatrix(communities = [], permissions = [], roles = ROLE_OPTIONS) {
+	const roleColumns = (Array.isArray(roles) ? roles : ROLE_OPTIONS).map((item) => ({
+		value: item.value,
+		label: item.label
+	}));
+	const communityRows = (Array.isArray(communities) ? communities : []).map((community) => {
+		const cells = roleColumns.map((role) => {
+			const records = (Array.isArray(permissions) ? permissions : []).filter((item) =>
+				Number(item.communityId) === Number(community.id) && String(item.role || '').trim() === role.value
+			);
+			return {
+				role: role.value,
+				label: role.label,
+				count: records.length,
+				summary: summarizePermissions(records),
+				records
+			};
+		});
+		return {
+			communityId: Number(community.id),
+			communityName: normalizeText(community.name),
+			schemaName: normalizeText(community.schemaName),
+			cells
+		};
+	});
+	return { roleColumns, communityRows };
+}
+
 export {
 	ROLE_OPTIONS,
 	listRoleOptions,
 	buildPermissionRecord,
 	buildRoleLabel,
-	parsePermissions
+	parsePermissions,
+	buildPermissionMatrix,
+	summarizePermissions
 };

@@ -332,6 +332,11 @@ th {
 	gap: 18px;
 }
 
+.matrix-panel {
+	display: grid;
+	gap: 12px;
+}
+
 .permission-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -353,6 +358,41 @@ th {
 
 .spaced-table + .spaced-table {
 	margin-top: 0;
+}
+
+.matrix-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.matrix-table th,
+.matrix-table td {
+	vertical-align: top;
+}
+
+.matrix-table td {
+	min-width: 180px;
+}
+
+.matrix-community,
+.matrix-cell {
+	display: grid;
+	gap: 4px;
+}
+
+.matrix-community span,
+.matrix-cell span {
+	color: #6b7280;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.matrix-cell strong {
+	font-size: 14px;
 }
 
 .announcement-panel {
