@@ -1,4 +1,5 @@
 const KEY = 'sxwy_auth_state';
+const { setCurrentCommunity: mergeCurrentCommunity } = require('./community.js');
 
 function getAuthState() {
 	try {
@@ -35,7 +36,7 @@ function isOwnerAuthed() {
 function saveAuthFromProfile(profile = {}) {
 	if (!profile || (!profile.isAuthed && !profile.isLoggedIn)) return null;
 	const currentCommunity = profile.currentCommunity || null;
-	return setAuthState({
+	return setAuthState(mergeCurrentCommunity(currentCommunity, {
 		isAuthed: !!profile.isAuthed,
 		isLoggedIn: !!profile.isLoggedIn || !!profile.isAuthed,
 		token: profile.token || '',
@@ -47,7 +48,12 @@ function saveAuthFromProfile(profile = {}) {
 		}) : null,
 		user: profile.user || {},
 		houses: profile.houses || []
-	});
+	}, currentCommunity));
+}
+
+function setCurrentCommunity(community) {
+	const state = getAuthState() || {};
+	return setAuthState(mergeCurrentCommunity(community, state));
 }
 
 module.exports = {
@@ -60,5 +66,6 @@ module.exports = {
 		const state = getAuthState();
 		return !!(state && state.isLoggedIn && state.token);
 	},
-	saveAuthFromProfile
+	saveAuthFromProfile,
+	setCurrentCommunity
 };

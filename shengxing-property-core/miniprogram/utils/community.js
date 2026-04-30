@@ -39,9 +39,26 @@ function buildCommunityRequestParams(params = {}, state = {}) {
 	return next;
 }
 
+function setCurrentCommunity(community = null, state = {}) {
+	const next = Object.assign({}, state || {});
+	if (!community || typeof community !== 'object') {
+		next.currentCommunity = null;
+		next.schemaName = normalizeCommunity(next.schemaName);
+		return next;
+	}
+	const current = getCurrentCommunity({
+		currentCommunity: community,
+		schemaName: community.schemaName || next.schemaName || ''
+	});
+	next.currentCommunity = current;
+	next.schemaName = current ? current.schemaName : normalizeCommunity(next.schemaName);
+	return next;
+}
+
 module.exports = {
 	normalizeCommunity,
 	getCurrentCommunity,
 	getCommunityDisplayName,
-	buildCommunityRequestParams
+	buildCommunityRequestParams,
+	setCurrentCommunity
 };

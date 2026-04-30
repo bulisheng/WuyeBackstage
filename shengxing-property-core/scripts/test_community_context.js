@@ -25,4 +25,18 @@ assert.deepEqual(params, {
 	schemaName: 'rzb'
 });
 
+const updatedState = community.setCurrentCommunity({
+	id: 'oljd-001',
+	name: '欧陆经典',
+	schemaName: 'oljd'
+}, authState);
+
+assert.deepEqual(updatedState.currentCommunity, {
+	id: 'oljd-001',
+	name: '欧陆经典',
+	schemaName: 'oljd'
+});
+
+assert.equal(updatedState.schemaName, 'oljd');
+
 console.log('community context assertions passed');
