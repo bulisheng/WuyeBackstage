@@ -50,7 +50,12 @@ const ROUTE_RULES = {
 	'admin/notice_config/list': { module: 'notices', action: 'notice:view' },
 	'admin/announcement/list': { module: 'announcements', action: 'announcement:view' },
 	'admin/announcement/save': { module: 'announcements', action: 'announcement:publish' },
-	'admin/announcement/delete': { module: 'announcements', action: 'announcement:delete' }
+	'admin/announcement/delete': { module: 'announcements', action: 'announcement:delete' },
+	'user/community_switch': { module: 'communities', action: 'community:switch' },
+	'user/house_bind': { module: 'owners', action: 'owner:bind_house' },
+	'user/house_unbind': { module: 'owners', action: 'owner:unbind_house' },
+	'repair/list': { module: 'repairs', action: 'repair:view' },
+	'repair/create': { module: 'repairs', action: 'repair:create' }
 };
 
 const LEGACY_PERMISSION_ALIASES = {

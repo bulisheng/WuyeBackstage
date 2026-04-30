@@ -1413,6 +1413,17 @@ function checkModuleEnabled(context, moduleKey) {
 	}
 }
 
+async function checkCommunityModuleEnabled(community, moduleKey) {
+	if (!community) return;
+	const currentModules = await getCommunityModules(community.id);
+	const access = {
+		enabledModules: communityModules.buildEnabledModuleKeys(currentModules)
+	};
+	if (!permissionEngine.hasModuleEnabled(access, moduleKey)) {
+		throw new Error('当前小区未启用该模块');
+	}
+}
+
 function ownerDto(item) {
 	return {
 		id: Number(item.id),
@@ -2160,6 +2171,7 @@ exports.main = async (event) => {
 		return response({ code: 0, msg: 'ok', data: {} }, true);
 	}
 	try {
+		const routeRule = getRoutePermission(route);
 		let data;
 		if (route === 'bootstrap/init') data = await init();
 		else if (route === 'bootstrap/communities') data = await communities();
@@ -2169,16 +2181,20 @@ exports.main = async (event) => {
 		else if (route === 'bootstrap/auth_submit') data = await submitAuth(params);
 		else if (route === 'bootstrap/owner_submit') data = await submitAuth(params);
 		else if (route === 'bootstrap/home') data = await home(params);
-		else if (route === 'user/community_switch') data = await switchCommunity(params);
-		else if (route === 'user/house_bind') data = await bindHouse(params);
-		else if (route === 'user/house_unbind') data = await unbindHouse(params);
-		else if (route === 'repair/list') data = await repairList(params);
-		else if (route === 'repair/create') data = await repairCreate(params);
+		else if (routeRule && !MODULE_CHECK_EXEMPT_ROUTES.has(route) && !route.startsWith('admin/')) {
+			const community = await resolveCommunityContext(params, { openid: getOpenId() });
+			await checkCommunityModuleEnabled(community, routeRule.module);
+			if (route === 'user/community_switch') data = await switchCommunity(params);
+			else if (route === 'user/house_bind') data = await bindHouse(params);
+			else if (route === 'user/house_unbind') data = await unbindHouse(params);
+			else if (route === 'repair/list') data = await repairList(params);
+			else if (route === 'repair/create') data = await repairCreate(params);
+			else return response({ code: 404, msg: `route not found: ${route}` }, normalized.isHttp);
+		}
 		else if (route.startsWith('admin/')) {
 			let adminAccess = null;
 			try {
 				adminAccess = await resolveAdminAccess(normalized.headers, params, route);
-				const routeRule = getRoutePermission(route);
 				if (adminAccess && routeRule && !MODULE_CHECK_EXEMPT_ROUTES.has(route)) {
 					checkModuleEnabled(adminAccess, routeRule.module);
 				}

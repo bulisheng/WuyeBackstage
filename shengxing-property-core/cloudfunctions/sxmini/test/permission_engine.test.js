@@ -41,6 +41,8 @@ test('route rules map admin endpoints to module and action keys', () => {
 	assert.deepEqual(engine.getRouteRule('admin/announcement/delete'), { module: 'announcements', action: 'announcement:delete' });
 	assert.deepEqual(engine.getRouteRule('admin/audit/list'), { module: 'permissions', action: 'admin:audit:view' });
 	assert.deepEqual(engine.getRouteRule('admin/community/module/save'), { module: 'permissions', action: 'community:module:manage' });
+	assert.deepEqual(engine.getRouteRule('repair/create'), { module: 'repairs', action: 'repair:create' });
+	assert.deepEqual(engine.getRouteRule('user/house_bind'), { module: 'owners', action: 'owner:bind_house' });
 });
 
 test('module enablement only passes when current community module is enabled', () => {
