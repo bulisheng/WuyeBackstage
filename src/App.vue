@@ -225,11 +225,10 @@
 			<section v-if="activeTab === 'permissions'" class="panel permission-panel">
 				<div class="panel-head">
 					<h2>权限管理</h2>
-					<span>{{ activePermissionTab === 'modules' ? `${currentCommunityModuleSummary} · ${activeCommunity ? communityLabel(activeCommunity) : '请选择小区'}` : `${admins.length} 个管理员 · ${permissions.length} 条小区权限` }}</span>
+					<span>{{ activePermissionTab === 'modules' ? `${currentCommunityModuleSummary} · ${activeCommunity ? communityLabel(activeCommunity) : '请选择小区'}` : `${admins.length} 个管理员` }}</span>
 				</div>
 				<div class="tab-strip">
 					<button :class="{ active: activePermissionTab === 'admins' }" @click="activePermissionTab = 'admins'">管理员</button>
-					<button :class="{ active: activePermissionTab === 'permissions' }" @click="activePermissionTab = 'permissions'">小区权限</button>
 					<button :class="{ active: activePermissionTab === 'modules' }" @click="activePermissionTab = 'modules'">模块开关</button>
 					<button :class="{ active: activePermissionTab === 'audit' }" @click="activePermissionTab = 'audit'">操作审计</button>
 				</div>
@@ -299,7 +298,7 @@
 								</label>
 								<label class="field checkbox-field">
 									<input v-model="adminForm.permissionActive" :true-value="1" :false-value="0" type="checkbox" />
-									<span>启用当前小区权限</span>
+									<span>启用当前配置</span>
 								</label>
 								<div class="role-preview span-2">
 									<div class="preview-head">
@@ -343,7 +342,7 @@
 							<div class="form-actions">
 								<button class="primary" :disabled="!canAction('admin:user:manage')" @click="saveAdmin">{{ editingAdminId ? '保存管理员' : '新增管理员' }}</button>
 								<button @click="resetAdminPermissionToRole">重置权限</button>
-								<button @click="resetAdminForm">重置</button>
+								<button @click="resetAdminForm">{{ editingAdminId ? '取消编辑' : '清空' }}</button>
 							</div>
 						</div>
 					</div>
@@ -366,145 +365,6 @@
 								<td class="actions">
 									<button :disabled="!canAction('admin:user:manage')" @click="editAdmin(item)">编辑</button>
 									<button class="danger" :disabled="!canAction('admin:user:manage')" @click="removeAdmin(item)">停用</button>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</template>
-
-				<template v-else-if="activePermissionTab === 'permissions'">
-					<div class="permission-grid">
-						<div class="permission-card">
-							<div class="panel-head compact">
-								<h3>小区权限</h3>
-								<span>{{ editingPermissionId ? '编辑中' : '新增' }}</span>
-							</div>
-							<div class="form-grid">
-								<label class="field">
-									<span>管理员</span>
-									<select v-model.number="permissionForm.adminId">
-										<option :value="0">请选择管理员</option>
-										<option v-for="item in admins" :key="item.id" :value="item.id">
-											{{ item.username }} · {{ item.roleLabel }}
-										</option>
-									</select>
-								</label>
-								<label class="field">
-									<span>小区</span>
-									<select v-model.number="permissionForm.communityId">
-										<option :value="0">请选择小区</option>
-										<option v-for="item in communities" :key="item.id" :value="item.id">
-											{{ communityLabel(item) }}
-										</option>
-									</select>
-								</label>
-								<label class="field">
-									<span>角色</span>
-									<select v-model="permissionForm.role">
-										<option v-for="item in roleOptions" :key="item.value" :value="item.value">
-											{{ item.label }}
-										</option>
-									</select>
-								</label>
-								<label class="field span-2">
-									<span>权限项</span>
-									<input v-model="permissionForm.permissions" type="text" placeholder="用逗号分隔，例如 repair,fee,notice" />
-								</label>
-								<label class="field checkbox-field">
-									<input v-model="permissionForm.active" :true-value="1" :false-value="0" type="checkbox" />
-									<span>启用</span>
-								</label>
-							</div>
-							<div class="form-actions">
-								<button class="primary" :disabled="!canAction('admin:permission:manage')" @click="savePermission">{{ editingPermissionId ? '保存权限' : '新增权限' }}</button>
-								<button @click="resetPermissionForm">重置</button>
-							</div>
-							<div class="access-preview">
-								<div class="preview-block">
-									<div class="preview-head">
-										<h4>角色默认菜单</h4>
-										<span>{{ permissionRoleAccess.note }}</span>
-									</div>
-									<div class="chip-row">
-										<span v-for="item in permissionRoleAccess.menuLabels" :key="item" class="chip">{{ item }}</span>
-									</div>
-								</div>
-								<div class="preview-block">
-									<div class="preview-head">
-										<h4>动作级覆盖</h4>
-										<span>点击动作可快速追加到权限项</span>
-									</div>
-									<div class="chip-row">
-										<button
-											v-for="item in quickPermissionTokens"
-											:key="item"
-											type="button"
-											class="chip chip-button"
-											:disabled="!canAction('admin:permission:manage')"
-											@click="appendPermissionToken(item)"
-										>
-											{{ buildActionLabel(item) }}
-										</button>
-									</div>
-									<p class="helper-text">当前生效动作：{{ permissionAccess.actionLabels.join('、') || '无' }}</p>
-									<p class="helper-text">社区覆盖项：{{ permissionAccess.extraActionLabels.join('、') || '无' }}</p>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="matrix-panel">
-						<div class="panel-head compact">
-							<h3>按小区 / 按角色权限矩阵</h3>
-							<span>行是小区，列是角色</span>
-						</div>
-						<table class="matrix-table">
-							<thead>
-								<tr>
-									<th>小区</th>
-									<th v-for="role in permissionMatrix.roleColumns" :key="role.value">
-										{{ role.label }}
-									</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-for="row in permissionMatrix.communityRows" :key="row.communityId">
-									<td>
-										<div class="matrix-community">
-											<strong>{{ row.communityName }}</strong>
-											<span>{{ row.schemaName }}</span>
-										</div>
-									</td>
-									<td v-for="cell in row.cells" :key="cell.role">
-										<button type="button" class="matrix-cell matrix-cell-button" @click="openMatrixCell(row, cell)">
-											<strong>{{ cell.count ? `${cell.count} 条` : '无' }}</strong>
-											<span>{{ cell.summary }}</span>
-										</button>
-									</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-					<table class="spaced-table">
-						<thead>
-							<tr>
-								<th>管理员</th>
-								<th>小区</th>
-								<th>角色</th>
-								<th>权限项</th>
-								<th>状态</th>
-								<th>操作</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-for="item in permissions" :key="item.id">
-								<td>{{ item.username }}</td>
-								<td>{{ item.communityName }}</td>
-								<td>{{ item.roleLabel }}</td>
-								<td>{{ item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
-								<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
-								<td class="actions">
-									<button :disabled="!canAction('admin:permission:manage')" @click="editPermission(item)">编辑</button>
-									<button class="danger" :disabled="!canAction('admin:permission:manage')" @click="removePermission(item)">删除</button>
 								</td>
 							</tr>
 						</tbody>
@@ -1383,6 +1243,7 @@ async function removeAnnouncement(item) {
 
 function resetAdminForm() {
 	editingAdminId.value = '';
+	editingPermissionId.value = '';
 	adminForm.value = emptyAdmin();
 }
 
