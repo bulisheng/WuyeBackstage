@@ -5,7 +5,10 @@
 				<h2>住户管理</h2>
 				<p class="panel-subtitle">手机号优先绑定，业主和租户分开管理，关键资料变更留痕。</p>
 			</div>
-			<span>{{ visibleRows.length }} 条记录</span>
+			<div class="resident-head-actions">
+				<span>{{ visibleRows.length }} 条记录</span>
+				<button class="primary" :disabled="!workspace.canAction('resident:import')" @click="showImport = true">表格导入</button>
+			</div>
 		</div>
 
 		<div class="resident-tabs">
@@ -46,6 +49,14 @@
 				</select>
 			</label>
 		</div>
+
+		<ResidentImportDialog
+			:open="showImport"
+			:submitting="importing"
+			@close="showImport = false"
+			@import="handleResidentImport"
+		/>
+		<p v-if="importFeedback" class="empty-text">{{ importFeedback }}</p>
 
 		<table v-if="workspace.residentActiveTab !== 'logs'">
 			<thead>
@@ -111,30 +122,28 @@
 		<p v-if="workspace.residentActiveTab !== 'logs' && !visibleRows.length" class="empty-text">暂无匹配住户。</p>
 		<p v-if="workspace.residentActiveTab === 'logs' && !visibleLogs.length" class="empty-text">暂无变更记录。</p>
 
-		<div v-if="selectedResident" class="detail-card resident-detail">
-			<div class="panel-head compact">
-				<h3>{{ selectedResident.identityType === 'tenant' ? '租户详情' : '业主详情' }}</h3>
-				<span>{{ actionHint || buildResidentDisplayLabel(selectedResident) }}</span>
-			</div>
-			<div class="detail-grid">
-				<div><strong>姓名</strong><p>{{ selectedResident.name || '-' }}</p></div>
-				<div><strong>手机号</strong><p>{{ selectedResident.mobile || '-' }}</p></div>
-				<div><strong>房号</strong><p>{{ selectedResident.house || '-' }}</p></div>
-				<div><strong>状态</strong><p>{{ statusLabel(selectedResident) }}</p></div>
-				<div><strong>住户类型</strong><p>{{ selectedResident.identityType === 'tenant' ? '租户' : '业主' }}</p></div>
-				<div><strong>小区</strong><p>{{ selectedResident.communityName || workspace.activeCommunity?.name || '-' }}</p></div>
-			</div>
-		</div>
+		<ResidentDetailPanel
+			:resident="selectedResident"
+			:logs="selectedResidentLogs"
+			:status-label="selectedResident ? statusLabel(selectedResident) : ''"
+			:action-hint="actionHint"
+		/>
 	</section>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
-import { buildResidentDisplayLabel, matchesResidentKeyword } from '../utils/residentDirectory.js';
+import ResidentDetailPanel from '../components/resident/ResidentDetailPanel.vue';
+import ResidentImportDialog from '../components/resident/ResidentImportDialog.vue';
+import { adminApi } from '../api/admin.js';
+import { matchesResidentKeyword } from '../utils/residentDirectory.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
 const actionHint = ref('');
+const showImport = ref(false);
+const importing = ref(false);
+const importFeedback = ref('');
 
 const ownerRows = computed(() => workspace.ownerRecords.map((item) => ({
 	id: item.id,
@@ -189,6 +198,14 @@ const selectedResident = computed(() => allRows.value.find((item) =>
 	`${item.identityType}-${item.id}` === workspace.residentSelectedId
 ) || null);
 
+const selectedResidentLogs = computed(() => {
+	if (!selectedResident.value) return [];
+	return workspace.residentChangeLogs.filter((item) =>
+		item.residentType === selectedResident.value.identityType
+		&& Number(item.residentId) === Number(selectedResident.value.id)
+	).slice(0, 8);
+});
+
 function selectResident(item) {
 	workspace.residentSelectedId = `${item.identityType}-${item.id}`;
 	actionHint.value = '';
@@ -213,6 +230,27 @@ function recordPendingAction(item, action) {
 	selectResident(item);
 	actionHint.value = `${action} 功能将在导入与详情闭环步骤补齐`;
 }
+
+async function handleResidentImport(payload) {
+	importing.value = true;
+	importFeedback.value = '';
+	try {
+		const api = payload.residentType === 'tenant' ? adminApi.tenantImport : adminApi.ownerImport;
+		const result = await api({ rows: payload.rows });
+		const summary = result.summary || {};
+		importFeedback.value = `导入完成：新增 ${summary.created || 0}，更新 ${summary.updated || 0}，待确认 ${summary.manualReview || 0}，失败 ${summary.failed || 0}`;
+		showImport.value = false;
+		await Promise.all([
+			workspace.loadOwnerRecords(),
+			workspace.loadTenantRecords(),
+			workspace.loadResidentChangeLogs({ limit: 100 })
+		]);
+	} catch (err) {
+		importFeedback.value = err.message || '导入失败';
+	} finally {
+		importing.value = false;
+	}
+}
 </script>
 
 <style scoped>
@@ -225,6 +263,12 @@ function recordPendingAction(item, action) {
 	margin-top: 6px;
 	color: #6b7280;
 	line-height: 1.6;
+}
+
+.resident-head-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
 }
 
 .resident-tabs {
@@ -273,10 +317,6 @@ function recordPendingAction(item, action) {
 .resident-actions button:disabled {
 	cursor: not-allowed;
 	opacity: 0.55;
-}
-
-.resident-detail {
-	border-left: 4px solid #13b35d;
 }
 
 @media (max-width: 960px) {
