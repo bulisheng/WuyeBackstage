@@ -171,6 +171,66 @@ CREATE TABLE IF NOT EXISTS `rzb`.`owner_houses` (
 	KEY idx_owner_houses_community (community_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `rzb`.`tasks` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	type VARCHAR(60) NOT NULL,
+	title VARCHAR(160) NOT NULL,
+	content TEXT,
+	category VARCHAR(80) DEFAULT '',
+	user_id BIGINT UNSIGNED DEFAULT NULL,
+	house_id BIGINT UNSIGNED DEFAULT NULL,
+	status ENUM('pending','assigned','processing','completed','confirmed','rated','closed','timeout','escalated','cancelled') NOT NULL DEFAULT 'pending',
+	priority TINYINT NOT NULL DEFAULT 0,
+	assigned_to BIGINT UNSIGNED DEFAULT NULL,
+	appointment_time DATETIME NULL,
+	deadline DATETIME NULL,
+	sla_status VARCHAR(40) DEFAULT '',
+	is_anonymous TINYINT(1) NOT NULL DEFAULT 0,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	completed_at DATETIME NULL,
+	confirmed_at DATETIME NULL,
+	closed_at DATETIME NULL,
+	PRIMARY KEY (id),
+	KEY idx_tasks_community_type (community_id, type),
+	KEY idx_tasks_status (status),
+	KEY idx_tasks_assigned_to (assigned_to),
+	KEY idx_tasks_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `rzb`.`task_logs` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	task_id BIGINT UNSIGNED NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	operator_id BIGINT UNSIGNED DEFAULT NULL,
+	operator_type VARCHAR(20) NOT NULL DEFAULT 'system',
+	action VARCHAR(60) NOT NULL,
+	from_status VARCHAR(40) DEFAULT '',
+	to_status VARCHAR(40) DEFAULT '',
+	content TEXT,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	KEY idx_task_logs_task (task_id),
+	KEY idx_task_logs_community (community_id),
+	KEY idx_task_logs_operator (operator_id),
+	KEY idx_task_logs_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `rzb`.`task_images` (
+	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+	_openid VARCHAR(64) DEFAULT '' NOT NULL,
+	task_id BIGINT UNSIGNED NOT NULL,
+	community_id BIGINT UNSIGNED NOT NULL,
+	url VARCHAR(255) NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	KEY idx_task_images_task (task_id),
+	KEY idx_task_images_community (community_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `rzb`.`repairs` (
 	id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 	_openid VARCHAR(64) DEFAULT '' NOT NULL,

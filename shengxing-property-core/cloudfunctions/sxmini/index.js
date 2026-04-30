@@ -3,6 +3,7 @@ const cloudbase = require('@cloudbase/node-sdk');
 const crypto = require('crypto');
 const permissionEngine = require('./permission_engine.js');
 const communityModules = require('./community_modules.js');
+const taskEngine = require('./task_engine.js');
 
 cloud.init({
 	env: cloud.DYNAMIC_CURRENT_ENV
@@ -31,6 +32,9 @@ const TENANT_TABLES = [
 	'auth_codes',
 	'owner_houses',
 	'repairs',
+	'tasks',
+	'task_logs',
+	'task_images',
 	'fee_bills',
 	'complaints',
 	'service_orders',
@@ -437,6 +441,72 @@ async function ensureTenantSchema(schemaName) {
 					UNIQUE KEY uk_owner_houses_owner_house (owner_id, house),
 					KEY idx_owner_houses_owner (owner_id),
 					KEY idx_owner_houses_community (community_id)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'tasks') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					type VARCHAR(60) NOT NULL,
+					title VARCHAR(160) NOT NULL,
+					content TEXT,
+					category VARCHAR(80) DEFAULT '',
+					user_id BIGINT UNSIGNED DEFAULT NULL,
+					house_id BIGINT UNSIGNED DEFAULT NULL,
+					status ENUM('pending','assigned','processing','completed','confirmed','rated','closed','timeout','escalated','cancelled') NOT NULL DEFAULT 'pending',
+					priority TINYINT NOT NULL DEFAULT 0,
+					assigned_to BIGINT UNSIGNED DEFAULT NULL,
+					appointment_time DATETIME NULL,
+					deadline DATETIME NULL,
+					sla_status VARCHAR(40) DEFAULT '',
+					is_anonymous TINYINT(1) NOT NULL DEFAULT 0,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+					completed_at DATETIME NULL,
+					confirmed_at DATETIME NULL,
+					closed_at DATETIME NULL,
+					PRIMARY KEY (id),
+					KEY idx_tasks_community_type (community_id, type),
+					KEY idx_tasks_status (status),
+					KEY idx_tasks_assigned_to (assigned_to),
+					KEY idx_tasks_user (user_id)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'task_logs') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					task_id BIGINT UNSIGNED NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					operator_id BIGINT UNSIGNED DEFAULT NULL,
+					operator_type VARCHAR(20) NOT NULL DEFAULT 'system',
+					action VARCHAR(60) NOT NULL,
+					from_status VARCHAR(40) DEFAULT '',
+					to_status VARCHAR(40) DEFAULT '',
+					content TEXT,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (id),
+					KEY idx_task_logs_task (task_id),
+					KEY idx_task_logs_community (community_id),
+					KEY idx_task_logs_operator (operator_id),
+					KEY idx_task_logs_created_at (created_at)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+			);
+		} else if (table === 'task_images') {
+			await runSql(
+				`CREATE TABLE IF NOT EXISTS ${tenantTable(schema, table)} (
+					id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+					_openid VARCHAR(64) DEFAULT '' NOT NULL,
+					task_id BIGINT UNSIGNED NOT NULL,
+					community_id BIGINT UNSIGNED NOT NULL,
+					url VARCHAR(255) NOT NULL,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (id),
+					KEY idx_task_images_task (task_id),
+					KEY idx_task_images_community (community_id)
 				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
 			);
 		} else if (table === 'repairs') {
@@ -1411,6 +1481,14 @@ function checkModuleEnabled(context, moduleKey) {
 	if (!permissionEngine.hasModuleEnabled(context.access, moduleKey)) {
 		throw new Error('当前小区未启用该模块');
 	}
+}
+
+function taskTypeLabel(taskType) {
+	return taskEngine.TASK_TYPES[String(taskType || '').trim()] || String(taskType || '').trim();
+}
+
+function taskStatusLabel(status) {
+	return taskEngine.TASK_STATUSES[String(status || '').trim()] || String(status || '').trim();
 }
 
 async function checkCommunityModuleEnabled(community, moduleKey) {
