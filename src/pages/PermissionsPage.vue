@@ -2,10 +2,11 @@
 	<section class="panel permission-panel">
 		<div class="panel-head">
 			<h2>权限管理</h2>
-			<span>{{ workspace.activePermissionTab === 'modules' ? `${workspace.currentCommunityModuleSummary} · ${workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区'}` : `${workspace.admins.length} 个管理员` }}</span>
+			<span>{{ permissionPanelSummary }}</span>
 		</div>
 		<div class="tab-strip">
 			<button :class="{ active: workspace.activePermissionTab === 'admins' }" @click="workspace.activePermissionTab = 'admins'">管理员</button>
+			<button :class="{ active: workspace.activePermissionTab === 'permissions' }" @click="workspace.activePermissionTab = 'permissions'">管理权限</button>
 			<button :class="{ active: workspace.activePermissionTab === 'modules' }" @click="workspace.activePermissionTab = 'modules'">模块开关</button>
 			<button :class="{ active: workspace.activePermissionTab === 'audit' }" @click="workspace.activePermissionTab = 'audit'">操作审计</button>
 		</div>
@@ -126,6 +127,79 @@
 			</table>
 		</template>
 
+		<template v-else-if="workspace.activePermissionTab === 'permissions'">
+			<div class="permission-grid">
+				<div class="permission-card span-2">
+					<div class="panel-head compact">
+						<h3>管理权限</h3>
+						<span>{{ workspace.editingPermissionId ? '编辑权限记录' : '新增权限记录' }}</span>
+					</div>
+					<div class="form-grid">
+						<label class="field">
+							<span>管理员</span>
+							<select v-model.number="workspace.permissionForm.adminId">
+								<option :value="0">请选择管理员</option>
+								<option v-for="item in workspace.admins" :key="item.id" :value="item.id">{{ item.username }} · {{ item.roleLabel }}</option>
+							</select>
+						</label>
+						<label class="field">
+							<span>小区</span>
+							<select v-model.number="workspace.permissionForm.communityId">
+								<option :value="0">请选择小区</option>
+								<option v-for="item in workspace.communities" :key="item.id" :value="item.id">{{ workspace.communityLabel(item) }}</option>
+							</select>
+						</label>
+						<label class="field">
+							<span>小区角色</span>
+							<select v-model="workspace.permissionForm.role">
+								<option v-for="item in workspace.roleOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+							</select>
+						</label>
+						<label class="field checkbox-field">
+							<input v-model="workspace.permissionForm.active" :true-value="1" :false-value="0" type="checkbox" />
+							<span>启用</span>
+						</label>
+						<label class="field span-2">
+							<span>权限令牌</span>
+							<textarea v-model="workspace.permissionForm.permissions" placeholder="例如 menu:permissions, action:admin:user:manage, !menu:fees"></textarea>
+						</label>
+					</div>
+					<div class="form-actions">
+						<button class="primary" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.savePermission">{{ workspace.editingPermissionId ? '保存权限' : '新增权限' }}</button>
+						<button @click="workspace.resetPermissionForm">{{ workspace.editingPermissionId ? '取消编辑' : '清空' }}</button>
+					</div>
+				</div>
+			</div>
+			<table class="spaced-table">
+				<thead>
+					<tr>
+						<th>管理员</th>
+						<th>小区</th>
+						<th>小区角色</th>
+						<th>权限令牌</th>
+						<th>状态</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="item in workspace.permissions" :key="item.id">
+						<td>{{ item.username || `#${item.adminId}` }}</td>
+						<td>{{ item.communityName || workspace.communityNameById(item.communityId) }}</td>
+						<td>{{ item.roleLabel || item.role }}</td>
+						<td>{{ Array.isArray(item.permissions) && item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
+						<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
+						<td class="actions">
+							<button :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.editPermission(item)">编辑</button>
+							<button class="danger" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.removePermission(item)">删除</button>
+						</td>
+					</tr>
+					<tr v-if="!workspace.permissions.length">
+						<td colspan="6" class="empty-cell">暂无权限记录</td>
+					</tr>
+				</tbody>
+			</table>
+		</template>
+
 		<template v-else-if="workspace.activePermissionTab === 'modules'">
 			<div class="permission-grid">
 				<div class="permission-card span-2">
@@ -219,6 +293,20 @@ import { computed } from 'vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
+
+const permissionPanelSummary = computed(() => {
+	if (workspace.activePermissionTab === 'modules') {
+		const community = workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区';
+		return `${workspace.currentCommunityModuleSummary} · ${community}`;
+	}
+	if (workspace.activePermissionTab === 'permissions') {
+		return `${workspace.permissions.length} 条权限记录`;
+	}
+	if (workspace.activePermissionTab === 'audit') {
+		return `${workspace.auditLogs.length} 条审计记录`;
+	}
+	return `${workspace.admins.length} 个管理员`;
+});
 
 const deniedMenuText = computed(() => {
 	const labels = workspace.adminPermissionAccess && Array.isArray(workspace.adminPermissionAccess.deniedMenuLabels)

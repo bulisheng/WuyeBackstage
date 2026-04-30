@@ -598,14 +598,8 @@ async function removeAdmin(item) {
 }
 
 function editPermission(item) {
-	const admin = admins.value.find((entry) => Number(entry.id) === Number(item.adminId));
-	if (admin) {
-		editAdmin(admin);
-		applyPermissionToAdminForm(item);
-		return;
-	}
 	editingPermissionId.value = String(item.id || '');
-	activePermissionTab.value = 'admins';
+	activePermissionTab.value = 'permissions';
 	permissionForm.value = {
 		adminId: Number(item.adminId || 0),
 		communityId: Number(item.communityId || 0),
