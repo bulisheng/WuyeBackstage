@@ -29,6 +29,9 @@ const routerReady = { value: false };
 
 const activeRoute = ref('login');
 const stats = ref([]);
+const dashboardTodos = ref([]);
+const dashboardTodoLists = ref({ repairs: [], bills: [], notices: [] });
+const dashboardCrossModuleStats = ref({});
 const owners = ref([]);
 const ownerRecords = owners;
 const tenantRecords = ref([]);
@@ -60,6 +63,10 @@ const repairDetail = ref(null);
 const repairLogs = ref([]);
 const repairActions = ref({});
 const repairActionForm = ref(emptyRepairAction());
+const repairStaff = ref([]);
+const repairStaffForm = ref(emptyRepairStaff());
+const editingRepairStaffId = ref('');
+const repairSlaSummary = ref(null);
 const fees = ref([]);
 const selectedFeeId = ref('');
 const paymentRecords = ref([]);
@@ -69,6 +76,9 @@ const editingFeeId = ref('');
 const feeOwnerLookupText = ref('请输入手机号后自动带出姓名和房号');
 const feeSaving = ref(false);
 const feeLookupLoading = ref(false);
+const feeImportText = ref('');
+const feeImportSummary = ref(null);
+const feeReconcileResult = ref(null);
 const noticeConfigs = ref([]);
 const noticeRecords = ref([]);
 const noticeConfigForm = ref(emptyNoticeConfig());
@@ -139,6 +149,15 @@ function emptyRepairAction() {
 		action: 'assign',
 		assignee: '',
 		content: ''
+	};
+}
+
+function emptyRepairStaff() {
+	return {
+		name: '',
+		mobile: '',
+		skillTags: '',
+		active: 1
 	};
 }
 
@@ -237,6 +256,48 @@ function noticeStatusText(status) {
 
 function money(value) {
 	return `￥${Number(value || 0).toFixed(2)}`;
+}
+
+function downloadTextFile(filename, content, contentType = 'text/plain;charset=utf-8') {
+	const blob = new Blob([content || ''], { type: contentType });
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename || `export-${Date.now()}.csv`;
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	window.URL.revokeObjectURL(url);
+}
+
+function parsePastedTable(text = '') {
+	const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+	if (!lines.length) return [];
+	const splitLine = (line) => line.includes('\t') ? line.split('\t') : line.split(',');
+	const first = splitLine(lines[0]).map((item) => item.trim());
+	const hasHeader = first.some((item) => ['手机号', '标题', '金额', '类型', '截止日期', 'mobile', 'title', 'amount'].includes(item));
+	const headers = hasHeader ? first : ['mobile', 'title', 'amount', 'billType', 'dueDate'];
+	const rows = hasHeader ? lines.slice(1) : lines;
+	const pick = (row, names) => {
+		for (const name of names) {
+			if (row[name] !== undefined) return row[name];
+		}
+		return '';
+	};
+	return rows.map((line) => {
+		const values = splitLine(line).map((item) => item.trim());
+		const raw = {};
+		headers.forEach((header, index) => {
+			raw[header] = values[index] || '';
+		});
+		return {
+			ownerMobile: pick(raw, ['mobile', '手机号', '业主手机号', 'ownerMobile']),
+			title: pick(raw, ['title', '标题', '账单标题']),
+			amount: pick(raw, ['amount', '金额']),
+			billType: pick(raw, ['billType', '类型', '账单类型']) || '物业费',
+			dueDate: pick(raw, ['dueDate', '截止日期', '到期日'])
+		};
+	});
 }
 
 function canMenu(menu) {
@@ -447,6 +508,9 @@ async function logoutAdmin() {
 	adminAccess.value = null;
 	communities.value = [];
 	stats.value = [];
+	dashboardTodos.value = [];
+	dashboardTodoLists.value = { repairs: [], bills: [], notices: [] };
+	dashboardCrossModuleStats.value = {};
 	owners.value = [];
 	tenantRecords.value = [];
 	residentChangeLogs.value = [];
@@ -460,10 +524,17 @@ async function logoutAdmin() {
 	repairDetail.value = null;
 	repairLogs.value = [];
 	repairActions.value = {};
+	repairStaff.value = [];
+	repairStaffForm.value = emptyRepairStaff();
+	editingRepairStaffId.value = '';
+	repairSlaSummary.value = null;
 	fees.value = [];
 	selectedFeeId.value = '';
 	paymentRecords.value = [];
 	selectedFeePayments.value = [];
+	feeImportText.value = '';
+	feeImportSummary.value = null;
+	feeReconcileResult.value = null;
 	noticeConfigs.value = [];
 	noticeRecords.value = [];
 	editingCommunityId.value = '';
@@ -851,6 +922,29 @@ async function remindFee(item) {
 	window.alert('已创建催缴记录');
 }
 
+async function importFeesFromText() {
+	const rows = parsePastedTable(feeImportText.value);
+	if (!rows.length) {
+		window.alert('请先粘贴账单数据');
+		return;
+	}
+	const result = await adminApi.feeImport({ rows });
+	feeImportSummary.value = result.summary || null;
+	fees.value = result.list || fees.value;
+	await loadFeePayments();
+}
+
+async function exportFees() {
+	const result = await adminApi.feeExport();
+	downloadTextFile(result.filename, result.content, result.contentType);
+}
+
+async function reconcileFees() {
+	const result = await adminApi.feeReconcile();
+	feeReconcileResult.value = result;
+	window.alert(`对账完成，异常 ${result.summary?.anomalyCount || 0} 条`);
+}
+
 async function selectFee(item) {
 	selectedFeeId.value = String(item && item.id ? item.id : '');
 	if (!selectedFeeId.value) {
@@ -904,6 +998,45 @@ async function saveRepairAction() {
 	repairActionForm.value.content = '';
 	const listResult = await adminApi.repairList();
 	repairs.value = listResult.list || repairs.value;
+}
+
+function editRepairStaff(item) {
+	editingRepairStaffId.value = String(item.id || '');
+	repairStaffForm.value = {
+		name: item.name || '',
+		mobile: item.mobile || '',
+		skillTags: item.skillTags || '',
+		active: item.active ? 1 : 0
+	};
+}
+
+function resetRepairStaffForm() {
+	editingRepairStaffId.value = '';
+	repairStaffForm.value = emptyRepairStaff();
+}
+
+async function saveRepairStaff() {
+	const result = await adminApi.repairStaffSave({
+		id: editingRepairStaffId.value || undefined,
+		name: repairStaffForm.value.name,
+		mobile: repairStaffForm.value.mobile,
+		skillTags: repairStaffForm.value.skillTags,
+		active: repairStaffForm.value.active
+	});
+	repairStaff.value = result.list || repairStaff.value;
+	resetRepairStaffForm();
+}
+
+async function scanRepairSla() {
+	const result = await adminApi.repairSlaScan();
+	repairSlaSummary.value = { updated: result.updated || 0 };
+	repairs.value = result.list || repairs.value;
+	window.alert(`SLA 扫描完成，标记 ${result.updated || 0} 条超时工单`);
+}
+
+async function exportRepairs() {
+	const result = await adminApi.repairExport();
+	downloadTextFile(result.filename, result.content, result.contentType);
 }
 
 function resetNoticeConfigForm() {
@@ -1001,6 +1134,8 @@ async function reload() {
 		selectedFeeId.value = '';
 		paymentRecords.value = [];
 		selectedFeePayments.value = [];
+		repairStaff.value = [];
+		repairSlaSummary.value = null;
 		noticeConfigs.value = [];
 		noticeRecords.value = [];
 		admins.value = [];
@@ -1010,12 +1145,13 @@ async function reload() {
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
-	const [dashboard, ownerData, tenantData, residentLogData, repairData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
+	const [dashboard, ownerData, tenantData, residentLogData, repairData, repairStaffData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
 		canMenu('dashboard') ? adminApi.dashboard() : Promise.resolve({ stats: [] }),
 		canMenu('owners') ? adminApi.ownerList() : Promise.resolve({ list: [] }),
 		canMenu('owners') ? adminApi.tenantList() : Promise.resolve({ list: [] }),
 		canMenu('owners') ? adminApi.residentChangeLogList({ limit: 100 }) : Promise.resolve({ list: [] }),
 		canMenu('repairs') ? adminApi.repairList() : Promise.resolve({ list: [] }),
+		canMenu('repairs') ? adminApi.repairStaffList() : Promise.resolve({ list: [] }),
 		canMenu('fees') ? adminApi.feeList() : Promise.resolve({ list: [] }),
 		canMenu('fees') ? adminApi.feePayments() : Promise.resolve({ list: [] }),
 		canMenu('notices') ? adminApi.noticeConfigList() : Promise.resolve({ list: [] }),
@@ -1030,10 +1166,14 @@ async function reload() {
 		moduleRecords.value = [];
 	}
 	stats.value = dashboard.stats || [];
+	dashboardTodos.value = dashboard.todos || [];
+	dashboardTodoLists.value = dashboard.todoLists || { repairs: [], bills: [], notices: [] };
+	dashboardCrossModuleStats.value = dashboard.crossModuleStats || {};
 	owners.value = ownerData.list || [];
 	tenantRecords.value = tenantData.list || [];
 	residentChangeLogs.value = residentLogData.list || [];
 	repairs.value = repairData.list || [];
+	repairStaff.value = repairStaffData.list || [];
 	fees.value = feeData.list || [];
 	paymentRecords.value = paymentData.list || [];
 	noticeConfigs.value = noticeConfigData.list || [];
@@ -1079,6 +1219,9 @@ export function useAdminWorkspaceStore() {
 		routeOrder,
 		activeRoute,
 		stats,
+		dashboardTodos,
+		dashboardTodoLists,
+		dashboardCrossModuleStats,
 		owners,
 		ownerRecords,
 		tenantRecords,
@@ -1110,6 +1253,10 @@ export function useAdminWorkspaceStore() {
 		repairLogs,
 		repairActions,
 		repairActionForm,
+		repairStaff,
+		repairStaffForm,
+		editingRepairStaffId,
+		repairSlaSummary,
 		fees,
 		selectedFeeId,
 		paymentRecords,
@@ -1119,6 +1266,9 @@ export function useAdminWorkspaceStore() {
 		feeOwnerLookupText,
 		feeSaving,
 		feeLookupLoading,
+		feeImportText,
+		feeImportSummary,
+		feeReconcileResult,
 		noticeConfigs,
 		noticeRecords,
 		noticeConfigForm,
@@ -1189,8 +1339,16 @@ export function useAdminWorkspaceStore() {
 		restoreAllModules,
 		openRepairDetail,
 		saveRepairAction,
+		editRepairStaff,
+		resetRepairStaffForm,
+		saveRepairStaff,
+		scanRepairSla,
+		exportRepairs,
 		editFee,
 		saveFee,
+		importFeesFromText,
+		exportFees,
+		reconcileFees,
 		resolveFeeOwnerByMobile,
 		removeFee,
 		remindFee,

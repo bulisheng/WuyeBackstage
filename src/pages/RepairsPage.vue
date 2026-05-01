@@ -4,6 +4,11 @@
 			<h2>报修管理</h2>
 			<span>{{ filteredRepairs.length }} 条工单 / 共 {{ workspace.repairs.length }} 条</span>
 		</div>
+		<div class="form-actions">
+			<button :disabled="!workspace.canAction('repair:update')" @click="workspace.scanRepairSla">扫描 SLA 超时</button>
+			<button :disabled="!workspace.canAction('repair:view')" @click="workspace.exportRepairs">导出工单</button>
+		</div>
+		<p v-if="workspace.repairSlaSummary" class="field-hint">最近 SLA 扫描标记 {{ workspace.repairSlaSummary.updated || 0 }} 条超时工单。</p>
 		<div class="filter-row">
 			<label class="field">
 				<span>关键词</span>
@@ -29,6 +34,7 @@
 					<th>联系人</th>
 					<th>电话</th>
 					<th>状态</th>
+					<th>SLA</th>
 					<th>处理人</th>
 				</tr>
 			</thead>
@@ -39,6 +45,7 @@
 					<td>{{ item.contact }}</td>
 					<td>{{ item.phone }}</td>
 					<td><span class="status" :class="item.status">{{ workspace.workStatusText(item.status) }}</span></td>
+					<td>{{ item.slaStatus || (item.deadline ? `期限 ${item.deadline}` : '-') }}</td>
 					<td>{{ item.assignee || '未分配' }}</td>
 				</tr>
 			</tbody>
@@ -56,6 +63,8 @@
 				<div><strong>联系人</strong><p>{{ workspace.repairDetail.contact || '-' }}</p></div>
 				<div><strong>电话</strong><p>{{ workspace.repairDetail.phone || '-' }}</p></div>
 				<div><strong>状态</strong><p>{{ workspace.workStatusText(workspace.repairDetail.status) }}</p></div>
+				<div><strong>SLA</strong><p>{{ workspace.repairDetail.slaStatus || '-' }}</p></div>
+				<div><strong>处理期限</strong><p>{{ workspace.repairDetail.deadline || '-' }}</p></div>
 				<div><strong>处理人</strong><p>{{ workspace.repairDetail.assignee || '未分配' }}</p></div>
 				<div><strong>提交时间</strong><p>{{ workspace.repairDetail.createdAt || '-' }}</p></div>
 				<div class="wide"><strong>描述</strong><p>{{ workspace.repairDetail.desc || '暂无描述' }}</p></div>
@@ -79,7 +88,10 @@
 					</label>
 					<label class="field">
 						<span>处理人</span>
-						<input v-model="workspace.repairActionForm.assignee" type="text" placeholder="维修师傅 / 班组" />
+						<select v-model="workspace.repairActionForm.assignee">
+							<option value="">选择维修人员</option>
+							<option v-for="staff in activeRepairStaff" :key="staff.id" :value="staff.name">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}</option>
+						</select>
 					</label>
 					<label class="field wide">
 						<span>处理说明</span>
@@ -100,7 +112,55 @@
 				</div>
 			</div>
 		</div>
-		<p v-else class="empty-text">点击列表中的工单查看详情和处理流转。</p>
+		<p v-if="!workspace.repairDetail" class="empty-text">点击列表中的工单查看详情和处理流转。</p>
+		<div class="detail-card">
+			<div class="panel-head compact">
+				<h3>维修人员档案</h3>
+				<span>{{ workspace.repairStaff.length }} 人</span>
+			</div>
+			<div class="form-grid">
+				<label class="field">
+					<span>姓名</span>
+					<input v-model="workspace.repairStaffForm.name" type="text" placeholder="维修师傅姓名" />
+				</label>
+				<label class="field">
+					<span>电话</span>
+					<input v-model="workspace.repairStaffForm.mobile" type="text" placeholder="联系电话" />
+				</label>
+				<label class="field">
+					<span>技能标签</span>
+					<input v-model="workspace.repairStaffForm.skillTags" type="text" placeholder="水电 / 门禁 / 综合维修" />
+				</label>
+				<label class="field checkbox-field">
+					<input v-model="workspace.repairStaffForm.active" :true-value="1" :false-value="0" type="checkbox" />
+					<span>启用</span>
+				</label>
+			</div>
+			<div class="form-actions">
+				<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="workspace.saveRepairStaff">{{ workspace.editingRepairStaffId ? '保存人员' : '新增人员' }}</button>
+				<button @click="workspace.resetRepairStaffForm">重置</button>
+			</div>
+			<table>
+				<thead>
+					<tr>
+						<th>姓名</th>
+						<th>电话</th>
+						<th>技能</th>
+						<th>状态</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="staff in workspace.repairStaff" :key="staff.id">
+						<td>{{ staff.name }}</td>
+						<td>{{ staff.mobile || '-' }}</td>
+						<td>{{ staff.skillTags || '-' }}</td>
+						<td>{{ staff.active ? '启用' : '停用' }}</td>
+						<td class="actions"><button :disabled="!workspace.canAction('repair:assign')" @click="workspace.editRepairStaff(staff)">编辑</button></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 	</section>
 </template>
 
@@ -111,6 +171,7 @@ import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 const workspace = useAdminWorkspaceStore();
 const keyword = ref('');
 const status = ref('');
+const activeRepairStaff = computed(() => workspace.repairStaff.filter((item) => item.active));
 
 const filteredRepairs = computed(() => workspace.repairs.filter((item) => {
 	const text = `${item.title || ''} ${item.contact || ''} ${item.phone || ''}`.toLowerCase();

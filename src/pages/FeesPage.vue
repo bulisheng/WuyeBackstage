@@ -4,6 +4,11 @@
 			<h2>缴费管理</h2>
 			<span>{{ filteredFees.length }} 条账单 / 共 {{ workspace.fees.length }} 条</span>
 		</div>
+		<div class="form-actions">
+			<button :disabled="!workspace.canAction('fee:manage')" @click="workspace.importFeesFromText">批量导入</button>
+			<button :disabled="!workspace.canAction('fee:export')" @click="workspace.exportFees">导出账单</button>
+			<button :disabled="!workspace.canAction('fee:collect')" @click="workspace.reconcileFees">微信支付对账</button>
+		</div>
 		<div class="filter-row">
 			<label class="field">
 				<span>关键词</span>
@@ -20,6 +25,16 @@
 					<option value="refunded">已退款</option>
 				</select>
 			</label>
+		</div>
+		<div class="detail-card">
+			<div class="panel-head compact">
+				<h3>批量导入账单</h3>
+				<span>支持表头：手机号、标题、金额、类型、截止日期</span>
+			</div>
+			<textarea v-model="workspace.feeImportText" rows="4" placeholder="13800000000,2026年5月物业费,188.5,物业费,2026-05-31"></textarea>
+			<p v-if="workspace.feeImportSummary" class="field-hint">
+				导入结果：成功 {{ workspace.feeImportSummary.created || 0 }} 条，失败 {{ workspace.feeImportSummary.failed || 0 }} 条
+			</p>
 		</div>
 		<div class="announcement-editor">
 			<div class="form-grid">
@@ -154,6 +169,29 @@
 				<h3>支付流水视图</h3>
 				<span>{{ filteredPayments.length }} 条</span>
 			</div>
+			<p v-if="workspace.feeReconcileResult" class="field-hint">
+				最近对账：共 {{ workspace.feeReconcileResult.summary?.totalBills || 0 }} 笔账单，异常 {{ workspace.feeReconcileResult.summary?.anomalyCount || 0 }} 条
+			</p>
+			<table v-if="workspace.feeReconcileResult && workspace.feeReconcileResult.anomalies && workspace.feeReconcileResult.anomalies.length" class="spaced-table">
+				<thead>
+					<tr>
+						<th>账单</th>
+						<th>业主</th>
+						<th>应收</th>
+						<th>实收</th>
+						<th>异常</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="item in workspace.feeReconcileResult.anomalies" :key="item.id">
+						<td>{{ item.billNo || item.title }}</td>
+						<td>{{ item.ownerName || '-' }}</td>
+						<td>{{ workspace.money(item.amount) }}</td>
+						<td>{{ workspace.money(item.paidAmount) }}</td>
+						<td>{{ item.issue }}</td>
+					</tr>
+				</tbody>
+			</table>
 			<div class="filter-row">
 				<label class="field">
 					<span>流水关键词</span>
