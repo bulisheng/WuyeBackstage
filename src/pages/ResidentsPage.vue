@@ -127,6 +127,7 @@
 			:logs="selectedResidentLogs"
 			:status-label="selectedResident ? statusLabel(selectedResident) : ''"
 			:action-hint="actionHint"
+			@close="clearSelectedResident"
 		/>
 	</section>
 </template>
@@ -207,7 +208,17 @@ const selectedResidentLogs = computed(() => {
 });
 
 function selectResident(item) {
-	workspace.residentSelectedId = `${item.identityType}-${item.id}`;
+	const nextId = `${item.identityType}-${item.id}`;
+	if (workspace.residentSelectedId === nextId) {
+		clearSelectedResident();
+		return;
+	}
+	workspace.residentSelectedId = nextId;
+	actionHint.value = '';
+}
+
+function clearSelectedResident() {
+	workspace.residentSelectedId = '';
 	actionHint.value = '';
 }
 

@@ -965,11 +965,14 @@ async function loadFeePayments(params = {}) {
 }
 
 async function openRepairDetail(item) {
-	selectedRepairId.value = String(item && item.id ? item.id : '');
+	const nextId = String(item && item.id ? item.id : '');
+	if (nextId && selectedRepairId.value === nextId && repairDetail.value) {
+		closeRepairDetail();
+		return;
+	}
+	selectedRepairId.value = nextId;
 	if (!selectedRepairId.value) {
-		repairDetail.value = null;
-		repairLogs.value = [];
-		repairActions.value = {};
+		closeRepairDetail();
 		return;
 	}
 	const result = await adminApi.repairDetail(selectedRepairId.value);
@@ -981,6 +984,14 @@ async function openRepairDetail(item) {
 		assignee: repairDetail.value?.assignee || '',
 		content: ''
 	};
+}
+
+function closeRepairDetail() {
+	selectedRepairId.value = '';
+	repairDetail.value = null;
+	repairLogs.value = [];
+	repairActions.value = {};
+	repairActionForm.value = emptyRepairAction();
 }
 
 async function saveRepairAction() {
@@ -1338,6 +1349,7 @@ export function useAdminWorkspaceStore() {
 		batchUpdateModules,
 		restoreAllModules,
 		openRepairDetail,
+		closeRepairDetail,
 		saveRepairAction,
 		editRepairStaff,
 		resetRepairStaffForm,

@@ -2,7 +2,10 @@
 	<div v-if="resident" class="detail-card resident-detail">
 		<div class="panel-head compact">
 			<h3>{{ resident.identityType === 'tenant' ? '租户详情' : '业主详情' }}</h3>
-			<span>{{ buildResidentDisplayLabel(resident) }}</span>
+			<div class="head-actions">
+				<span>{{ buildResidentDisplayLabel(resident) }}</span>
+				<button type="button" @click="$emit('close')">收起</button>
+			</div>
 		</div>
 		<div class="detail-grid">
 			<div><strong>姓名</strong><p>{{ resident.name || '-' }}</p></div>
@@ -52,6 +55,8 @@ defineProps({
 		default: ''
 	}
 });
+
+defineEmits(['close']);
 </script>
 
 <style scoped>

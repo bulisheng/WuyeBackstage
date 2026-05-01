@@ -323,6 +323,25 @@ p {
 	color: #6b7280;
 }
 
+.head-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.head-actions button {
+	border: 1px solid #d9e1dc;
+	border-radius: 999px;
+	padding: 5px 10px;
+	background: #fff;
+	color: #475569;
+}
+
+.head-actions button:hover {
+	border-color: #13b35d;
+	color: #0f7a43;
+}
+
 table {
 	width: 100%;
 	border-collapse: collapse;

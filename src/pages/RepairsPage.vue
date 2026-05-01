@@ -54,7 +54,10 @@
 		<div v-if="workspace.repairDetail" class="detail-card">
 			<div class="panel-head compact">
 				<h3>工单详情</h3>
-				<span>{{ workspace.workStatusText(workspace.repairDetail.status) }}</span>
+				<div class="head-actions">
+					<span>{{ workspace.workStatusText(workspace.repairDetail.status) }}</span>
+					<button type="button" @click="workspace.closeRepairDetail">收起</button>
+				</div>
 			</div>
 			<div class="detail-grid">
 				<div><strong>标题</strong><p>{{ workspace.repairDetail.title || '-' }}</p></div>

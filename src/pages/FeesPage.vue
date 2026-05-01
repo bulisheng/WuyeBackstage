@@ -121,7 +121,10 @@
 		<div v-if="selectedFee" class="detail-card">
 			<div class="panel-head compact">
 				<h3>账单详情</h3>
-				<span>{{ selectedFee.billNo || selectedFee.title }}</span>
+				<div class="head-actions">
+					<span>{{ selectedFee.billNo || selectedFee.title }}</span>
+					<button type="button" @click="clearSelectedFee">收起</button>
+				</div>
 			</div>
 			<div class="detail-grid">
 				<div><strong>账单号</strong><p>{{ selectedFee.billNo || '-' }}</p></div>
@@ -277,7 +280,16 @@ function paymentStatusText(value) {
 }
 
 async function selectFee(item) {
+	if (selectedFee.value && item && Number(selectedFee.value.id) === Number(item.id)) {
+		clearSelectedFee();
+		return;
+	}
 	selectedFee.value = item;
 	await workspace.selectFee(item);
+}
+
+async function clearSelectedFee() {
+	selectedFee.value = null;
+	await workspace.selectFee(null);
 }
 </script>
