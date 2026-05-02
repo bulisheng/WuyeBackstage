@@ -61,6 +61,7 @@ import CommunitiesPage from './pages/CommunitiesPage.vue';
 import FeesPage from './pages/FeesPage.vue';
 import LoginPage from './pages/LoginPage.vue';
 import NoticesPage from './pages/NoticesPage.vue';
+import OperationsPage from './pages/OperationsPage.vue';
 import PermissionsPage from './pages/PermissionsPage.vue';
 import RepairsPage from './pages/RepairsPage.vue';
 import ResidentsPage from './pages/ResidentsPage.vue';
@@ -75,6 +76,9 @@ const pageMap = {
 	permissions: PermissionsPage,
 	repairs: RepairsPage,
 	fees: FeesPage,
+	complaints: OperationsPage,
+	property_service: OperationsPage,
+	customer_service: OperationsPage,
 	notices: NoticesPage,
 	login: LoginPage
 };

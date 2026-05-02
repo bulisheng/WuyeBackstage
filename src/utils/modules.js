@@ -6,9 +6,11 @@ const MODULE_CATALOG = [
 	{ key: 'repairs', name: '报修', sort: 5, group: 'primary', authRequired: true, description: '报修工单与处理' },
 	{ key: 'fees', name: '缴费', sort: 6, group: 'primary', authRequired: true, description: '缴费账单与催缴' },
 	{ key: 'complaints', name: '投诉建议', sort: 7, group: 'primary', authRequired: true, description: '投诉与建议处理' },
-	{ key: 'notices', name: '通知配置', sort: 8, group: 'secondary', authRequired: false, description: '消息模板与通知通道' },
-	{ key: 'announcements', name: '公告', sort: 9, group: 'secondary', authRequired: false, description: '公告发布与管理' },
-	{ key: 'audit', name: '审计', sort: 10, group: 'settings', authRequired: true, description: '后台操作审计记录' }
+	{ key: 'property_service', name: '物业服务', sort: 8, group: 'primary', authRequired: true, description: '便民服务申请与派单' },
+	{ key: 'customer_service', name: '在线客服', sort: 9, group: 'primary', authRequired: false, description: 'FAQ、智能分析与人工客服' },
+	{ key: 'notices', name: '通知配置', sort: 10, group: 'secondary', authRequired: false, description: '消息模板与通知通道' },
+	{ key: 'announcements', name: '公告', sort: 11, group: 'secondary', authRequired: false, description: '公告发布与管理' },
+	{ key: 'audit', name: '审计', sort: 12, group: 'settings', authRequired: true, description: '后台操作审计记录' }
 ];
 
 function cloneModuleCatalog() {
