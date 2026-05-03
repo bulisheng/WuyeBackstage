@@ -5,7 +5,11 @@
 			<span>{{ filteredFees.length }} 条账单 / 共 {{ workspace.fees.length }} 条</span>
 		</div>
 		<div class="form-actions">
-			<button :disabled="!workspace.canAction('fee:manage')" @click="workspace.importFeesFromText">批量导入</button>
+			<label class="file-action" :class="{ disabled: !workspace.canAction('fee:manage') }">
+				选择表格导入
+				<input type="file" accept=".csv,.txt,.tsv" :disabled="!workspace.canAction('fee:manage')" @change="workspace.importFeesFromFile" />
+			</label>
+			<button :disabled="!workspace.canAction('fee:manage')" @click="workspace.importFeesFromText">导入粘贴表格</button>
 			<button :disabled="!workspace.canAction('fee:export')" @click="workspace.exportFees">导出账单</button>
 			<button :disabled="!workspace.canAction('fee:collect')" @click="workspace.reconcileFees">微信支付对账</button>
 		</div>
@@ -29,9 +33,13 @@
 		<div class="detail-card">
 			<div class="panel-head compact">
 				<h3>批量导入账单</h3>
-				<span>支持表头：手机号、标题、金额、类型、截止日期</span>
+				<span>支持从表格复制粘贴，或上传 CSV / TSV 文本表格</span>
 			</div>
-			<textarea v-model="workspace.feeImportText" rows="4" placeholder="13800000000,2026年5月物业费,188.5,物业费,2026-05-31"></textarea>
+			<div class="form-actions compact">
+				<button type="button" @click="workspace.fillFeeImportExample">填入示例测试数据</button>
+			</div>
+			<textarea v-model="workspace.feeImportText" rows="6" placeholder="手机号	标题	金额	类型	截止日期&#10;13363280414	2026年5月物业费	188.50	物业费	2026-05-31"></textarea>
+			<p class="field-hint">示例数据手机号统一使用 13363280414；正式导入前请确认该手机号已完成业主认证。</p>
 			<p v-if="workspace.feeImportSummary" class="field-hint">
 				导入结果：成功 {{ workspace.feeImportSummary.created || 0 }} 条，失败 {{ workspace.feeImportSummary.failed || 0 }} 条
 			</p>

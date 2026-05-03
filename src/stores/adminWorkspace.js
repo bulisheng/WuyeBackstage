@@ -126,6 +126,13 @@ const adminActionOptions = computed(() => quickPermissionTokens.map((item) => ({
 	key: item,
 	label: buildActionLabel(item)
 })));
+const propertyStaffModuleOptions = computed(() => MODULE_CATALOG
+	.filter((item) => !['dashboard', 'communities', 'permissions'].includes(item.key))
+	.map((item) => ({
+		key: item.key,
+		label: item.name || buildMenuLabel(item.key),
+		description: item.description || ''
+	})));
 const communityLabel = buildCommunityLabel;
 const visibleRoutes = computed(() => routeOrder.filter((route) => canMenu(route)).map((route) => ({
 	key: route,
@@ -240,6 +247,29 @@ function emptyNoticeSend() {
 	};
 }
 
+function splitModuleKeys(value = '') {
+	return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function hasPropertyStaffModule(key) {
+	return splitModuleKeys(propertyStaffForm.value.moduleKeys).includes(key);
+}
+
+function togglePropertyStaffModule(key) {
+	const current = splitModuleKeys(propertyStaffForm.value.moduleKeys);
+	const next = current.includes(key)
+		? current.filter((item) => item !== key)
+		: current.concat(key);
+	propertyStaffForm.value.moduleKeys = next.join(',');
+}
+
+function moduleKeysLabel(value = '') {
+	const keys = splitModuleKeys(value);
+	if (!keys.length) return '未设置';
+	const labels = new Map(propertyStaffModuleOptions.value.map((item) => [item.key, item.label]));
+	return keys.map((key) => labels.get(key) || key).join('、');
+}
+
 function statusText(status) {
 	return {
 		pending: '待审核',
@@ -296,6 +326,15 @@ function downloadTextFile(filename, content, contentType = 'text/plain;charset=u
 	link.click();
 	link.remove();
 	window.URL.revokeObjectURL(url);
+}
+
+function buildFeeImportExample() {
+	return [
+		'手机号\t标题\t金额\t类型\t截止日期',
+		'13363280414\t2026年5月物业费\t188.50\t物业费\t2026-05-31',
+		'13363280414\t2026年5月停车费\t120.00\t停车费\t2026-05-31',
+		'13363280414\t2026年6月物业费\t188.50\t物业费\t2026-06-30'
+	].join('\n');
 }
 
 function parsePastedTable(text = '') {
@@ -974,6 +1013,19 @@ async function importFeesFromText() {
 	await loadFeePayments();
 }
 
+function fillFeeImportExample() {
+	feeImportText.value = buildFeeImportExample();
+}
+
+async function importFeesFromFile(event) {
+	const file = event && event.target && event.target.files ? event.target.files[0] : null;
+	if (!file) return;
+	const text = await file.text();
+	feeImportText.value = text;
+	await importFeesFromText();
+	event.target.value = '';
+}
+
 async function exportFees() {
 	const result = await adminApi.feeExport();
 	downloadTextFile(result.filename, result.content, result.contentType);
@@ -1387,6 +1439,7 @@ export function useAdminWorkspaceStore() {
 		allowedActions,
 		adminMenuOptions,
 		adminActionOptions,
+		propertyStaffModuleOptions,
 		communityLabel,
 		visibleRoutes,
 		statusText,
@@ -1433,6 +1486,9 @@ export function useAdminWorkspaceStore() {
 		moduleDisplayLabel,
 		moduleDisplayDescription,
 		moduleEnabledLabel,
+		hasPropertyStaffModule,
+		togglePropertyStaffModule,
+		moduleKeysLabel,
 		toggleModule,
 		batchUpdateModules,
 		restoreAllModules,
@@ -1450,6 +1506,8 @@ export function useAdminWorkspaceStore() {
 		editFee,
 		saveFee,
 		importFeesFromText,
+		importFeesFromFile,
+		fillFeeImportExample,
 		exportFees,
 		reconcileFees,
 		resolveFeeOwnerByMobile,

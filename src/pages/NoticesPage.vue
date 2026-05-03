@@ -9,7 +9,7 @@
 			<div class="permission-card span-2">
 				<div class="panel-head compact">
 					<h3>通知配置</h3>
-					<span>{{ workspace.editingNoticeConfigId ? '编辑中' : '新增' }}</span>
+					<span>{{ workspace.editingNoticeConfigId ? '编辑中' : '新增' }}，新小区会自动生成默认模板</span>
 				</div>
 				<div class="form-grid">
 					<label class="field">
@@ -40,7 +40,7 @@
 					</label>
 					<label class="field span-2">
 						<span>机器人名称</span>
-						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="机器人名称" />
+						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="只需按小区替换机器人名称、地址和指定对象" />
 					</label>
 					<label class="field span-2">
 						<span>Webhook</span>
@@ -136,8 +136,8 @@
 				</thead>
 				<tbody>
 					<tr v-for="item in workspace.noticeConfigs" :key="item.id" class="clickable-row" @click="selectedConfig = item">
-						<td>{{ item.scene }}</td>
-						<td>{{ item.channel }}</td>
+						<td>{{ sceneLabel(item.scene) }}</td>
+						<td>{{ channelLabel(item.channel) }}</td>
 						<td>{{ item.templateName }}</td>
 						<td>{{ item.robotName || '未配置' }}</td>
 						<td>{{ item.defaultStaffName || '未指定' }}</td>
@@ -170,10 +170,10 @@
 				<tbody>
 					<tr v-for="item in workspace.noticeRecords" :key="item.id" class="clickable-row" @click="selectedRecord = item">
 						<td>{{ item.createdAt || item.sentAt || '-' }}</td>
-						<td>{{ item.eventType }}</td>
+						<td>{{ sceneLabel(item.eventType) }}</td>
 						<td>{{ item.title }}</td>
 						<td>{{ item.targetStaffName || '-' }}</td>
-						<td>{{ item.channel }}</td>
+						<td>{{ channelLabel(item.channel) }}</td>
 						<td><span class="status" :class="item.status === 'sent' ? 'approved' : item.status === 'pending' ? 'pending' : 'rejected'">{{ workspace.noticeStatusText(item.status) }}</span></td>
 						<td>{{ item.retryCount }}</td>
 						<td>{{ item.errorMessage || '-' }}</td>
@@ -188,11 +188,11 @@
 		<div v-if="selectedConfig" class="detail-card">
 			<div class="panel-head compact">
 				<h3>配置详情</h3>
-				<span>{{ selectedConfig.scene }}</span>
+				<span>{{ sceneLabel(selectedConfig.scene) }}</span>
 			</div>
 			<div class="detail-grid">
-				<div><strong>场景</strong><p>{{ selectedConfig.scene }}</p></div>
-				<div><strong>渠道</strong><p>{{ selectedConfig.channel }}</p></div>
+				<div><strong>场景</strong><p>{{ sceneLabel(selectedConfig.scene) }}</p></div>
+				<div><strong>渠道</strong><p>{{ channelLabel(selectedConfig.channel) }}</p></div>
 				<div><strong>模板</strong><p>{{ selectedConfig.templateName || '-' }}</p></div>
 				<div><strong>机器人</strong><p>{{ selectedConfig.robotName || '-' }}</p></div>
 				<div><strong>默认通知对象</strong><p>{{ selectedConfig.defaultStaffName || '-' }}{{ selectedConfig.defaultStaffMobile ? ` / ${selectedConfig.defaultStaffMobile}` : '' }}</p></div>
@@ -207,8 +207,8 @@
 				<span>{{ selectedRecord.title }}</span>
 			</div>
 			<div class="detail-grid">
-				<div><strong>场景</strong><p>{{ selectedRecord.eventType }}</p></div>
-				<div><strong>渠道</strong><p>{{ selectedRecord.channel }}</p></div>
+				<div><strong>场景</strong><p>{{ sceneLabel(selectedRecord.eventType) }}</p></div>
+				<div><strong>渠道</strong><p>{{ channelLabel(selectedRecord.channel) }}</p></div>
 				<div><strong>状态</strong><p>{{ workspace.noticeStatusText(selectedRecord.status) }}</p></div>
 				<div><strong>通知对象</strong><p>{{ selectedRecord.targetStaffName || '-' }}{{ selectedRecord.targetStaffMobile ? ` / ${selectedRecord.targetStaffMobile}` : '' }}</p></div>
 				<div><strong>重试</strong><p>{{ selectedRecord.retryCount }}</p></div>
@@ -237,7 +237,28 @@ const sceneOptions = [
 	{ value: 'repair_created', label: '新报修提交' },
 	{ value: 'repair_status', label: '工单状态变化' },
 	{ value: 'repair_remind', label: '工单催单' },
+	{ value: 'complaint_created', label: '新投诉/建议' },
+	{ value: 'service_created', label: '物业服务申请' },
+	{ value: 'customer_ticket_created', label: '转人工客服' },
+	{ value: 'mall_order_created', label: '商城新订单' },
+	{ value: 'mall_order_paid', label: '商城支付成功' },
+	{ value: 'mall_refund_processed', label: '商城异常订单' },
+	{ value: 'activity_joined', label: '活动报名成功' },
 	{ value: 'notification_alarm', label: '失败告警' },
 	{ value: 'manual', label: '手动通知' }
 ];
+
+function sceneLabel(value) {
+	const matched = sceneOptions.find((item) => item.value === value);
+	return matched ? matched.label : value || '-';
+}
+
+function channelLabel(value) {
+	return {
+		dingtalk: '钉钉机器人',
+		sms: '短信',
+		wechat: '小程序订阅消息',
+		system: '站内通知'
+	}[value] || value || '-';
+}
 </script>

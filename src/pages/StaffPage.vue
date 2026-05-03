@@ -23,10 +23,24 @@
 					<span>岗位</span>
 					<input v-model="workspace.propertyStaffForm.role" type="text" placeholder="客服 / 维修 / 管家 / 主管" />
 				</label>
-				<label class="field span-2">
-					<span>负责模块</span>
-					<input v-model="workspace.propertyStaffForm.moduleKeys" type="text" placeholder="repairs,complaints,property_service,customer_service,notices" />
-				</label>
+				<div class="role-preview span-2">
+					<div class="preview-head">
+						<h4>负责模块</h4>
+						<span>点选该物业人员负责的业务范围</span>
+					</div>
+					<div class="chip-row selectable">
+						<button
+							v-for="item in workspace.propertyStaffModuleOptions"
+							:key="item.key"
+							type="button"
+							class="chip chip-button"
+							:class="{ selected: workspace.hasPropertyStaffModule(item.key) }"
+							@click="workspace.togglePropertyStaffModule(item.key)"
+						>
+							{{ item.label }}
+						</button>
+					</div>
+				</div>
 				<label class="field checkbox-field">
 					<input v-model="workspace.propertyStaffForm.onDuty" :true-value="1" :false-value="0" type="checkbox" />
 					<span>在岗</span>
@@ -63,7 +77,7 @@
 					<td>{{ staff.name }}</td>
 					<td>{{ staff.mobile || '-' }}</td>
 					<td>{{ staff.role || '-' }}</td>
-					<td>{{ staff.moduleKeys || '-' }}</td>
+					<td>{{ workspace.moduleKeysLabel(staff.moduleKeys) }}</td>
 					<td>{{ staff.onDuty ? '在岗' : '离岗' }}</td>
 					<td>{{ staff.active ? '启用' : '停用' }}</td>
 					<td class="actions"><button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button></td>

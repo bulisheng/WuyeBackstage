@@ -903,6 +903,35 @@ th {
 	color: #fff;
 }
 
+.file-action {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	border-radius: 8px;
+	padding: 10px 14px;
+	background: #6b7280;
+	color: #fff;
+	font-size: 14px;
+	cursor: pointer;
+	overflow: hidden;
+}
+
+.file-action.disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.file-action input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.file-action.disabled input {
+	cursor: not-allowed;
+}
+
 .form-actions .primary {
 	background: #1f2933;
 }
