@@ -51,12 +51,16 @@
 				<div><span>手机号</span><strong>{{ detail.item.phone || detail.item.ownerMobile || '-' }}</strong></div>
 				<div><span>房号</span><strong>{{ detail.item.house || '-' }}</strong></div>
 				<div><span>状态</span><strong>{{ detail.item.statusText || detail.item.status }}</strong></div>
+				<div><span>满意度</span><strong>{{ detail.item.ratingScore ? `${detail.item.ratingScore} 星` : '未评价' }}</strong></div>
+				<div><span>回访</span><strong>{{ detail.item.followupStatus === 'done' ? '已回访' : '待回访' }}</strong></div>
 			</div>
 			<div class="detail-block">
 				<h4>内容</h4>
 				<p>{{ detail.item.content || detail.item.question || '-' }}</p>
 				<p v-if="detail.item.aiAnswer" class="subtle">智能分析：{{ detail.item.aiAnswer }}</p>
 				<p v-if="detail.item.reply" class="subtle">当前回复：{{ detail.item.reply }}</p>
+				<p v-if="detail.item.ratingRemark" class="subtle">评价：{{ detail.item.ratingRemark }}</p>
+				<p v-if="detail.item.followupRemark" class="subtle">回访：{{ detail.item.followupRemark }}{{ detail.item.followupAt ? ` / ${detail.item.followupAt}` : '' }}</p>
 			</div>
 			<div class="form-grid compact-form">
 				<label>
@@ -64,16 +68,20 @@
 					<select v-model="actionForm.action">
 						<option value="accept">受理</option>
 						<option value="complete">完成</option>
+						<option value="followup">回访记录</option>
 						<option value="close">关闭</option>
 					</select>
 				</label>
 				<label>
 					<span>负责人</span>
-					<input v-model="actionForm.assignee" placeholder="负责人姓名" />
+					<select v-model="actionForm.staffId">
+						<option value="">选择物业人员</option>
+						<option v-for="staff in activeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
+					</select>
 				</label>
 				<label class="full">
-					<span>处理说明 / 回复</span>
-					<textarea v-model="actionForm.reply" placeholder="填写处理说明，会记录到工单日志"></textarea>
+					<span>{{ actionForm.action === 'followup' ? '回访说明' : '处理说明 / 回复' }}</span>
+					<textarea v-model="actionForm.reply" :placeholder="actionForm.action === 'followup' ? '记录回访结果、住户反馈和是否满意' : '填写处理说明，会记录到工单日志'"></textarea>
 				</label>
 			</div>
 			<button class="primary" type="button" @click="submitAction">保存处理</button>
@@ -101,7 +109,7 @@ const workspace = useAdminWorkspaceStore();
 const list = ref([]);
 const detail = ref(null);
 const selectedId = ref(0);
-const actionForm = ref({ action: 'accept', assignee: '', reply: '' });
+const actionForm = ref({ action: 'accept', assignee: '', staffId: '', reply: '' });
 
 const config = {
 	complaints: {
@@ -128,6 +136,9 @@ const config = {
 };
 
 const meta = computed(() => config[workspace.activeRoute] || config.complaints);
+const activeStaff = computed(() => workspace.propertyStaff.filter((item) =>
+	item.active && (!item.moduleKeys || String(item.moduleKeys).includes(workspace.activeRoute) || String(item.moduleKeys).includes('notices'))
+));
 
 async function loadList() {
 	const res = await meta.value.list();
@@ -142,13 +153,13 @@ async function openDetail(item) {
 	selectedId.value = item.id;
 	const res = await meta.value.detail(item.id);
 	detail.value = res;
-	actionForm.value = { action: 'accept', assignee: res.item.assignee || '', reply: res.item.reply || '' };
+	actionForm.value = { action: 'accept', assignee: res.item.assignee || '', staffId: '', reply: res.item.reply || '' };
 }
 
 function closeDetail() {
 	selectedId.value = 0;
 	detail.value = null;
-	actionForm.value = { action: 'accept', assignee: '', reply: '' };
+	actionForm.value = { action: 'accept', assignee: '', staffId: '', reply: '' };
 }
 
 async function submitAction() {

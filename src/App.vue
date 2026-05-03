@@ -65,6 +65,7 @@ import OperationsPage from './pages/OperationsPage.vue';
 import PermissionsPage from './pages/PermissionsPage.vue';
 import RepairsPage from './pages/RepairsPage.vue';
 import ResidentsPage from './pages/ResidentsPage.vue';
+import StaffPage from './pages/StaffPage.vue';
 import { useAdminWorkspaceStore } from './stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
@@ -74,6 +75,7 @@ const pageMap = {
 	owners: ResidentsPage,
 	communities: CommunitiesPage,
 	permissions: PermissionsPage,
+	staff: StaffPage,
 	repairs: RepairsPage,
 	fees: FeesPage,
 	complaints: OperationsPage,

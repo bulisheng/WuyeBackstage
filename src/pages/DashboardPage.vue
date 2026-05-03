@@ -18,6 +18,27 @@
 				</article>
 			</div>
 		</section>
+		<section class="panel">
+			<div class="panel-head">
+				<h2>负责人待办</h2>
+				<span>按物业人员聚合</span>
+			</div>
+			<div class="permission-grid">
+				<div v-for="group in staffTodoGroups" :key="group.key" class="permission-card">
+					<div class="panel-head compact">
+						<h3>{{ group.name }}</h3>
+						<span>{{ group.count }} 条{{ group.onDuty ? ' / 在岗' : group.staffId ? ' / 离岗' : '' }}</span>
+					</div>
+					<p v-if="group.mobile" class="muted-line">{{ group.role || '物业人员' }} / {{ group.mobile }}</p>
+					<div v-for="item in group.items" :key="`${group.key}-${item.moduleKey}-${item.id}`" class="todo-row clickable" @click="workspace.navigate(item.route)">
+						<strong>{{ item.moduleName }}：{{ item.title || '-' }}</strong>
+						<span>{{ item.status || '-' }}{{ item.assignee ? ` / ${item.assignee}` : '' }}</span>
+					</div>
+					<p v-if="!group.items.length" class="empty-text">暂无待办。</p>
+				</div>
+			</div>
+			<p v-if="!staffTodoGroups.length" class="empty-text">暂无负责人待办。</p>
+		</section>
 		<section class="permission-grid">
 			<div class="permission-card">
 				<div class="panel-head compact">
@@ -52,6 +73,39 @@
 				</div>
 				<p v-if="!noticeTodos.length" class="empty-text">暂无通知异常。</p>
 			</div>
+			<div class="permission-card">
+				<div class="panel-head compact">
+					<h3>待处理投诉</h3>
+					<span>{{ complaintTodos.length }} 条</span>
+				</div>
+				<div v-for="item in complaintTodos" :key="item.id" class="todo-row">
+					<strong>{{ item.title || item.category || '投诉建议' }}</strong>
+					<span>{{ item.statusText || item.status }} / {{ item.assignee || '未分配' }}</span>
+				</div>
+				<p v-if="!complaintTodos.length" class="empty-text">暂无待处理投诉。</p>
+			</div>
+			<div class="permission-card">
+				<div class="panel-head compact">
+					<h3>待处理物业服务</h3>
+					<span>{{ serviceTodos.length }} 条</span>
+				</div>
+				<div v-for="item in serviceTodos" :key="item.id" class="todo-row">
+					<strong>{{ item.serviceType || item.title || '物业服务' }}</strong>
+					<span>{{ item.statusText || item.status }} / {{ item.assignee || '未分配' }}</span>
+				</div>
+				<p v-if="!serviceTodos.length" class="empty-text">暂无待处理服务。</p>
+			</div>
+			<div class="permission-card">
+				<div class="panel-head compact">
+					<h3>待处理客服</h3>
+					<span>{{ customerTodos.length }} 条</span>
+				</div>
+				<div v-for="item in customerTodos" :key="item.id" class="todo-row">
+					<strong>{{ item.question || item.title || '在线客服' }}</strong>
+					<span>{{ item.statusText || item.status }} / {{ item.assignee || '未分配' }}</span>
+				</div>
+				<p v-if="!customerTodos.length" class="empty-text">暂无待处理客服工单。</p>
+			</div>
 		</section>
 	</div>
 </template>
@@ -64,4 +118,8 @@ const workspace = useAdminWorkspaceStore();
 const repairTodos = computed(() => workspace.dashboardTodoLists.repairs || []);
 const billTodos = computed(() => workspace.dashboardTodoLists.bills || []);
 const noticeTodos = computed(() => workspace.dashboardTodoLists.notices || []);
+const complaintTodos = computed(() => workspace.dashboardTodoLists.complaints || []);
+const serviceTodos = computed(() => workspace.dashboardTodoLists.services || []);
+const customerTodos = computed(() => workspace.dashboardTodoLists.customers || []);
+const staffTodoGroups = computed(() => workspace.dashboardStaffTodos || []);
 </script>

@@ -19,6 +19,7 @@ const routeLabels = {
 	owners: '住户管理',
 	communities: '小区管理',
 	permissions: '权限管理',
+	staff: '物业人员',
 	repairs: '报修管理',
 	fees: '缴费管理',
 	complaints: '投诉建议',
@@ -27,13 +28,15 @@ const routeLabels = {
 	notices: '通知中心'
 };
 
-const routeOrder = ['dashboard', 'owners', 'communities', 'permissions', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'notices'];
+const routeOrder = ['dashboard', 'owners', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'notices'];
 const routerReady = { value: false };
 
 const activeRoute = ref('login');
 const stats = ref([]);
 const dashboardTodos = ref([]);
-const dashboardTodoLists = ref({ repairs: [], bills: [], notices: [] });
+const emptyDashboardTodoLists = () => ({ repairs: [], bills: [], notices: [], complaints: [], services: [], customers: [] });
+const dashboardTodoLists = ref(emptyDashboardTodoLists());
+const dashboardStaffTodos = ref([]);
 const dashboardCrossModuleStats = ref({});
 const owners = ref([]);
 const ownerRecords = owners;
@@ -67,6 +70,9 @@ const repairLogs = ref([]);
 const repairActions = ref({});
 const repairActionForm = ref(emptyRepairAction());
 const repairStaff = ref([]);
+const propertyStaff = ref([]);
+const propertyStaffForm = ref(emptyPropertyStaff());
+const editingPropertyStaffId = ref('');
 const repairStaffForm = ref(emptyRepairStaff());
 const editingRepairStaffId = ref('');
 const repairSlaSummary = ref(null);
@@ -110,7 +116,7 @@ const adminMenuOptions = computed(() => MODULE_CATALOG.map((item) => ({
 	label: item.name || buildMenuLabel(item.key),
 	description: item.description || ''
 })));
-const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'service:handle', 'customer:handle', 'notice:publish'];
+const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'service:handle', 'customer:handle', 'notice:publish'];
 const adminActionOptions = computed(() => quickPermissionTokens.map((item) => ({
 	key: item,
 	label: buildActionLabel(item)
@@ -151,6 +157,7 @@ function emptyRepairAction() {
 	return {
 		action: 'assign',
 		assignee: '',
+		staffId: '',
 		content: ''
 	};
 }
@@ -161,6 +168,18 @@ function emptyRepairStaff() {
 		mobile: '',
 		skillTags: '',
 		active: 1
+	};
+}
+
+function emptyPropertyStaff() {
+	return {
+		name: '',
+		mobile: '',
+		role: '客服',
+		moduleKeys: 'complaints,property_service,customer_service,notices',
+		onDuty: 1,
+		active: 1,
+		remark: ''
 	};
 }
 
@@ -200,6 +219,7 @@ function emptyNoticeConfig() {
 		secret: '',
 		retryLimit: 3,
 		alarmEnabled: 1,
+		defaultStaffId: '',
 		enabled: 1
 	};
 }
@@ -210,6 +230,7 @@ function emptyNoticeSend() {
 		channel: 'system',
 		targetType: 'manual',
 		targetId: '',
+		targetStaffId: '',
 		title: '后台手动通知',
 		content: '这是一条后台测试通知'
 	};
@@ -512,7 +533,8 @@ async function logoutAdmin() {
 	communities.value = [];
 	stats.value = [];
 	dashboardTodos.value = [];
-	dashboardTodoLists.value = { repairs: [], bills: [], notices: [] };
+	dashboardTodoLists.value = emptyDashboardTodoLists();
+	dashboardStaffTodos.value = [];
 	dashboardCrossModuleStats.value = {};
 	owners.value = [];
 	tenantRecords.value = [];
@@ -985,6 +1007,7 @@ async function openRepairDetail(item) {
 	repairActionForm.value = {
 		action: 'assign',
 		assignee: repairDetail.value?.assignee || '',
+		staffId: '',
 		content: ''
 	};
 }
@@ -1003,6 +1026,7 @@ async function saveRepairAction() {
 		id: selectedRepairId.value,
 		action: repairActionForm.value.action,
 		assignee: repairActionForm.value.assignee,
+		staffId: repairActionForm.value.staffId,
 		content: repairActionForm.value.content
 	};
 	const result = await adminApi.repairAction(payload);
@@ -1041,6 +1065,39 @@ async function saveRepairStaff() {
 	resetRepairStaffForm();
 }
 
+function editPropertyStaff(item) {
+	editingPropertyStaffId.value = String(item.id || '');
+	propertyStaffForm.value = {
+		name: item.name || '',
+		mobile: item.mobile || '',
+		role: item.role || '',
+		moduleKeys: item.moduleKeys || '',
+		onDuty: item.onDuty ? 1 : 0,
+		active: item.active ? 1 : 0,
+		remark: item.remark || ''
+	};
+}
+
+function resetPropertyStaffForm() {
+	editingPropertyStaffId.value = '';
+	propertyStaffForm.value = emptyPropertyStaff();
+}
+
+async function savePropertyStaff() {
+	const result = await adminApi.staffSave({
+		id: editingPropertyStaffId.value || undefined,
+		name: propertyStaffForm.value.name,
+		mobile: propertyStaffForm.value.mobile,
+		role: propertyStaffForm.value.role,
+		moduleKeys: propertyStaffForm.value.moduleKeys,
+		onDuty: propertyStaffForm.value.onDuty,
+		active: propertyStaffForm.value.active,
+		remark: propertyStaffForm.value.remark
+	});
+	propertyStaff.value = result.list || propertyStaff.value;
+	resetPropertyStaffForm();
+}
+
 async function scanRepairSla() {
 	const result = await adminApi.repairSlaScan();
 	repairSlaSummary.value = { updated: result.updated || 0 };
@@ -1070,6 +1127,7 @@ function editNoticeConfig(item) {
 		secret: '',
 		retryLimit: Number(item.retryLimit || 3),
 		alarmEnabled: item.alarmEnabled ? 1 : 0,
+		defaultStaffId: item.defaultStaffId || '',
 		enabled: item.enabled ? 1 : 0
 	};
 }
@@ -1085,6 +1143,7 @@ async function saveNoticeConfig() {
 		secret: noticeConfigForm.value.secret,
 		retryLimit: noticeConfigForm.value.retryLimit,
 		alarmEnabled: noticeConfigForm.value.alarmEnabled,
+		defaultStaffId: noticeConfigForm.value.defaultStaffId,
 		enabled: noticeConfigForm.value.enabled
 	};
 	const result = await adminApi.noticeConfigSave(payload);
@@ -1099,6 +1158,7 @@ async function sendNotice() {
 		eventType: noticeSendForm.value.scene,
 		targetType: noticeSendForm.value.targetType,
 		targetId: noticeSendForm.value.targetId,
+		targetStaffId: noticeSendForm.value.targetStaffId,
 		channel: noticeSendForm.value.channel,
 		templateKey: noticeSendForm.value.scene,
 		title: noticeSendForm.value.title,
@@ -1120,6 +1180,7 @@ function selectNoticeRecord(item) {
 		channel: item.channel || 'system',
 		targetType: item.targetType || 'manual',
 		targetId: item.targetId || '',
+		targetStaffId: item.targetStaffId || '',
 		title: item.title || '后台通知',
 		content: item.content || ''
 	};
@@ -1148,6 +1209,7 @@ async function reload() {
 		selectedFeeId.value = '';
 		paymentRecords.value = [];
 		selectedFeePayments.value = [];
+		propertyStaff.value = [];
 		repairStaff.value = [];
 		repairSlaSummary.value = null;
 		noticeConfigs.value = [];
@@ -1159,11 +1221,12 @@ async function reload() {
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
-	const [dashboard, ownerData, tenantData, residentLogData, repairData, repairStaffData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
+	const [dashboard, ownerData, tenantData, residentLogData, staffData, repairData, repairStaffData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
 		canMenu('dashboard') ? adminApi.dashboard() : Promise.resolve({ stats: [] }),
 		canMenu('owners') ? adminApi.ownerList() : Promise.resolve({ list: [] }),
 		canMenu('owners') ? adminApi.tenantList() : Promise.resolve({ list: [] }),
 		canMenu('owners') ? adminApi.residentChangeLogList({ limit: 100 }) : Promise.resolve({ list: [] }),
+		canMenu('staff') || canMenu('repairs') || canMenu('notices') || canMenu('complaints') || canMenu('property_service') || canMenu('customer_service') ? adminApi.staffList() : Promise.resolve({ list: [] }),
 		canMenu('repairs') ? adminApi.repairList() : Promise.resolve({ list: [] }),
 		canMenu('repairs') ? adminApi.repairStaffList() : Promise.resolve({ list: [] }),
 		canMenu('fees') ? adminApi.feeList() : Promise.resolve({ list: [] }),
@@ -1181,11 +1244,13 @@ async function reload() {
 	}
 	stats.value = dashboard.stats || [];
 	dashboardTodos.value = dashboard.todos || [];
-	dashboardTodoLists.value = dashboard.todoLists || { repairs: [], bills: [], notices: [] };
+	dashboardTodoLists.value = Object.assign(emptyDashboardTodoLists(), dashboard.todoLists || {});
+	dashboardStaffTodos.value = dashboard.staffTodos || [];
 	dashboardCrossModuleStats.value = dashboard.crossModuleStats || {};
 	owners.value = ownerData.list || [];
 	tenantRecords.value = tenantData.list || [];
 	residentChangeLogs.value = residentLogData.list || [];
+	propertyStaff.value = staffData.list || [];
 	repairs.value = repairData.list || [];
 	repairStaff.value = repairStaffData.list || [];
 	fees.value = feeData.list || [];
@@ -1235,6 +1300,7 @@ export function useAdminWorkspaceStore() {
 		stats,
 		dashboardTodos,
 		dashboardTodoLists,
+		dashboardStaffTodos,
 		dashboardCrossModuleStats,
 		owners,
 		ownerRecords,
@@ -1267,6 +1333,9 @@ export function useAdminWorkspaceStore() {
 		repairLogs,
 		repairActions,
 		repairActionForm,
+		propertyStaff,
+		propertyStaffForm,
+		editingPropertyStaffId,
 		repairStaff,
 		repairStaffForm,
 		editingRepairStaffId,
@@ -1354,6 +1423,9 @@ export function useAdminWorkspaceStore() {
 		openRepairDetail,
 		closeRepairDetail,
 		saveRepairAction,
+		editPropertyStaff,
+		resetPropertyStaffForm,
+		savePropertyStaff,
 		editRepairStaff,
 		resetRepairStaffForm,
 		saveRepairStaff,

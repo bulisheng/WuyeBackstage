@@ -32,6 +32,13 @@
 						<input v-model="workspace.noticeConfigForm.templateName" type="text" placeholder="模板名称" />
 					</label>
 					<label class="field span-2">
+						<span>默认通知对象</span>
+						<select v-model="workspace.noticeConfigForm.defaultStaffId">
+							<option value="">不指定，按业务处理人</option>
+							<option v-for="staff in activeNoticeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
+						</select>
+					</label>
+					<label class="field span-2">
 						<span>机器人名称</span>
 						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="机器人名称" />
 					</label>
@@ -91,6 +98,13 @@
 						<input v-model="workspace.noticeSendForm.targetId" type="text" placeholder="0" />
 					</label>
 					<label class="field span-2">
+						<span>通知对象</span>
+						<select v-model="workspace.noticeSendForm.targetStaffId">
+							<option value="">请选择物业人员</option>
+							<option v-for="staff in activeNoticeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
+						</select>
+					</label>
+					<label class="field span-2">
 						<span>标题</span>
 						<input v-model="workspace.noticeSendForm.title" type="text" placeholder="通知标题" />
 					</label>
@@ -113,6 +127,7 @@
 						<th>渠道</th>
 						<th>模板</th>
 						<th>机器人</th>
+						<th>默认对象</th>
 						<th>Webhook</th>
 						<th>重试</th>
 						<th>状态</th>
@@ -125,6 +140,7 @@
 						<td>{{ item.channel }}</td>
 						<td>{{ item.templateName }}</td>
 						<td>{{ item.robotName || '未配置' }}</td>
+						<td>{{ item.defaultStaffName || '未指定' }}</td>
 						<td>{{ item.webhookUrl ? '已配置' : '未配置' }}</td>
 						<td>{{ item.retryLimit }}</td>
 						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
@@ -143,6 +159,7 @@
 						<th>时间</th>
 						<th>场景</th>
 						<th>标题</th>
+						<th>通知对象</th>
 						<th>渠道</th>
 						<th>状态</th>
 						<th>重试</th>
@@ -155,6 +172,7 @@
 						<td>{{ item.createdAt || item.sentAt || '-' }}</td>
 						<td>{{ item.eventType }}</td>
 						<td>{{ item.title }}</td>
+						<td>{{ item.targetStaffName || '-' }}</td>
 						<td>{{ item.channel }}</td>
 						<td><span class="status" :class="item.status === 'sent' ? 'approved' : item.status === 'pending' ? 'pending' : 'rejected'">{{ workspace.noticeStatusText(item.status) }}</span></td>
 						<td>{{ item.retryCount }}</td>
@@ -177,6 +195,7 @@
 				<div><strong>渠道</strong><p>{{ selectedConfig.channel }}</p></div>
 				<div><strong>模板</strong><p>{{ selectedConfig.templateName || '-' }}</p></div>
 				<div><strong>机器人</strong><p>{{ selectedConfig.robotName || '-' }}</p></div>
+				<div><strong>默认通知对象</strong><p>{{ selectedConfig.defaultStaffName || '-' }}{{ selectedConfig.defaultStaffMobile ? ` / ${selectedConfig.defaultStaffMobile}` : '' }}</p></div>
 				<div><strong>Webhook</strong><p>{{ selectedConfig.webhookUrl || '-' }}</p></div>
 				<div><strong>状态</strong><p>{{ selectedConfig.enabled ? '启用' : '停用' }}</p></div>
 			</div>
@@ -191,6 +210,7 @@
 				<div><strong>场景</strong><p>{{ selectedRecord.eventType }}</p></div>
 				<div><strong>渠道</strong><p>{{ selectedRecord.channel }}</p></div>
 				<div><strong>状态</strong><p>{{ workspace.noticeStatusText(selectedRecord.status) }}</p></div>
+				<div><strong>通知对象</strong><p>{{ selectedRecord.targetStaffName || '-' }}{{ selectedRecord.targetStaffMobile ? ` / ${selectedRecord.targetStaffMobile}` : '' }}</p></div>
 				<div><strong>重试</strong><p>{{ selectedRecord.retryCount }}</p></div>
 				<div><strong>错误</strong><p>{{ selectedRecord.errorMessage || '无' }}</p></div>
 				<div><strong>内容</strong><p>{{ selectedRecord.content || '-' }}</p></div>
@@ -200,12 +220,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
 const selectedConfig = ref(null);
 const selectedRecord = ref(null);
+const activeNoticeStaff = computed(() => workspace.propertyStaff.filter((item) =>
+	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('notices') || String(item.moduleKeys).includes('notice'))
+));
 
 const sceneOptions = [
 	{ value: 'bill_created', label: '新账单生成' },

@@ -91,9 +91,9 @@
 					</label>
 					<label class="field">
 						<span>处理人</span>
-						<select v-model="workspace.repairActionForm.assignee">
-							<option value="">选择维修人员</option>
-							<option v-for="staff in activeRepairStaff" :key="staff.id" :value="staff.name">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}</option>
+						<select v-model="workspace.repairActionForm.staffId">
+							<option value="">选择物业人员</option>
+							<option v-for="staff in activeRepairStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
 						</select>
 					</label>
 					<label class="field wide">
@@ -174,7 +174,9 @@ import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 const workspace = useAdminWorkspaceStore();
 const keyword = ref('');
 const status = ref('');
-const activeRepairStaff = computed(() => workspace.repairStaff.filter((item) => item.active));
+const activeRepairStaff = computed(() => workspace.propertyStaff.filter((item) =>
+	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('repairs') || String(item.moduleKeys).includes('repair'))
+));
 
 const filteredRepairs = computed(() => workspace.repairs.filter((item) => {
 	const text = `${item.title || ''} ${item.contact || ''} ${item.phone || ''}`.toLowerCase();
