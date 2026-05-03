@@ -1,17 +1,21 @@
 const API_BASE = import.meta.env.VITE_ADMIN_API_BASE
 	|| 'https://cloudbase-d9g78eneac709f5a5.service.tcloudbase.com/sxmini';
 
-const TOKEN_KEY = 'sxwy_admin_token';
+const TOKEN_KEY = 'sxwy_admin_session_token';
 const ADMIN_ID_KEY = 'sxwy_admin_user_id';
 const SCHEMA_KEY = 'sxwy_admin_schema';
 
 function getAdminToken() {
-	let token = window.localStorage.getItem(TOKEN_KEY) || '';
-	if (!token) {
-		token = window.prompt('请输入后台管理令牌') || '';
-		if (token) window.localStorage.setItem(TOKEN_KEY, token);
+	return window.localStorage.getItem(TOKEN_KEY) || '';
+}
+
+function setAdminToken(token) {
+	const next = String(token || '').trim();
+	if (next) {
+		window.localStorage.setItem(TOKEN_KEY, next);
+	} else {
+		window.localStorage.removeItem(TOKEN_KEY);
 	}
-	return token;
 }
 
 function getSchemaName() {
@@ -46,7 +50,7 @@ async function request(route, params = {}) {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			'X-SXWY-ADMIN-TOKEN': getAdminToken(),
+			...(getAdminToken() ? { 'X-SXWY-ADMIN-SESSION': getAdminToken() } : {}),
 			...(getCurrentAdminId() ? { 'X-SXWY-ADMIN-USER-ID': getCurrentAdminId() } : {})
 		},
 		body: JSON.stringify({
@@ -72,6 +76,8 @@ export const adminApi = {
 	setSchemaName,
 	getCurrentAdminId,
 	setCurrentAdminId,
+	setAdminToken,
+	sendLoginCode: (payload) => request('admin/send_code', payload),
 	login: (payload) => request('admin/login', payload),
 	dashboard: () => request('admin/dashboard'),
 	ownerList: (payload = {}) => request('admin/owner/list', payload),

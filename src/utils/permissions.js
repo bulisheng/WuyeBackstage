@@ -14,7 +14,7 @@ const ROLE_ACCESS_PRESETS = {
 	},
 	admin: {
 		menus: ['dashboard', 'owners', 'announcements', 'activities', 'faq', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'notices'],
-		actions: ['community:edit', 'community:module:view', 'community:module:manage', 'announcement:publish', 'activity:manage', 'activity:checkin', 'faq:manage', 'staff:manage', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'repair:assign', 'fee:manage', 'complaint:handle', 'service:handle', 'customer:handle', 'notice:publish'],
+		actions: ['dashboard:view', 'community:view', 'community:edit', 'community:delete', 'community:module:view', 'community:module:manage', 'announcement:view', 'announcement:publish', 'announcement:delete', 'activity:view', 'activity:manage', 'activity:checkin', 'faq:view', 'faq:manage', 'staff:view', 'staff:manage', 'owner:view', 'owner:manage', 'owner:audit', 'tenant:view', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:manage', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'service:view', 'service:handle', 'customer:view', 'customer:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
 		note: '管理员默认看到全部业务菜单'
 	},
 	finance: {
@@ -24,12 +24,12 @@ const ROLE_ACCESS_PRESETS = {
 	},
 	customer_service: {
 		menus: ['dashboard', 'owners', 'announcements', 'activities', 'faq', 'staff', 'repairs', 'complaints', 'property_service', 'customer_service', 'notices'],
-		actions: ['owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'announcement:publish', 'activity:manage', 'activity:checkin', 'faq:manage', 'staff:manage', 'repair:view', 'repair:assign', 'complaint:handle', 'service:handle', 'customer:handle', 'notice:publish'],
+		actions: ['dashboard:view', 'owner:view', 'owner:manage', 'owner:audit', 'tenant:view', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'announcement:view', 'announcement:publish', 'activity:view', 'activity:manage', 'activity:checkin', 'faq:view', 'faq:manage', 'repair:view', 'repair:assign', 'repair:update', 'complaint:view', 'complaint:handle', 'service:view', 'service:handle', 'customer:view', 'customer:handle', 'notice:view', 'notice:publish'],
 		note: '客服默认显示与住户和工单相关的菜单'
 	},
 	repairman: {
-		menus: ['dashboard', 'repairs', 'notices'],
-		actions: ['repair:view', 'repair:assign', 'repair:update', 'repair:close'],
+		menus: ['dashboard', 'staff', 'repairs', 'notices'],
+		actions: ['dashboard:view', 'staff:view', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'notice:view'],
 		note: '维修默认显示工单入口'
 	}
 };
@@ -42,24 +42,37 @@ const MENU_LABELS = {
 	faq: 'FAQ 管理',
 	communities: '小区配置',
 	permissions: '权限管理',
+	staff: '物业人员',
 	repairs: '报修管理',
 	fees: '缴费管理',
 	complaints: '投诉建议',
+	property_service: '物业服务',
+	customer_service: '在线客服',
 	notices: '通知配置'
 };
 
 const ACTION_LABELS = {
 	'*': '全部动作',
+	'dashboard:view': '查看工作台',
+	'community:view': '查看小区',
 	'community:edit': '小区编辑',
+	'community:delete': '删除小区',
 	'community:module:view': '模块查看',
 	'community:module:manage': '模块管理',
+	'announcement:view': '查看公告',
 	'announcement:publish': '公告发布',
+	'announcement:delete': '删除公告',
+	'activity:view': '查看活动',
 	'activity:manage': '活动管理',
 	'activity:checkin': '活动签到',
+	'faq:view': '查看 FAQ',
 	'faq:manage': 'FAQ 管理',
+	'staff:view': '查看物业人员',
 	'staff:manage': '物业人员管理',
+	'owner:view': '查看业主',
 	'owner:manage': '业主管理',
 	'owner:audit': '业主审核',
+	'tenant:view': '查看租户',
 	'tenant:manage': '租户管理',
 	'resident:import': '住户导入',
 	'resident:change_log:view': '变更记录',
@@ -72,8 +85,20 @@ const ACTION_LABELS = {
 	'fee:remind': '催缴提醒',
 	'fee:export': '导出账单',
 	'fee:manage': '缴费管理',
+	'complaint:view': '查看投诉',
 	'complaint:handle': '处理投诉',
-	'notice:publish': '发布通知'
+	'service:view': '查看服务',
+	'service:handle': '处理服务',
+	'customer:view': '查看客服',
+	'customer:handle': '处理客服',
+	'notice:view': '查看通知',
+	'notice:publish': '发布通知',
+	'admin:role:view': '查看角色',
+	'admin:user:view': '查看管理员',
+	'admin:user:manage': '管理管理员',
+	'admin:permission:view': '查看权限',
+	'admin:permission:manage': '管理权限',
+	'admin:audit:view': '查看审计'
 };
 
 function normalizeText(value) {

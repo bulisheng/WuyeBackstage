@@ -29,7 +29,7 @@
 				<div class="toolbar">
 					<div v-if="workspace.currentAdminInfo" class="admin-badge">
 						<span>当前管理员</span>
-						<strong>{{ workspace.currentAdminInfo.username }} · {{ workspace.currentAdminInfo.roleLabel }}</strong>
+						<strong>{{ workspace.currentAdminInfo.mobileMasked || workspace.currentAdminInfo.mobile || workspace.currentAdminInfo.username }} · {{ workspace.currentAdminInfo.roleLabel }}</strong>
 					</div>
 					<label class="schema-switch">
 						<span>当前小区</span>

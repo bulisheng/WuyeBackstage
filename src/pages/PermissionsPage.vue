@@ -15,17 +15,13 @@
 			<div class="permission-grid">
 				<div class="permission-card">
 					<div class="panel-head compact">
-						<h3>管理员账号</h3>
+						<h3>管理员手机号</h3>
 						<span>{{ workspace.editingAdminId ? '编辑中' : '新增' }}</span>
 					</div>
 					<div class="form-grid">
 						<label class="field">
-							<span>账号</span>
-							<input v-model="workspace.adminForm.username" type="text" placeholder="例如 alice" />
-						</label>
-						<label class="field">
-							<span>密码</span>
-							<input v-model="workspace.adminForm.password" type="password" placeholder="新增必填，编辑可留空" />
+							<span>管理员手机号</span>
+							<input v-model="workspace.adminForm.mobile" type="tel" maxlength="11" placeholder="请输入管理员手机号" />
 						</label>
 						<label class="field">
 							<span>角色</span>
@@ -105,7 +101,7 @@
 			<table class="spaced-table">
 				<thead>
 					<tr>
-						<th>账号</th>
+						<th>手机号</th>
 						<th>全局角色</th>
 						<th>默认小区</th>
 						<th>状态</th>
@@ -114,7 +110,7 @@
 				</thead>
 				<tbody>
 					<tr v-for="item in workspace.admins" :key="item.id">
-						<td>{{ item.username }}</td>
+						<td>{{ item.mobileMasked || item.mobile || item.username }}</td>
 						<td>{{ item.roleLabel }}</td>
 						<td>{{ workspace.communityNameById(item.communityId) }}</td>
 						<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
@@ -139,7 +135,7 @@
 							<span>管理员</span>
 							<select v-model.number="workspace.permissionForm.adminId">
 								<option :value="0">请选择管理员</option>
-								<option v-for="item in workspace.admins" :key="item.id" :value="item.id">{{ item.username }} · {{ item.roleLabel }}</option>
+								<option v-for="item in workspace.admins" :key="item.id" :value="item.id">{{ item.mobileMasked || item.mobile || item.username }} · {{ item.roleLabel }}</option>
 							</select>
 						</label>
 						<label class="field">
@@ -183,7 +179,7 @@
 				</thead>
 				<tbody>
 					<tr v-for="item in workspace.permissions" :key="item.id">
-						<td>{{ item.username || `#${item.adminId}` }}</td>
+						<td>{{ item.mobileMasked || item.mobile || item.username || `#${item.adminId}` }}</td>
 						<td>{{ item.communityName || workspace.communityNameById(item.communityId) }}</td>
 						<td>{{ item.roleLabel || item.role }}</td>
 						<td>{{ Array.isArray(item.permissions) && item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
@@ -274,7 +270,7 @@
 					<tbody>
 						<tr v-for="item in workspace.auditLogs" :key="item.id">
 							<td>{{ item.createdAt || '-' }}</td>
-							<td>{{ item.username }} · {{ item.roleLabel }}</td>
+							<td>{{ item.mobileMasked || item.mobile || item.username }} · {{ item.roleLabel }}</td>
 							<td>{{ item.communityName || '全局' }}</td>
 							<td>{{ item.route }}</td>
 							<td>{{ item.moduleKey || '-' }} / {{ item.actionKey || '-' }}</td>

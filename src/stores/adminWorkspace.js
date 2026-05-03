@@ -60,7 +60,7 @@ const moduleRecords = ref([]);
 const roleOptions = ref(listRoleOptions());
 const currentAdminId = ref(adminApi.getCurrentAdminId());
 const adminAccess = ref(null);
-const loginForm = ref({ username: '', password: '' });
+const loginForm = ref({ mobile: '', code: '', debugCode: '' });
 const editingAdminId = ref('');
 const editingPermissionId = ref('');
 const activePermissionTab = ref('admins');
@@ -188,8 +188,7 @@ function emptyPropertyStaff() {
 
 function emptyAdmin() {
 	return {
-		username: '',
-		password: '',
+		mobile: '',
 		role: 'admin',
 		communityId: 0,
 		permissionId: '',
@@ -339,7 +338,7 @@ function canAction(action) {
 
 function auditParamsLabel(item) {
 	const params = item && item.params ? item.params : {};
-	const keys = ['username', 'role', 'communityId', 'adminId', 'id', 'status', 'auditStatus', 'title', 'scene'];
+	const keys = ['mobile', 'username', 'role', 'communityId', 'adminId', 'id', 'status', 'auditStatus', 'title', 'scene'];
 	const pairs = keys
 		.filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
 		.slice(0, 4)
@@ -454,7 +453,7 @@ function syncAdminPermissionRole() {
 }
 
 function resetLoginForm() {
-	loginForm.value = { username: '', password: '' };
+	loginForm.value = { mobile: '', code: '', debugCode: '' };
 }
 
 async function loadAdminDirectory() {
@@ -520,8 +519,10 @@ async function loginAdmin() {
 	try {
 		const res = await adminApi.login(loginForm.value);
 		const admin = res.admin || {};
+		adminApi.setAdminToken(res.sessionToken || '');
 		syncSelectedAdminId(admin.id || '');
-		loginForm.value.password = '';
+		loginForm.value.code = '';
+		loginForm.value.debugCode = '';
 		navigate('dashboard');
 		await reload();
 	} catch (err) {
@@ -529,8 +530,19 @@ async function loginAdmin() {
 	}
 }
 
+async function sendAdminLoginCode() {
+	try {
+		const res = await adminApi.sendLoginCode({ mobile: loginForm.value.mobile });
+		loginForm.value.debugCode = res.debugCode || '';
+		window.alert(res.debugCode ? `验证码已生成：${res.debugCode}` : '验证码已发送');
+	} catch (err) {
+		window.alert(err.message || '验证码发送失败');
+	}
+}
+
 async function logoutAdmin() {
 	setCurrentAdminId('');
+	adminApi.setAdminToken('');
 	adminApi.setSchemaName('');
 	adminAccess.value = null;
 	communities.value = [];
@@ -631,8 +643,7 @@ function editAdmin(item) {
 	editingAdminId.value = String(item.id || '');
 	activePermissionTab.value = 'admins';
 	adminForm.value = {
-		username: item.username || '',
-		password: '',
+		mobile: item.mobile || '',
 		role: item.role || 'admin',
 		communityId: Number(item.communityId || 0),
 		permissionId: '',
@@ -686,15 +697,14 @@ function resetAdminForm() {
 async function saveAdmin() {
 	const payload = {
 		id: editingAdminId.value || undefined,
-		username: adminForm.value.username,
-		password: adminForm.value.password,
+		mobile: adminForm.value.mobile,
 		role: adminForm.value.role,
 		communityId: adminForm.value.communityId || undefined,
 		active: adminForm.value.active
 	};
 	const result = await adminApi.saveAdmin(payload);
 	admins.value = result.list || admins.value;
-	const savedAdminId = Number(editingAdminId.value || (admins.value.find((item) => item.username === adminForm.value.username) || {}).id || 0);
+	const savedAdminId = Number(editingAdminId.value || (admins.value.find((item) => item.mobile === adminForm.value.mobile) || {}).id || 0);
 	const permissionCommunityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
 	if (savedAdminId && permissionCommunityId && canAction('admin:permission:manage')) {
 		const permissionPayload = buildPermissionRecord({
@@ -719,7 +729,7 @@ async function saveAdmin() {
 }
 
 async function removeAdmin(item) {
-	const confirmed = window.confirm(`确认停用管理员「${item.username}」？`);
+	const confirmed = window.confirm(`确认停用管理员「${item.mobileMasked || item.mobile || item.username}」？`);
 	if (!confirmed) return;
 	await adminApi.deleteAdmin(item.id);
 	await reload();
@@ -758,7 +768,7 @@ async function savePermission() {
 }
 
 async function removePermission(item) {
-	const confirmed = window.confirm(`确认删除权限记录「${item.username} / ${item.communityName}」？`);
+	const confirmed = window.confirm(`确认删除权限记录「${item.mobileMasked || item.mobile || item.username} / ${item.communityName}」？`);
 	if (!confirmed) return;
 	await adminApi.deletePermission(item.id);
 	await reload();
@@ -1394,6 +1404,7 @@ export function useAdminWorkspaceStore() {
 		loadOwnerRecords,
 		loadTenantRecords,
 		loadResidentChangeLogs,
+		sendAdminLoginCode,
 		loginAdmin,
 		logoutAdmin,
 		resetLoginForm,

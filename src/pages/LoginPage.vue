@@ -2,23 +2,24 @@
 	<section class="panel login-panel">
 		<div class="panel-head">
 			<h2>后台登录</h2>
-			<span>输入管理员账号后进入系统</span>
+			<span>使用后台登记的管理员手机号和验证码登录</span>
 		</div>
 		<div class="form-grid login-grid">
 			<label class="field span-2">
-				<span>账号</span>
-				<input v-model="workspace.loginForm.username" type="text" placeholder="请输入管理员账号" />
+				<span>手机号</span>
+				<input v-model="workspace.loginForm.mobile" type="tel" maxlength="11" placeholder="请输入管理员手机号" />
 			</label>
 			<label class="field span-2">
-				<span>密码</span>
-				<input v-model="workspace.loginForm.password" type="password" placeholder="请输入密码" />
+				<span>验证码</span>
+				<input v-model="workspace.loginForm.code" type="text" maxlength="6" placeholder="请输入验证码" />
 			</label>
 		</div>
 		<div class="form-actions">
+			<button @click="workspace.sendAdminLoginCode">获取验证码</button>
 			<button class="primary" @click="workspace.loginAdmin">登录</button>
 			<button @click="workspace.resetLoginForm">重置</button>
 		</div>
-		<p class="helper-text">请手动输入管理员账号和密码，不在页面展示默认口令。</p>
+		<p class="helper-text">只有后台已登记且启用的管理员手机号可以登录。默认超级管理员手机号不会在页面中展示。</p>
 	</section>
 </template>
 
