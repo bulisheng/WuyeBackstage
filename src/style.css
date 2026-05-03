@@ -4,8 +4,10 @@
 
 body {
 	margin: 0;
-	font-family: Arial, "Microsoft YaHei", sans-serif;
-	background: #f5f7f6;
+	font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+	background:
+		radial-gradient(circle at 12% 10%, rgba(184, 138, 68, 0.12), transparent 28%),
+		linear-gradient(135deg, #f8f3ea 0%, #f4f7f4 100%);
 	color: #1f2933;
 }
 
@@ -21,9 +23,10 @@ button {
 }
 
 .sidebar {
-	background: #11251b;
+	background: linear-gradient(180deg, #0f2538 0%, #132b3e 54%, #102033 100%);
 	color: #fff;
 	padding: 24px 16px;
+	box-shadow: 16px 0 40px rgba(15, 37, 56, 0.18);
 }
 
 .brand {
@@ -36,11 +39,12 @@ button {
 .brand-mark {
 	width: 42px;
 	height: 42px;
-	border-radius: 8px;
-	background: #13b35d;
+	border-radius: 14px;
+	background: linear-gradient(135deg, #b88a44, #a6423a);
 	display: grid;
 	place-items: center;
 	font-weight: 800;
+	box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
 }
 
 .brand-title {
@@ -61,17 +65,19 @@ button {
 
 .nav button {
 	border: 0;
-	border-radius: 8px;
+	border-radius: 12px;
 	padding: 12px;
 	text-align: left;
 	background: transparent;
 	color: #cdd8d2;
+	transition: 0.18s ease;
 }
 
 .nav button.active,
 .nav button:hover {
-	background: #1d3b2b;
+	background: rgba(255, 252, 247, 0.12);
 	color: #fff;
+	transform: translateX(4px);
 }
 
 .main {
@@ -84,6 +90,12 @@ button {
 	align-items: center;
 	margin-bottom: 22px;
 	gap: 16px;
+	padding: 18px 20px;
+	border: 1px solid rgba(184, 138, 68, 0.16);
+	border-radius: 24px;
+	background: rgba(255, 252, 247, 0.84);
+	backdrop-filter: blur(8px);
+	box-shadow: 0 18px 42px rgba(31, 41, 51, 0.07);
 }
 
 h1,
@@ -117,15 +129,15 @@ p {
 	display: grid;
 	gap: 4px;
 	padding: 10px 12px;
-	border-radius: 10px;
-	background: #eaf7ef;
-	color: #0f7a43;
+	border-radius: 14px;
+	background: #f5eadb;
+	color: #5f2b26;
 	min-width: 180px;
 }
 
 .admin-badge span {
 	font-size: 12px;
-	color: #4b7f5d;
+	color: #876441;
 }
 
 .admin-badge strong {
@@ -143,18 +155,18 @@ p {
 .schema-switch select {
 	min-width: 180px;
 	padding: 8px 10px;
-	border-radius: 8px;
-	border: 1px solid #d9e1dc;
-	background: #fff;
+	border-radius: 12px;
+	border: 1px solid #e7dac7;
+	background: #fffcf7;
 	color: #1f2933;
 }
 
 .primary,
 .actions button {
 	border: 0;
-	border-radius: 8px;
+	border-radius: 12px;
 	padding: 9px 14px;
-	background: #13b35d;
+	background: #1f2933;
 	color: #fff;
 }
 
@@ -166,15 +178,29 @@ p {
 
 .metric,
 .panel {
-	background: #fff;
-	border-radius: 8px;
-	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+	background: rgba(255, 252, 247, 0.94);
+	border: 1px solid rgba(184, 138, 68, 0.14);
+	border-radius: 20px;
+	box-shadow: 0 16px 36px rgba(31, 41, 51, 0.07);
 }
 
 .metric {
 	padding: 20px;
 	display: grid;
 	gap: 12px;
+	position: relative;
+	overflow: hidden;
+}
+
+.metric::after {
+	content: "";
+	position: absolute;
+	right: -28px;
+	top: -28px;
+	width: 88px;
+	height: 88px;
+	border-radius: 50%;
+	background: rgba(184, 138, 68, 0.11);
 }
 
 .metric span {
@@ -183,10 +209,126 @@ p {
 
 .metric strong {
 	font-size: 28px;
+	position: relative;
+	z-index: 1;
 }
 
 .panel {
 	padding: 20px;
+}
+
+.dashboard-stack {
+	display: grid;
+	gap: 18px;
+}
+
+.overview-hero {
+	display: grid;
+	grid-template-columns: 1fr 220px;
+	gap: 24px;
+	align-items: stretch;
+	padding: 26px;
+	border-radius: 28px;
+	background:
+		linear-gradient(135deg, rgba(255, 252, 247, 0.94), rgba(244, 229, 208, 0.9)),
+		repeating-linear-gradient(45deg, rgba(184, 138, 68, 0.12) 0 1px, transparent 1px 18px);
+	border: 1px solid rgba(184, 138, 68, 0.22);
+	box-shadow: 0 20px 48px rgba(31, 41, 51, 0.08);
+}
+
+.overview-hero h2 {
+	margin-top: 8px;
+	font-size: 30px;
+}
+
+.overview-hero p {
+	max-width: 680px;
+	margin-top: 10px;
+	color: #596575;
+	line-height: 1.7;
+}
+
+.eyebrow {
+	display: inline-flex;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: #1f2933;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+}
+
+.hero-number {
+	display: grid;
+	place-items: center;
+	gap: 8px;
+	border-radius: 24px;
+	background: #1f2933;
+	color: #fff;
+}
+
+.hero-number span {
+	color: #d9cbb7;
+}
+
+.hero-number strong {
+	font-size: 46px;
+}
+
+.visual-grid {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 14px;
+}
+
+.visual-card {
+	display: grid;
+	gap: 12px;
+	padding: 16px;
+	border-radius: 18px;
+	background: #fffaf2;
+	border: 1px solid #eadbc7;
+}
+
+.visual-top {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	align-items: baseline;
+}
+
+.visual-top span {
+	color: #5f2b26;
+	font-weight: 900;
+}
+
+.visual-bar {
+	height: 12px;
+	border-radius: 999px;
+	overflow: hidden;
+	background: #eadbc7;
+}
+
+.visual-bar i {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: linear-gradient(90deg, #5f2b26, #b88a44);
+}
+
+.visual-bar.compact {
+	height: 8px;
+}
+
+.visual-card p,
+.visual-metric small {
+	color: #6b7280;
+	line-height: 1.5;
+}
+
+.visual-metric {
+	gap: 10px;
 }
 
 .filter-row {
@@ -287,7 +429,7 @@ p {
 	width: 5px;
 	height: 5px;
 	border-radius: 50%;
-	background: #13b35d;
+	background: #b88a44;
 }
 
 .timeline-item span,
@@ -338,8 +480,8 @@ p {
 }
 
 .head-actions button:hover {
-	border-color: #13b35d;
-	color: #0f7a43;
+	border-color: #b88a44;
+	color: #5f2b26;
 }
 
 table {
@@ -432,9 +574,9 @@ th {
 
 .community-actions button {
 	border: 0;
-	border-radius: 8px;
+	border-radius: 12px;
 	padding: 9px 14px;
-	background: #13b35d;
+	background: #1f2933;
 	color: #fff;
 }
 
@@ -516,9 +658,9 @@ th {
 }
 
 .tab-strip button.active {
-	background: #123b26;
+	background: #1f2933;
 	color: #fff;
-	box-shadow: 0 10px 24px rgba(18, 59, 38, 0.18);
+	box-shadow: 0 10px 24px rgba(31, 41, 51, 0.18);
 }
 
 .module-actions {
@@ -538,9 +680,9 @@ th {
 
 .permission-card {
 	padding: 16px;
-	border: 1px solid #edf0ee;
-	border-radius: 8px;
-	background: #f8faf9;
+	border: 1px solid #eadbc7;
+	border-radius: 18px;
+	background: #fffcf7;
 	display: grid;
 	gap: 14px;
 }
@@ -762,7 +904,7 @@ th {
 }
 
 .form-actions .primary {
-	background: #13b35d;
+	background: #1f2933;
 }
 
 .announcement-title-cell {
@@ -797,6 +939,14 @@ th {
 	}
 
 	.permission-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.overview-hero {
+		grid-template-columns: 1fr;
+	}
+
+	.visual-grid {
 		grid-template-columns: 1fr;
 	}
 }

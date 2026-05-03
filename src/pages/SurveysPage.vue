@@ -12,11 +12,11 @@
 			<label><span>标题</span><input v-model="form.title" placeholder="例如 2026 物业服务满意度调研" /></label>
 			<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
 			<label><span>排序</span><input v-model.number="form.sort" type="number" /></label>
-			<label><span>问卷星 AppID</span><input v-model="form.miniAppId" placeholder="可选，配置后优先跳小程序" /></label>
+			<label><span>问卷星小程序编号</span><input v-model="form.miniAppId" placeholder="可选，配置后优先跳小程序" /></label>
 			<label class="full"><span>问卷星链接</span><input v-model="form.externalUrl" placeholder="https:// 或问卷星调研链接" /></label>
 			<label class="full"><span>小程序路径</span><input v-model="form.miniPath" placeholder="可选，例如 pages/index/index?..." /></label>
-			<label><span>开始时间</span><input v-model="form.startAt" placeholder="YYYY-MM-DD HH:mm:ss，可空" /></label>
-			<label><span>结束时间</span><input v-model="form.endAt" placeholder="YYYY-MM-DD HH:mm:ss，可空" /></label>
+			<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒，可空" /></label>
+			<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒，可空" /></label>
 			<label class="full"><span>说明</span><textarea v-model="form.summary" rows="3" placeholder="说明调研目的，体现用心服务"></textarea></label>
 		</div>
 		<div class="form-actions">
@@ -33,8 +33,8 @@
 							<strong>{{ item.title }}</strong>
 							<p>{{ item.summary || '暂无说明' }}</p>
 						</td>
-						<td>{{ item.status }}</td>
-						<td>{{ item.miniAppId ? `小程序：${item.miniAppId}` : (item.externalUrl || '-') }}</td>
+						<td>{{ statusText(item.status) }}</td>
+						<td>{{ item.miniAppId ? `小程序编号：${item.miniAppId}` : (item.externalUrl || '-') }}</td>
 						<td>{{ item.startAt || '不限' }} 至 {{ item.endAt || '不限' }}</td>
 						<td class="actions">
 							<button @click="edit(item)">编辑</button>
@@ -59,6 +59,10 @@ const form = ref(emptyForm());
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', externalUrl: '', miniAppId: '', miniPath: '', status: 'published', sort: 100, startAt: '', endAt: '' };
+}
+
+function statusText(status) {
+	return { published: '发布', draft: '草稿', closed: '关闭', archived: '归档' }[status] || status || '-';
 }
 
 async function loadList() {

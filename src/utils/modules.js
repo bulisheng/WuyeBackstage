@@ -8,12 +8,12 @@ const MODULE_CATALOG = [
 	{ key: 'fees', name: '缴费', sort: 7, group: 'primary', authRequired: true, description: '缴费账单与催缴' },
 	{ key: 'complaints', name: '投诉建议', sort: 8, group: 'primary', authRequired: true, description: '投诉与建议处理' },
 	{ key: 'property_service', name: '物业服务', sort: 9, group: 'primary', authRequired: true, description: '便民服务申请与派单' },
-	{ key: 'customer_service', name: '在线客服', sort: 10, group: 'primary', authRequired: false, description: 'FAQ、智能分析与人工客服' },
+	{ key: 'customer_service', name: '在线客服', sort: 10, group: 'primary', authRequired: false, description: '常见问题、智能分析与人工客服' },
 	{ key: 'notices', name: '通知配置', sort: 11, group: 'secondary', authRequired: false, description: '消息模板与通知通道' },
 	{ key: 'announcements', name: '公告', sort: 12, group: 'secondary', authRequired: false, description: '公告发布与管理' },
 	{ key: 'activities', name: '社区活动', sort: 13, group: 'secondary', authRequired: true, description: '活动发布、报名与签到' },
 	{ key: 'surveys', name: '社区调研', sort: 14, group: 'secondary', authRequired: false, description: '问卷星链接与小程序跳转配置' },
-	{ key: 'faq', name: 'FAQ管理', sort: 15, group: 'secondary', authRequired: false, description: '在线客服关键词和自动回复' },
+	{ key: 'faq', name: '常见问题', sort: 15, group: 'secondary', authRequired: false, description: '在线客服关键词和自动回复' },
 	{ key: 'mall', name: '盛兴严选', sort: 16, group: 'secondary', authRequired: true, description: '商品、订单、售后与商城看板' },
 	{ key: 'audit', name: '审计', sort: 17, group: 'settings', authRequired: true, description: '后台操作审计记录' }
 ];

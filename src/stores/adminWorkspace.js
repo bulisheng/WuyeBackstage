@@ -29,7 +29,7 @@ const routeLabels = {
 	announcements: '公告管理',
 	activities: '社区活动',
 	surveys: '社区调研',
-	faq: 'FAQ 管理',
+	faq: '常见问题',
 	notices: '通知中心'
 };
 
@@ -1117,7 +1117,7 @@ async function scanRepairSla() {
 	const result = await adminApi.repairSlaScan();
 	repairSlaSummary.value = { updated: result.updated || 0 };
 	repairs.value = result.list || repairs.value;
-	window.alert(`SLA 扫描完成，标记 ${result.updated || 0} 条超时工单`);
+	window.alert(`服务时限扫描完成，标记 ${result.updated || 0} 条超时工单`);
 }
 
 async function exportRepairs() {

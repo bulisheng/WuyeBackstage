@@ -9,10 +9,12 @@
 		</div>
 
 		<section class="panel-grid">
-			<article class="metric"><span>今日成交额</span><strong>{{ money(dashboard.todayAmount) }}</strong></article>
-			<article class="metric"><span>今日订单</span><strong>{{ dashboard.todayOrderCount || 0 }}</strong></article>
-			<article class="metric"><span>待发货</span><strong>{{ dashboard.statusCounts?.paid || 0 }}</strong></article>
-			<article class="metric"><span>售后中</span><strong>{{ dashboard.statusCounts?.refund_pending || 0 }}</strong></article>
+			<article v-for="item in mallVisuals" :key="item.key" class="metric visual-metric">
+				<span>{{ item.label }}</span>
+				<strong>{{ item.value }}</strong>
+				<div class="visual-bar compact"><i :style="{ width: item.percent + '%' }"></i></div>
+				<small>{{ item.desc }}</small>
+			</article>
 		</section>
 
 		<div class="tabs">
@@ -29,7 +31,7 @@
 				<label><span>库存</span><input v-model.number="productForm.stock" type="number" min="0" /></label>
 				<label><span>状态</span><select v-model="productForm.status"><option value="on_sale">上架</option><option value="draft">草稿</option><option value="off_sale">下架</option></select></label>
 				<label><span>排序</span><input v-model.number="productForm.sort" type="number" /></label>
-				<label class="full"><span>封面图 URL</span><input v-model="productForm.coverUrl" placeholder="https://..." /></label>
+				<label class="full"><span>封面图片链接</span><input v-model="productForm.coverUrl" placeholder="填写图片地址" /></label>
 				<label class="full"><span>摘要</span><input v-model="productForm.subtitle" placeholder="商品卖点" /></label>
 				<label class="full"><span>详情</span><textarea v-model="productForm.description" rows="4" placeholder="商品详情"></textarea></label>
 			</div>
@@ -119,7 +121,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
@@ -140,6 +142,37 @@ function emptyProduct() {
 function money(value) {
 	return `¥${Number(value || 0).toFixed(2)}`;
 }
+
+const mallVisuals = computed(() => [
+	{
+		key: 'amount',
+		label: '今日成交额',
+		value: money(dashboard.value.todayAmount),
+		percent: Math.min(100, Number(dashboard.value.todayAmount || 0) / 1000 * 100),
+		desc: '按今日支付订单统计'
+	},
+	{
+		key: 'orders',
+		label: '今日订单',
+		value: dashboard.value.todayOrderCount || 0,
+		percent: Math.min(100, Number(dashboard.value.todayOrderCount || 0) * 12),
+		desc: '今日新增订单数量'
+	},
+	{
+		key: 'ship',
+		label: '待发货',
+		value: dashboard.value.statusCounts?.paid || 0,
+		percent: Math.min(100, Number(dashboard.value.statusCounts?.paid || 0) * 20),
+		desc: '需要运营尽快处理'
+	},
+	{
+		key: 'afterSale',
+		label: '售后中',
+		value: dashboard.value.statusCounts?.refund_pending || 0,
+		percent: Math.min(100, Number(dashboard.value.statusCounts?.refund_pending || 0) * 20),
+		desc: '退款和售后跟进'
+	}
+]);
 
 function productStatusText(status) {
 	return { draft: '草稿', on_sale: '上架', off_sale: '下架' }[status] || status;

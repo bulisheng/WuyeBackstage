@@ -2,7 +2,7 @@
 	<section class="page-section">
 		<div class="panel-head">
 			<div>
-				<h2>FAQ 管理</h2>
+				<h2>常见问题管理</h2>
 				<p>维护在线客服关键词和自动回复。</p>
 			</div>
 			<button class="primary" type="button" @click="loadList">刷新</button>
@@ -16,7 +16,7 @@
 			<label class="full"><span>答案</span><textarea v-model="form.answer" rows="4" placeholder="自动回复内容"></textarea></label>
 		</div>
 		<div class="form-actions">
-			<button class="primary" type="button" @click="save">保存 FAQ</button>
+			<button class="primary" type="button" @click="save">保存常见问题</button>
 			<button type="button" @click="reset">重置</button>
 		</div>
 
@@ -34,7 +34,7 @@
 							<button @click="remove(item)">删除</button>
 						</td>
 					</tr>
-					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无 FAQ。</td></tr>
+					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无常见问题。</td></tr>
 				</tbody>
 			</table>
 		</div>
@@ -74,7 +74,7 @@ async function save() {
 }
 
 async function remove(item) {
-	if (!window.confirm(`确认删除 FAQ「${item.question}」？`)) return;
+	if (!window.confirm(`确认删除常见问题「${item.question}」？`)) return;
 	await adminApi.faqDelete(item.id);
 	await loadList();
 }

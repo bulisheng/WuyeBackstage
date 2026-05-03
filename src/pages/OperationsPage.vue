@@ -128,7 +128,7 @@ const config = {
 	},
 	customer_service: {
 		title: '在线客服',
-		desc: '查看 FAQ / 智能分析后的人工客服工单。',
+		desc: '查看常见问题和智能分析后的人工客服工单。',
 		list: adminApi.customerList,
 		detail: adminApi.customerDetail,
 		action: adminApi.customerAction

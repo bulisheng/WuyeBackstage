@@ -2,10 +2,10 @@
 	<div class="layout">
 		<aside class="sidebar">
 			<div class="brand">
-				<div class="brand-mark">SX</div>
+				<div class="brand-mark">盛</div>
 				<div>
 					<div class="brand-title">盛兴物业</div>
-					<div class="brand-subtitle">管理后台</div>
+					<div class="brand-subtitle">智慧运营后台</div>
 				</div>
 			</div>
 			<nav v-if="workspace.isLoggedIn" class="nav">
@@ -24,7 +24,7 @@
 			<header class="topbar">
 				<div class="title-group">
 					<h1>{{ workspace.pageTitle }}</h1>
-					<p>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : 'CloudBase MySQL 公告与业务管理' }}</p>
+					<p>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '云数据库公告与业务管理' }}</p>
 				</div>
 				<div class="toolbar">
 					<div v-if="workspace.currentAdminInfo" class="admin-badge">

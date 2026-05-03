@@ -13,8 +13,8 @@
 			<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
 			<label><span>地点</span><input v-model="form.location" placeholder="活动地点" /></label>
 			<label><span>名额</span><input v-model.number="form.capacity" type="number" min="0" /></label>
-			<label><span>开始时间</span><input v-model="form.startAt" placeholder="YYYY-MM-DD HH:mm:ss" /></label>
-			<label><span>结束时间</span><input v-model="form.endAt" placeholder="YYYY-MM-DD HH:mm:ss" /></label>
+			<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒" /></label>
+			<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒" /></label>
 			<label class="full"><span>摘要</span><input v-model="form.summary" placeholder="摘要" /></label>
 			<label class="full"><span>内容</span><textarea v-model="form.content" rows="4" placeholder="活动说明"></textarea></label>
 		</div>
@@ -31,7 +31,7 @@
 						<td>{{ item.title }}</td>
 						<td>{{ item.startAt || '-' }}</td>
 						<td>{{ item.joinedCount }} / {{ item.capacity || '不限' }}</td>
-						<td>{{ item.status }}</td>
+						<td>{{ statusText(item.status) }}</td>
 						<td class="actions">
 							<button @click="edit(item)">编辑</button>
 							<button @click="loadSignups(item)">报名</button>
@@ -54,7 +54,7 @@
 						<td>{{ item.activityTitle || selectedActivityTitle }}</td>
 						<td>{{ item.contact || item.ownerMobile }}</td>
 						<td>{{ item.house || '-' }}</td>
-						<td>{{ item.status }}</td>
+						<td>{{ signupStatusText(item.status) }}</td>
 						<td class="actions">
 							<button :disabled="item.status === 'checked_in'" @click="signupAction(item, 'checkin')">签到</button>
 							<button :disabled="item.status === 'cancelled'" @click="signupAction(item, 'cancel')">取消</button>
@@ -81,6 +81,14 @@ const form = ref(emptyForm());
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', content: '', location: '', startAt: '', endAt: '', capacity: 0, status: 'published' };
+}
+
+function statusText(status) {
+	return { published: '发布', draft: '草稿', closed: '关闭', archived: '归档' }[status] || status || '-';
+}
+
+function signupStatusText(status) {
+	return { signed: '已报名', checked_in: '已签到', cancelled: '已取消' }[status] || status || '-';
 }
 
 async function reload() {

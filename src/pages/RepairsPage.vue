@@ -5,10 +5,10 @@
 			<span>{{ filteredRepairs.length }} 条工单 / 共 {{ workspace.repairs.length }} 条</span>
 		</div>
 		<div class="form-actions">
-			<button :disabled="!workspace.canAction('repair:update')" @click="workspace.scanRepairSla">扫描 SLA 超时</button>
+			<button :disabled="!workspace.canAction('repair:update')" @click="workspace.scanRepairSla">扫描服务时限超时</button>
 			<button :disabled="!workspace.canAction('repair:view')" @click="workspace.exportRepairs">导出工单</button>
 		</div>
-		<p v-if="workspace.repairSlaSummary" class="field-hint">最近 SLA 扫描标记 {{ workspace.repairSlaSummary.updated || 0 }} 条超时工单。</p>
+		<p v-if="workspace.repairSlaSummary" class="field-hint">最近服务时限扫描标记 {{ workspace.repairSlaSummary.updated || 0 }} 条超时工单。</p>
 		<div class="filter-row">
 			<label class="field">
 				<span>关键词</span>
@@ -34,7 +34,7 @@
 					<th>联系人</th>
 					<th>电话</th>
 					<th>状态</th>
-					<th>SLA</th>
+					<th>服务时限</th>
 					<th>处理人</th>
 				</tr>
 			</thead>
@@ -66,7 +66,7 @@
 				<div><strong>联系人</strong><p>{{ workspace.repairDetail.contact || '-' }}</p></div>
 				<div><strong>电话</strong><p>{{ workspace.repairDetail.phone || '-' }}</p></div>
 				<div><strong>状态</strong><p>{{ workspace.workStatusText(workspace.repairDetail.status) }}</p></div>
-				<div><strong>SLA</strong><p>{{ workspace.repairDetail.slaStatus || '-' }}</p></div>
+				<div><strong>服务时限</strong><p>{{ workspace.repairDetail.slaStatus || '-' }}</p></div>
 				<div><strong>处理期限</strong><p>{{ workspace.repairDetail.deadline || '-' }}</p></div>
 				<div><strong>处理人</strong><p>{{ workspace.repairDetail.assignee || '未分配' }}</p></div>
 				<div><strong>提交时间</strong><p>{{ workspace.repairDetail.createdAt || '-' }}</p></div>

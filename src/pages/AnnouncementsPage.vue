@@ -27,7 +27,7 @@
 				<tbody>
 					<tr v-for="item in list" :key="item.id">
 						<td>{{ item.title }}</td>
-						<td>{{ item.status }}</td>
+						<td>{{ statusText(item.status) }}</td>
 						<td>{{ item.isPinned ? '是' : '否' }}</td>
 						<td>{{ item.publishAt || item.createdAt || '-' }}</td>
 						<td class="actions">
@@ -53,6 +53,10 @@ const form = ref(emptyForm());
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', content: '', status: 'published', isPinned: 1, sort: 0 };
+}
+
+function statusText(status) {
+	return { published: '发布', draft: '草稿', archived: '归档' }[status] || status || '-';
 }
 
 async function loadList() {
