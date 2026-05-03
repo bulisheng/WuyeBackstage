@@ -58,7 +58,15 @@ async function request(route, params = {}) {
 			params: Object.assign({}, params, schemaName ? { schemaName } : {})
 		})
 	});
-	const data = await res.json();
+	const text = await res.text();
+	let data = {};
+	if (text) {
+		try {
+			data = JSON.parse(text);
+		} catch (err) {
+			throw new Error(`服务返回异常：${res.status}`);
+		}
+	}
 	if (!res.ok) {
 		throw new Error(data.msg || `请求失败：${res.status}`);
 	}
