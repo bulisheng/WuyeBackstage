@@ -63,12 +63,14 @@ import AnnouncementsPage from './pages/AnnouncementsPage.vue';
 import FaqPage from './pages/FaqPage.vue';
 import FeesPage from './pages/FeesPage.vue';
 import LoginPage from './pages/LoginPage.vue';
+import MallPage from './pages/MallPage.vue';
 import NoticesPage from './pages/NoticesPage.vue';
 import OperationsPage from './pages/OperationsPage.vue';
 import PermissionsPage from './pages/PermissionsPage.vue';
 import RepairsPage from './pages/RepairsPage.vue';
 import ResidentsPage from './pages/ResidentsPage.vue';
 import StaffPage from './pages/StaffPage.vue';
+import SurveysPage from './pages/SurveysPage.vue';
 import { useAdminWorkspaceStore } from './stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
@@ -84,8 +86,10 @@ const pageMap = {
 	complaints: OperationsPage,
 	property_service: OperationsPage,
 	customer_service: OperationsPage,
+	mall: MallPage,
 	announcements: AnnouncementsPage,
 	activities: ActivitiesPage,
+	surveys: SurveysPage,
 	faq: FaqPage,
 	notices: NoticesPage,
 	login: LoginPage

@@ -25,13 +25,15 @@ const routeLabels = {
 	complaints: '投诉建议',
 	property_service: '物业服务',
 	customer_service: '在线客服',
+	mall: '盛兴严选',
 	announcements: '公告管理',
 	activities: '社区活动',
+	surveys: '社区调研',
 	faq: 'FAQ 管理',
 	notices: '通知中心'
 };
 
-const routeOrder = ['dashboard', 'owners', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'announcements', 'activities', 'faq', 'notices'];
+const routeOrder = ['dashboard', 'owners', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'mall', 'announcements', 'activities', 'surveys', 'faq', 'notices'];
 const routerReady = { value: false };
 
 const activeRoute = ref('login');
@@ -119,7 +121,7 @@ const adminMenuOptions = computed(() => MODULE_CATALOG.map((item) => ({
 	label: item.name || buildMenuLabel(item.key),
 	description: item.description || ''
 })));
-const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'service:handle', 'customer:handle', 'announcement:publish', 'activity:manage', 'activity:checkin', 'faq:manage', 'notice:publish'];
+const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'service:handle', 'customer:handle', 'mall:view', 'mall:product', 'mall:order', 'mall:after_sale', 'mall:dashboard', 'announcement:publish', 'activity:manage', 'activity:checkin', 'survey:view', 'survey:manage', 'faq:manage', 'notice:publish'];
 const adminActionOptions = computed(() => quickPermissionTokens.map((item) => ({
 	key: item,
 	label: buildActionLabel(item)

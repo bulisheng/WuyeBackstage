@@ -8,23 +8,23 @@ const ROLE_OPTIONS = [
 
 const ROLE_ACCESS_PRESETS = {
 	super_admin: {
-		menus: ['dashboard', 'owners', 'announcements', 'activities', 'faq', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'notices'],
+		menus: ['dashboard', 'owners', 'announcements', 'activities', 'surveys', 'faq', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'mall', 'notices'],
 		actions: ['*'],
 		note: '超管拥有全量菜单和动作权限'
 	},
 	admin: {
-		menus: ['dashboard', 'owners', 'announcements', 'activities', 'faq', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'notices'],
-		actions: ['dashboard:view', 'community:view', 'community:edit', 'community:delete', 'community:module:view', 'community:module:manage', 'announcement:view', 'announcement:publish', 'announcement:delete', 'activity:view', 'activity:manage', 'activity:checkin', 'faq:view', 'faq:manage', 'staff:view', 'staff:manage', 'owner:view', 'owner:manage', 'owner:audit', 'tenant:view', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:manage', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'service:view', 'service:handle', 'customer:view', 'customer:handle', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
+		menus: ['dashboard', 'owners', 'announcements', 'activities', 'surveys', 'faq', 'communities', 'permissions', 'staff', 'repairs', 'fees', 'complaints', 'property_service', 'customer_service', 'mall', 'notices'],
+		actions: ['dashboard:view', 'community:view', 'community:edit', 'community:delete', 'community:module:view', 'community:module:manage', 'announcement:view', 'announcement:publish', 'announcement:delete', 'activity:view', 'activity:manage', 'activity:checkin', 'survey:view', 'survey:manage', 'faq:view', 'faq:manage', 'staff:view', 'staff:manage', 'owner:view', 'owner:manage', 'owner:audit', 'tenant:view', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:manage', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:view', 'complaint:handle', 'service:view', 'service:handle', 'customer:view', 'customer:handle', 'mall:view', 'mall:product', 'mall:order', 'mall:after_sale', 'mall:dashboard', 'notice:view', 'notice:publish', 'admin:role:view', 'admin:user:view', 'admin:user:manage', 'admin:permission:view', 'admin:permission:manage', 'admin:audit:view'],
 		note: '管理员默认看到全部业务菜单'
 	},
 	finance: {
-		menus: ['dashboard', 'fees', 'notices'],
-		actions: ['fee:view', 'fee:collect', 'fee:remind', 'fee:export'],
+		menus: ['dashboard', 'fees', 'mall', 'notices'],
+		actions: ['fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'mall:view', 'mall:order', 'mall:dashboard'],
 		note: '财务只显示缴费相关菜单'
 	},
 	customer_service: {
-		menus: ['dashboard', 'owners', 'announcements', 'activities', 'faq', 'staff', 'repairs', 'complaints', 'property_service', 'customer_service', 'notices'],
-		actions: ['dashboard:view', 'owner:view', 'owner:manage', 'owner:audit', 'tenant:view', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'announcement:view', 'announcement:publish', 'activity:view', 'activity:manage', 'activity:checkin', 'faq:view', 'faq:manage', 'repair:view', 'repair:assign', 'repair:update', 'complaint:view', 'complaint:handle', 'service:view', 'service:handle', 'customer:view', 'customer:handle', 'notice:view', 'notice:publish'],
+		menus: ['dashboard', 'owners', 'announcements', 'activities', 'surveys', 'faq', 'staff', 'repairs', 'complaints', 'property_service', 'customer_service', 'notices'],
+		actions: ['dashboard:view', 'owner:view', 'owner:manage', 'owner:audit', 'tenant:view', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'announcement:view', 'announcement:publish', 'activity:view', 'activity:manage', 'activity:checkin', 'survey:view', 'survey:manage', 'faq:view', 'faq:manage', 'repair:view', 'repair:assign', 'repair:update', 'complaint:view', 'complaint:handle', 'service:view', 'service:handle', 'customer:view', 'customer:handle', 'notice:view', 'notice:publish'],
 		note: '客服默认显示与住户和工单相关的菜单'
 	},
 	repairman: {
@@ -39,6 +39,7 @@ const MENU_LABELS = {
 	owners: '住户管理',
 	announcements: '公告管理',
 	activities: '社区活动',
+	surveys: '社区调研',
 	faq: 'FAQ 管理',
 	communities: '小区配置',
 	permissions: '权限管理',
@@ -48,6 +49,7 @@ const MENU_LABELS = {
 	complaints: '投诉建议',
 	property_service: '物业服务',
 	customer_service: '在线客服',
+	mall: '盛兴严选',
 	notices: '通知配置'
 };
 
@@ -65,6 +67,8 @@ const ACTION_LABELS = {
 	'activity:view': '查看活动',
 	'activity:manage': '活动管理',
 	'activity:checkin': '活动签到',
+	'survey:view': '查看调研',
+	'survey:manage': '调研管理',
 	'faq:view': '查看 FAQ',
 	'faq:manage': 'FAQ 管理',
 	'staff:view': '查看物业人员',
@@ -91,6 +95,11 @@ const ACTION_LABELS = {
 	'service:handle': '处理服务',
 	'customer:view': '查看客服',
 	'customer:handle': '处理客服',
+	'mall:view': '查看商城',
+	'mall:product': '商品管理',
+	'mall:order': '订单处理',
+	'mall:after_sale': '售后处理',
+	'mall:dashboard': '商城看板',
 	'notice:view': '查看通知',
 	'notice:publish': '发布通知',
 	'admin:role:view': '查看角色',
