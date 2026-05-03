@@ -136,5 +136,12 @@ export const adminApi = {
 	noticeRetry: (payload) => request('admin/notice/retry', payload),
 	announcementList: () => request('admin/announcement/list'),
 	saveAnnouncement: (payload) => request('admin/announcement/save', payload),
-	deleteAnnouncement: (id) => request('admin/announcement/delete', { id })
+	deleteAnnouncement: (id) => request('admin/announcement/delete', { id }),
+	activityList: () => request('admin/activity/list'),
+	activitySave: (payload) => request('admin/activity/save', payload),
+	activitySignupList: (payload = {}) => request('admin/activity/signup/list', payload),
+	activitySignupAction: (payload) => request('admin/activity/signup/action', payload),
+	faqList: () => request('admin/faq/list'),
+	faqSave: (payload) => request('admin/faq/save', payload),
+	faqDelete: (id) => request('admin/faq/delete', { id })
 };

@@ -11,7 +11,9 @@ const MODULE_CATALOG = [
 	{ key: 'customer_service', name: '在线客服', sort: 10, group: 'primary', authRequired: false, description: 'FAQ、智能分析与人工客服' },
 	{ key: 'notices', name: '通知配置', sort: 11, group: 'secondary', authRequired: false, description: '消息模板与通知通道' },
 	{ key: 'announcements', name: '公告', sort: 12, group: 'secondary', authRequired: false, description: '公告发布与管理' },
-	{ key: 'audit', name: '审计', sort: 13, group: 'settings', authRequired: true, description: '后台操作审计记录' }
+	{ key: 'activities', name: '社区活动', sort: 13, group: 'secondary', authRequired: true, description: '活动发布、报名与签到' },
+	{ key: 'faq', name: 'FAQ管理', sort: 14, group: 'secondary', authRequired: false, description: '在线客服关键词和自动回复' },
+	{ key: 'audit', name: '审计', sort: 15, group: 'settings', authRequired: true, description: '后台操作审计记录' }
 ];
 
 function cloneModuleCatalog() {

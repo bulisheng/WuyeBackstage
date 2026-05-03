@@ -58,6 +58,9 @@
 import { computed, onMounted } from 'vue';
 import DashboardPage from './pages/DashboardPage.vue';
 import CommunitiesPage from './pages/CommunitiesPage.vue';
+import ActivitiesPage from './pages/ActivitiesPage.vue';
+import AnnouncementsPage from './pages/AnnouncementsPage.vue';
+import FaqPage from './pages/FaqPage.vue';
 import FeesPage from './pages/FeesPage.vue';
 import LoginPage from './pages/LoginPage.vue';
 import NoticesPage from './pages/NoticesPage.vue';
@@ -81,6 +84,9 @@ const pageMap = {
 	complaints: OperationsPage,
 	property_service: OperationsPage,
 	customer_service: OperationsPage,
+	announcements: AnnouncementsPage,
+	activities: ActivitiesPage,
+	faq: FaqPage,
 	notices: NoticesPage,
 	login: LoginPage
 };
