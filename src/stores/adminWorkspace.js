@@ -596,9 +596,10 @@ async function sendAdminLoginCode() {
 	try {
 		const res = await adminApi.sendLoginCode({ mobile: loginForm.value.mobile });
 		loginForm.value.debugCode = res.debugCode || '';
-		window.alert('验证码已发送');
+		return res;
 	} catch (err) {
 		window.alert(err.message || '验证码发送失败');
+		throw err;
 	}
 }
 
