@@ -4,7 +4,7 @@
 			<div>
 				<span class="eyebrow">运营总览</span>
 				<h2>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区' }}</h2>
-				<p>用图形化方式查看收费、报修、服务、客服和通知风险，先看趋势，再处理明细。</p>
+				<p>统一查看收费、报修、服务、客服和通知概况，先看总览，再处理明细。</p>
 			</div>
 			<div class="hero-number">
 				<span>待办总数</span>
@@ -17,7 +17,7 @@
 				<strong>{{ item.value }}</strong>
 			</article>
 		</section>
-		<DetailCard title="数据可视化" subtitle="按当前小区展示关键风险占比">
+		<DetailCard title="风险概况" subtitle="展示当前小区关键指标">
 			<div class="visual-grid">
 				<article v-for="item in visualRows" :key="item.key" class="visual-card">
 					<div class="visual-top">
@@ -57,72 +57,48 @@
 			<p v-if="!staffTodoGroups.length" class="empty-text">暂无负责人待办。</p>
 		</DetailCard>
 		<section class="permission-grid">
-			<div class="permission-card">
-				<div class="panel-head compact">
-					<h3>待处理报修</h3>
-					<span>{{ repairTodos.length }} 条</span>
-				</div>
+			<DetailCard title="待处理报修" :subtitle="`${repairTodos.length} 条`">
 				<div v-for="item in repairTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || '-' }}</strong>
 					<span>{{ workspace.workStatusText(item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
 				<p v-if="!repairTodos.length" class="empty-text">暂无待处理报修。</p>
-			</div>
-			<div class="permission-card">
-				<div class="panel-head compact">
-					<h3>待缴账单</h3>
-					<span>{{ billTodos.length }} 条</span>
-				</div>
+			</DetailCard>
+			<DetailCard title="待缴账单" :subtitle="`${billTodos.length} 条`">
 				<div v-for="item in billTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || item.billNo }}</strong>
 					<span>{{ item.ownerName || '-' }} / {{ workspace.money(item.amount) }}</span>
 				</div>
 				<p v-if="!billTodos.length" class="empty-text">暂无待缴账单。</p>
-			</div>
-			<div class="permission-card">
-				<div class="panel-head compact">
-					<h3>通知异常</h3>
-					<span>{{ noticeTodos.length }} 条</span>
-				</div>
+			</DetailCard>
+			<DetailCard title="通知异常" :subtitle="`${noticeTodos.length} 条`">
 				<div v-for="item in noticeTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || item.eventType }}</strong>
 					<span>{{ channelText(item.channel) }} / {{ workspace.noticeStatusText(item.status) }}</span>
 				</div>
 				<p v-if="!noticeTodos.length" class="empty-text">暂无通知异常。</p>
-			</div>
-			<div class="permission-card">
-				<div class="panel-head compact">
-					<h3>待处理投诉</h3>
-					<span>{{ complaintTodos.length }} 条</span>
-				</div>
+			</DetailCard>
+			<DetailCard title="待处理投诉" :subtitle="`${complaintTodos.length} 条`">
 				<div v-for="item in complaintTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || item.category || '投诉建议' }}</strong>
 					<span>{{ statusText(item.statusText || item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
 				<p v-if="!complaintTodos.length" class="empty-text">暂无待处理投诉。</p>
-			</div>
-			<div class="permission-card">
-				<div class="panel-head compact">
-					<h3>待处理物业服务</h3>
-					<span>{{ serviceTodos.length }} 条</span>
-				</div>
+			</DetailCard>
+			<DetailCard title="待处理物业服务" :subtitle="`${serviceTodos.length} 条`">
 				<div v-for="item in serviceTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.serviceType || item.title || '物业服务' }}</strong>
 					<span>{{ statusText(item.statusText || item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
 				<p v-if="!serviceTodos.length" class="empty-text">暂无待处理服务。</p>
-			</div>
-			<div class="permission-card">
-				<div class="panel-head compact">
-					<h3>待处理客服</h3>
-					<span>{{ customerTodos.length }} 条</span>
-				</div>
+			</DetailCard>
+			<DetailCard title="待处理客服" :subtitle="`${customerTodos.length} 条`">
 				<div v-for="item in customerTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.question || item.title || '在线客服' }}</strong>
 					<span>{{ statusText(item.statusText || item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
 				<p v-if="!customerTodos.length" class="empty-text">暂无待处理客服工单。</p>
-			</div>
+			</DetailCard>
 		</section>
 	</div>
 </template>
