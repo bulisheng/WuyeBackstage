@@ -6,7 +6,7 @@
 		</div>
 
 		<div class="permission-grid">
-			<div class="permission-card span-2">
+			<div ref="noticeConfigEditor" class="permission-card span-2">
 				<div class="panel-head compact">
 					<h3>通知配置</h3>
 					<span>{{ workspace.editingNoticeConfigId ? '编辑中' : '新增' }}，新小区会自动生成默认模板</span>
@@ -145,7 +145,7 @@
 						<td>{{ item.retryLimit }}</td>
 						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
 						<td class="actions">
-							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="workspace.editNoticeConfig(item)">编辑</button>
+							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="handleEditNoticeConfig(item)">编辑</button>
 							<button class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
 						</td>
 					</tr>
@@ -219,13 +219,14 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
 const selectedConfig = ref(null);
 const selectedRecord = ref(null);
+const noticeConfigEditor = ref(null);
 const activeNoticeStaff = computed(() => workspace.propertyStaff.filter((item) =>
 	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('notices') || String(item.moduleKeys).includes('notice'))
 ));
@@ -260,6 +261,16 @@ function channelLabel(value) {
 		wechat: '小程序订阅消息',
 		system: '站内通知'
 	}[value] || value || '-';
+}
+
+async function handleEditNoticeConfig(item) {
+	selectedConfig.value = item;
+	workspace.editNoticeConfig(item);
+	await nextTick();
+	if (noticeConfigEditor.value && typeof noticeConfigEditor.value.scrollIntoView === 'function') {
+		noticeConfigEditor.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+	window.alert('已载入通知配置到编辑区');
 }
 
 async function deleteNoticeConfig(item) {
