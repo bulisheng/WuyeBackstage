@@ -19,6 +19,7 @@
 			<button class="primary" @click="workspace.loginAdmin">登录</button>
 			<button @click="workspace.resetLoginForm">重置</button>
 		</div>
+		<p v-if="workspace.loginForm.debugCode" class="helper-text">调试验证码：{{ workspace.loginForm.debugCode }}</p>
 		<p class="helper-text">只有后台已登记且启用的管理员手机号可以登录。默认超级管理员手机号不会在页面中展示。</p>
 	</section>
 </template>
