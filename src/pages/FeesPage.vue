@@ -30,11 +30,7 @@
 				</select>
 			</label>
 		</div>
-		<div class="detail-card">
-			<div class="panel-head compact">
-				<h3>批量导入账单</h3>
-				<span>支持从表格复制粘贴，或上传 CSV / TSV 文本表格</span>
-			</div>
+		<DetailCard title="批量导入账单" subtitle="支持从表格复制粘贴，或上传 CSV / TSV 文本表格">
 			<div class="form-actions compact">
 				<button type="button" @click="workspace.fillFeeImportExample">填入示例测试数据</button>
 			</div>
@@ -43,8 +39,8 @@
 			<p v-if="workspace.feeImportSummary" class="field-hint">
 				导入结果：成功 {{ workspace.feeImportSummary.created || 0 }} 条，失败 {{ workspace.feeImportSummary.failed || 0 }} 条
 			</p>
-		</div>
-		<div class="announcement-editor">
+		</DetailCard>
+		<DetailCard :title="workspace.editingFeeId ? '编辑账单' : '新增账单'" subtitle="保存后会同步到账单列表">
 			<div class="form-grid">
 				<label class="field">
 					<span>账单号</span>
@@ -94,7 +90,7 @@
 				<button class="primary" :disabled="!workspace.canAction('fee:manage') || workspace.feeSaving || workspace.feeLookupLoading" @click="workspace.saveFee">{{ workspace.editingFeeId ? '保存账单' : '新增账单' }}</button>
 				<button @click="workspace.resetFeeForm">重置</button>
 			</div>
-		</div>
+		</DetailCard>
 		<table>
 			<thead>
 				<tr>
@@ -126,14 +122,10 @@
 			</tbody>
 		</table>
 
-		<div v-if="selectedFee" class="detail-card">
-			<div class="panel-head compact">
-				<h3>账单详情</h3>
-				<div class="head-actions">
-					<span>{{ selectedFee.billNo || selectedFee.title }}</span>
-					<button type="button" @click="clearSelectedFee">收起</button>
-				</div>
-			</div>
+		<DetailCard v-if="selectedFee" title="账单详情" :subtitle="selectedFee.billNo || selectedFee.title">
+			<template #actions>
+				<button type="button" @click="clearSelectedFee">收起</button>
+			</template>
 			<div class="detail-grid">
 				<div><strong>账单号</strong><p>{{ selectedFee.billNo || '-' }}</p></div>
 				<div><strong>业主</strong><p>{{ selectedFee.ownerName || '-' }}</p></div>
@@ -174,12 +166,8 @@
 				</table>
 				<p v-if="!selectedFeePayments.length" class="empty-text">当前账单暂无支付流水。</p>
 			</div>
-		</div>
-		<div class="detail-card">
-			<div class="panel-head compact">
-				<h3>支付流水视图</h3>
-				<span>{{ filteredPayments.length }} 条</span>
-			</div>
+		</DetailCard>
+		<DetailCard title="支付流水视图" :subtitle="`${filteredPayments.length} 条`">
 			<p v-if="workspace.feeReconcileResult" class="field-hint">
 				最近对账：共 {{ workspace.feeReconcileResult.summary?.totalBills || 0 }} 笔账单，异常 {{ workspace.feeReconcileResult.summary?.anomalyCount || 0 }} 条
 			</p>
@@ -246,12 +234,13 @@
 				</tbody>
 			</table>
 			<p v-if="!filteredPayments.length" class="empty-text">暂无匹配支付流水。</p>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();

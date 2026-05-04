@@ -370,6 +370,24 @@ p {
 	line-height: 1.6;
 }
 
+.detail-grid input,
+.detail-grid textarea,
+.detail-grid select {
+	width: 100%;
+	box-sizing: border-box;
+	border: 1px solid #cfd8d3;
+	border-radius: 8px;
+	background: #fff;
+	padding: 10px 12px;
+	font: inherit;
+	color: #1f2933;
+}
+
+.detail-grid textarea {
+	min-height: 96px;
+	resize: vertical;
+}
+
 .empty-text {
 	margin-top: 14px;
 	color: #6b7280;

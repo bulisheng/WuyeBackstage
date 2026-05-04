@@ -24,11 +24,7 @@
 		</div>
 
 		<section v-if="activeTab === 'products'" class="stack">
-			<div class="detail-card">
-				<div class="panel-head compact">
-					<h3>商品分类</h3>
-					<span>{{ categories.length }} 个分类</span>
-				</div>
+			<DetailCard title="商品分类" :subtitle="`${categories.length} 个分类`">
 				<div class="form-grid">
 					<label><span>分类名称</span><input v-model="categoryForm.name" placeholder="例如 社区严选" /></label>
 					<label><span>排序</span><input v-model.number="categoryForm.sort" type="number" min="0" /></label>
@@ -53,24 +49,25 @@
 						<tr v-if="!categories.length"><td colspan="4" class="empty-cell">暂无分类。</td></tr>
 					</tbody>
 				</table>
-			</div>
-			<div class="form-grid">
-				<label><span>商品名称</span><input v-model="productForm.title" placeholder="例如：社区优选大米" /></label>
-				<label><span>分类</span><select v-model.number="productForm.categoryId"><option :value="0">未分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
-				<label><span>价格</span><input v-model.number="productForm.price" type="number" min="0" /></label>
-				<label><span>库存</span><input v-model.number="productForm.stock" type="number" min="0" /></label>
-				<label><span>状态</span><select v-model="productForm.status"><option value="on_sale">上架</option><option value="draft">草稿</option><option value="off_sale">下架</option></select></label>
-				<label><span>排序</span><input v-model.number="productForm.sort" type="number" /></label>
-				<label class="full"><span>封面图片链接</span><input v-model="productForm.coverUrl" placeholder="填写图片地址" /></label>
-				<label class="full"><span>摘要</span><input v-model="productForm.subtitle" placeholder="商品卖点" /></label>
-				<label class="full"><span>详情</span><textarea v-model="productForm.description" rows="4" placeholder="商品详情"></textarea></label>
-			</div>
-			<div class="form-actions">
-				<button class="primary" type="button" @click="saveProduct">保存商品</button>
-				<button type="button" @click="resetProduct">重置</button>
-				<button type="button" @click="saveDefaultCategory">快速创建默认分类</button>
-			</div>
-
+			</DetailCard>
+			<DetailCard title="商品编辑" subtitle="保存后会同步到商品列表">
+				<div class="form-grid">
+					<label><span>商品名称</span><input v-model="productForm.title" placeholder="例如：社区优选大米" /></label>
+					<label><span>分类</span><select v-model.number="productForm.categoryId"><option :value="0">未分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+					<label><span>价格</span><input v-model.number="productForm.price" type="number" min="0" /></label>
+					<label><span>库存</span><input v-model.number="productForm.stock" type="number" min="0" /></label>
+					<label><span>状态</span><select v-model="productForm.status"><option value="on_sale">上架</option><option value="draft">草稿</option><option value="off_sale">下架</option></select></label>
+					<label><span>排序</span><input v-model.number="productForm.sort" type="number" /></label>
+					<label class="full"><span>封面图片链接</span><input v-model="productForm.coverUrl" placeholder="填写图片地址" /></label>
+					<label class="full"><span>摘要</span><input v-model="productForm.subtitle" placeholder="商品卖点" /></label>
+					<label class="full"><span>详情</span><textarea v-model="productForm.description" rows="4" placeholder="商品详情"></textarea></label>
+				</div>
+				<div class="form-actions">
+					<button class="primary" type="button" @click="saveProduct">保存商品</button>
+					<button type="button" @click="resetProduct">重置</button>
+					<button type="button" @click="saveDefaultCategory">快速创建默认分类</button>
+				</div>
+			</DetailCard>
 			<div class="table-card">
 				<table>
 					<thead><tr><th>商品</th><th>价格</th><th>库存</th><th>销量</th><th>状态</th><th>操作</th></tr></thead>
@@ -112,20 +109,31 @@
 					<tr v-if="!orders.length"><td colspan="6" class="empty-cell">暂无订单。</td></tr>
 				</tbody>
 			</table>
-			<div v-if="selectedOrder" class="detail-card">
-				<div class="panel-head compact">
-					<h3>订单详情 {{ selectedOrder.order.orderNo }}</h3>
+			<DetailCard v-if="selectedOrder" title="订单详情" :subtitle="selectedOrder.order?.orderNo || ''">
+				<template #actions>
 					<button @click="selectedOrder = null">收起</button>
+				</template>
+				<div class="detail-grid">
+					<div><strong>订单号</strong><p>{{ selectedOrder.order?.orderNo || '-' }}</p></div>
+					<div><strong>住户</strong><p>{{ selectedOrder.order?.contact || selectedOrder.order?.ownerMobile || '-' }}</p></div>
+					<div><strong>房屋</strong><p>{{ selectedOrder.order?.house || selectedOrder.order?.address || '-' }}</p></div>
+					<div><strong>金额</strong><p>{{ money(selectedOrder.order?.payAmount) }}</p></div>
+					<div><strong>状态</strong><p>{{ selectedOrder.order?.statusText || selectedOrder.order?.status || '-' }}</p></div>
+					<div><strong>创建时间</strong><p>{{ selectedOrder.order?.createdAt || '-' }}</p></div>
+					<div><strong>更新时间</strong><p>{{ selectedOrder.order?.updatedAt || '-' }}</p></div>
+					<div class="wide"><strong>备注</strong><p>{{ selectedOrder.order?.note || '暂无' }}</p></div>
 				</div>
-				<div v-for="item in selectedOrder.items" :key="item.id" class="todo-row">
-					<strong>{{ item.productTitle }} / {{ item.skuName || '默认规格' }}</strong>
-					<span>{{ item.quantity }} 件 / {{ money(item.totalAmount) }}</span>
+				<div class="timeline">
+					<div v-for="item in selectedOrder.items" :key="item.id" class="timeline-item">
+						<strong>{{ item.productTitle }} / {{ item.skuName || '默认规格' }}</strong>
+						<span>{{ item.quantity }} 件 / {{ money(item.totalAmount) }}</span>
+					</div>
+					<div v-for="item in selectedOrder.logs" :key="item.id" class="timeline-item">
+						<strong>{{ item.content || item.action }}</strong>
+						<span>{{ item.createdAt }}</span>
+					</div>
 				</div>
-				<div v-for="item in selectedOrder.logs" :key="item.id" class="todo-row">
-					<strong>{{ item.content || item.action }}</strong>
-					<span>{{ item.createdAt }}</span>
-				</div>
-			</div>
+			</DetailCard>
 		</section>
 
 		<section v-else class="table-card">
@@ -153,6 +161,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 

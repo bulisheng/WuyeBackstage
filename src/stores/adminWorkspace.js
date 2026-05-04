@@ -170,6 +170,27 @@ function emptyRepairAction() {
 		action: 'assign',
 		assignee: '',
 		staffId: '',
+		title: '',
+		house: '',
+		contact: '',
+		phone: '',
+		type: '',
+		desc: '',
+		content: ''
+	};
+}
+
+function buildRepairActionForm(item = null, action = 'assign') {
+	return {
+		action,
+		assignee: item?.assignee || '',
+		staffId: '',
+		title: item?.title || '',
+		house: item?.house || '',
+		contact: item?.contact || '',
+		phone: item?.phone || '',
+		type: item?.type || '',
+		desc: item?.desc || '',
 		content: ''
 	};
 }
@@ -1071,12 +1092,7 @@ async function openRepairDetail(item) {
 	repairDetail.value = result.repair || null;
 	repairLogs.value = result.logs || result.timeline || [];
 	repairActions.value = result.actions || {};
-	repairActionForm.value = {
-		action: 'assign',
-		assignee: repairDetail.value?.assignee || '',
-		staffId: '',
-		content: ''
-	};
+	repairActionForm.value = buildRepairActionForm(repairDetail.value, 'assign');
 }
 
 function closeRepairDetail() {
@@ -1087,20 +1103,26 @@ function closeRepairDetail() {
 	repairActionForm.value = emptyRepairAction();
 }
 
-async function saveRepairAction() {
+async function saveRepairAction(actionOverride = '') {
 	if (!selectedRepairId.value) return;
 	const payload = {
 		id: selectedRepairId.value,
-		action: repairActionForm.value.action,
+		action: actionOverride || repairActionForm.value.action,
 		assignee: repairActionForm.value.assignee,
 		staffId: repairActionForm.value.staffId,
+		title: repairActionForm.value.title,
+		house: repairActionForm.value.house,
+		contact: repairActionForm.value.contact,
+		phone: repairActionForm.value.phone,
+		type: repairActionForm.value.type,
+		desc: repairActionForm.value.desc,
 		content: repairActionForm.value.content
 	};
 	const result = await adminApi.repairAction(payload);
 	repairDetail.value = result.repair || repairDetail.value;
 	repairLogs.value = result.logs || result.timeline || repairLogs.value;
 	repairActions.value = result.actions || repairActions.value;
-	repairActionForm.value.content = '';
+	repairActionForm.value = buildRepairActionForm(repairDetail.value, repairActionForm.value.action);
 	const listResult = await adminApi.repairList();
 	repairs.value = listResult.list || repairs.value;
 }

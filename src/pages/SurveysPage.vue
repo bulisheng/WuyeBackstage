@@ -8,23 +8,25 @@
 			<button class="primary" type="button" @click="loadList">刷新</button>
 		</div>
 
-		<div class="form-grid">
-			<label><span>标题</span><input v-model="form.title" placeholder="例如 2026 物业服务满意度调研" /></label>
-			<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
-			<label><span>排序</span><input v-model.number="form.sort" type="number" /></label>
-			<label><span>问卷星小程序编号</span><input v-model="form.miniAppId" placeholder="可选，配置后优先跳小程序" /></label>
-			<label class="full"><span>问卷星链接</span><input v-model="form.externalUrl" placeholder="https:// 或问卷星调研链接" /></label>
-			<label class="full"><span>小程序路径</span><input v-model="form.miniPath" placeholder="可选，例如 pages/index/index?..." /></label>
-			<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒，可空" /></label>
-			<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒，可空" /></label>
-			<label class="full"><span>说明</span><textarea v-model="form.summary" rows="3" placeholder="说明调研目的，体现用心服务"></textarea></label>
-		</div>
-		<div class="form-actions">
-			<button class="primary" type="button" @click="save">保存调研</button>
-			<button type="button" @click="reset">重置</button>
-		</div>
+		<DetailCard title="调研编辑" subtitle="保存后会同步到调研列表">
+			<div class="form-grid">
+				<label><span>标题</span><input v-model="form.title" placeholder="例如 2026 物业服务满意度调研" /></label>
+				<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
+				<label><span>排序</span><input v-model.number="form.sort" type="number" /></label>
+				<label><span>问卷星小程序编号</span><input v-model="form.miniAppId" placeholder="可选，配置后优先跳小程序" /></label>
+				<label class="full"><span>问卷星链接</span><input v-model="form.externalUrl" placeholder="https:// 或问卷星调研链接" /></label>
+				<label class="full"><span>小程序路径</span><input v-model="form.miniPath" placeholder="可选，例如 pages/index/index?..." /></label>
+				<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒，可空" /></label>
+				<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒，可空" /></label>
+				<label class="full"><span>说明</span><textarea v-model="form.summary" rows="3" placeholder="说明调研目的，体现用心服务"></textarea></label>
+			</div>
+			<div class="form-actions">
+				<button class="primary" type="button" @click="save">保存调研</button>
+				<button type="button" @click="reset">重置</button>
+			</div>
+		</DetailCard>
 
-		<div class="table-card">
+		<DetailCard title="调研列表" subtitle="编辑、归档与查看现有调研">
 			<table>
 				<thead><tr><th>调研</th><th>状态</th><th>链接</th><th>有效期</th><th>操作</th></tr></thead>
 				<tbody>
@@ -44,12 +46,13 @@
 					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无社区调研。</td></tr>
 				</tbody>
 			</table>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 

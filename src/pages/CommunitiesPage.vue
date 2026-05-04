@@ -56,11 +56,10 @@
 			</div>
 		</div>
 
-		<div v-if="selectedCommunity" class="detail-card">
-			<div class="panel-head compact">
-				<h3>小区详情</h3>
-				<span>{{ selectedCommunity.schemaName }}</span>
-			</div>
+		<DetailCard v-if="selectedCommunity" title="小区详情" :subtitle="selectedCommunity.schemaName || ''">
+			<template #actions>
+				<button type="button" @click="selectedCommunity = null">收起</button>
+			</template>
 			<div class="detail-grid">
 				<div><strong>编码</strong><p>{{ selectedCommunity.code || '-' }}</p></div>
 				<div><strong>名称</strong><p>{{ selectedCommunity.name || '-' }}</p></div>
@@ -69,12 +68,13 @@
 				<div><strong>电话</strong><p>{{ selectedCommunity.phone || '-' }}</p></div>
 				<div><strong>状态</strong><p>{{ selectedCommunity.active ? '启用' : '停用' }}</p></div>
 			</div>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();

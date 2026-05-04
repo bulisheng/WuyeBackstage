@@ -38,14 +38,10 @@
 			</table>
 		</div>
 
-		<div v-if="detail" class="detail-card">
-			<div class="panel-head compact">
-				<h3>{{ meta.title }}详情</h3>
-				<div class="head-actions">
-					<span>{{ detail.item.statusText || detail.item.status }}</span>
-					<button type="button" @click="closeDetail">收起</button>
-				</div>
-			</div>
+		<DetailCard v-if="detail" :title="`${meta.title}详情`" :subtitle="detail.item.statusText || detail.item.status">
+			<template #actions>
+				<button type="button" @click="closeDetail">收起</button>
+			</template>
 			<div class="detail-grid">
 				<div><span>住户</span><strong>{{ detail.item.contact || '-' }}</strong></div>
 				<div><span>手机号</span><strong>{{ detail.item.phone || detail.item.ownerMobile || '-' }}</strong></div>
@@ -96,12 +92,13 @@
 					<small>{{ log.createdAt }}</small>
 				</div>
 			</div>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 

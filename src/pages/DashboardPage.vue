@@ -17,13 +17,7 @@
 				<strong>{{ item.value }}</strong>
 			</article>
 		</section>
-		<section class="panel">
-			<div class="panel-head">
-				<div>
-					<h2>数据可视化</h2>
-					<span>按当前小区展示关键风险占比</span>
-				</div>
-			</div>
+		<DetailCard title="数据可视化" subtitle="按当前小区展示关键风险占比">
 			<div class="visual-grid">
 				<article v-for="item in visualRows" :key="item.key" class="visual-card">
 					<div class="visual-top">
@@ -36,24 +30,16 @@
 					<p>{{ item.desc }}</p>
 				</article>
 			</div>
-		</section>
-		<section class="panel">
-			<div class="panel-head">
-				<h2>今日待办聚合</h2>
-				<span>按当前小区统计</span>
-			</div>
+		</DetailCard>
+		<DetailCard title="今日待办聚合" subtitle="按当前小区统计">
 			<div class="panel-grid">
 				<article v-for="item in workspace.dashboardTodos" :key="item.key" class="metric clickable" @click="workspace.navigate(item.route)">
 					<span>{{ item.title }}</span>
 					<strong>{{ item.count }}</strong>
 				</article>
 			</div>
-		</section>
-		<section class="panel">
-			<div class="panel-head">
-				<h2>负责人待办</h2>
-				<span>按物业人员聚合</span>
-			</div>
+		</DetailCard>
+		<DetailCard title="负责人待办" subtitle="按物业人员聚合">
 			<div class="permission-grid">
 				<div v-for="group in staffTodoGroups" :key="group.key" class="permission-card">
 					<div class="panel-head compact">
@@ -69,7 +55,7 @@
 				</div>
 			</div>
 			<p v-if="!staffTodoGroups.length" class="empty-text">暂无负责人待办。</p>
-		</section>
+		</DetailCard>
 		<section class="permission-grid">
 			<div class="permission-card">
 				<div class="panel-head compact">
@@ -143,6 +129,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();

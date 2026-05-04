@@ -5,11 +5,7 @@
 			<span>{{ workspace.propertyStaff.length }} 人</span>
 		</div>
 
-		<div class="detail-card">
-			<div class="panel-head compact">
-				<h3>{{ workspace.editingPropertyStaffId ? '编辑人员' : '新增人员' }}</h3>
-				<span>负责模块、手机号和在岗状态会被各业务下拉复用</span>
-			</div>
+		<DetailCard :title="workspace.editingPropertyStaffId ? '编辑人员' : '新增人员'" subtitle="负责模块、手机号和在岗状态会被各业务下拉复用">
 			<div class="form-grid">
 				<label class="field">
 					<span>姓名</span>
@@ -58,7 +54,7 @@
 				<button class="primary" :disabled="!workspace.canAction('staff:manage')" @click="workspace.savePropertyStaff">{{ workspace.editingPropertyStaffId ? '保存人员' : '新增人员' }}</button>
 				<button @click="workspace.resetPropertyStaffForm">重置</button>
 			</div>
-		</div>
+		</DetailCard>
 
 		<table>
 			<thead>
@@ -80,10 +76,12 @@
 					<td>{{ workspace.moduleKeysLabel(staff.moduleKeys) }}</td>
 					<td>{{ staff.onDuty ? '在岗' : '离岗' }}</td>
 					<td>{{ staff.active ? '启用' : '停用' }}</td>
-			<td class="actions">
-				<button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button>
-				<button class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
-			</td>
+					<td class="actions">
+						<button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button>
+						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleDuty(staff)">{{ staff.onDuty ? '设为离岗' : '设为在岗' }}</button>
+						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleActive(staff)">{{ staff.active ? '停用' : '启用' }}</button>
+						<button class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
+					</td>
 				</tr>
 			</tbody>
 		</table>
@@ -91,7 +89,22 @@
 </template>
 
 <script setup>
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
+
+async function quickToggleStaffField(staff, field) {
+	workspace.editPropertyStaff(staff);
+	workspace.propertyStaffForm[field] = staff[field] ? 0 : 1;
+	await workspace.savePropertyStaff();
+}
+
+function toggleDuty(staff) {
+	return quickToggleStaffField(staff, 'onDuty');
+}
+
+function toggleActive(staff) {
+	return quickToggleStaffField(staff, 'active');
+}
 </script>

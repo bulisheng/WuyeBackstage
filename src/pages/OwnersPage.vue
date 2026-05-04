@@ -45,11 +45,10 @@
 			</tbody>
 		</table>
 
-		<div v-if="selectedOwner" class="detail-card">
-			<div class="panel-head compact">
-				<h3>认证详情</h3>
-				<span>{{ selectedOwner.auditStatus || 'pending' }}</span>
-			</div>
+		<DetailCard v-if="selectedOwner" title="认证详情" :subtitle="selectedOwner.auditStatus || 'pending'">
+			<template #actions>
+				<button type="button" @click="selectedOwner = null">收起</button>
+			</template>
 			<div class="detail-grid">
 				<div><strong>姓名</strong><p>{{ selectedOwner.name || '-' }}</p></div>
 				<div><strong>手机号</strong><p>{{ selectedOwner.mobile || '-' }}</p></div>
@@ -58,12 +57,13 @@
 				<div><strong>状态</strong><p>{{ workspace.statusText(selectedOwner.auditStatus) }}</p></div>
 				<div><strong>备注</strong><p>{{ selectedOwner.note || '暂无' }}</p></div>
 			</div>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();

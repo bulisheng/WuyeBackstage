@@ -186,11 +186,10 @@
 			</table>
 		</div>
 
-		<div v-if="selectedConfig" class="detail-card">
-			<div class="panel-head compact">
-				<h3>配置详情</h3>
-				<span>{{ sceneLabel(selectedConfig.scene) }}</span>
-			</div>
+		<DetailCard v-if="selectedConfig" title="配置详情" :subtitle="sceneLabel(selectedConfig.scene)">
+			<template #actions>
+				<button type="button" @click="selectedConfig = null">收起</button>
+			</template>
 			<div class="detail-grid">
 				<div><strong>场景</strong><p>{{ sceneLabel(selectedConfig.scene) }}</p></div>
 				<div><strong>渠道</strong><p>{{ channelLabel(selectedConfig.channel) }}</p></div>
@@ -200,13 +199,12 @@
 				<div><strong>Webhook</strong><p>{{ selectedConfig.webhookUrl || '-' }}</p></div>
 				<div><strong>状态</strong><p>{{ selectedConfig.enabled ? '启用' : '停用' }}</p></div>
 			</div>
-		</div>
+		</DetailCard>
 
-		<div v-if="selectedRecord" class="detail-card">
-			<div class="panel-head compact">
-				<h3>发送详情</h3>
-				<span>{{ selectedRecord.title }}</span>
-			</div>
+		<DetailCard v-if="selectedRecord" title="发送详情" :subtitle="selectedRecord.title">
+			<template #actions>
+				<button type="button" @click="selectedRecord = null">收起</button>
+			</template>
 			<div class="detail-grid">
 				<div><strong>场景</strong><p>{{ sceneLabel(selectedRecord.eventType) }}</p></div>
 				<div><strong>渠道</strong><p>{{ channelLabel(selectedRecord.channel) }}</p></div>
@@ -216,12 +214,13 @@
 				<div><strong>错误</strong><p>{{ selectedRecord.errorMessage || '无' }}</p></div>
 				<div><strong>内容</strong><p>{{ selectedRecord.content || '-' }}</p></div>
 			</div>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();

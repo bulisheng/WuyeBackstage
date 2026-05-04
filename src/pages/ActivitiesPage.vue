@@ -8,22 +8,24 @@
 			<button class="primary" type="button" @click="reload">刷新</button>
 		</div>
 
-		<div class="form-grid">
-			<label><span>标题</span><input v-model="form.title" placeholder="活动标题" /></label>
-			<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
-			<label><span>地点</span><input v-model="form.location" placeholder="活动地点" /></label>
-			<label><span>名额</span><input v-model.number="form.capacity" type="number" min="0" /></label>
-			<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒" /></label>
-			<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒" /></label>
-			<label class="full"><span>摘要</span><input v-model="form.summary" placeholder="摘要" /></label>
-			<label class="full"><span>内容</span><textarea v-model="form.content" rows="4" placeholder="活动说明"></textarea></label>
-		</div>
-		<div class="form-actions">
-			<button class="primary" type="button" @click="save">保存活动</button>
-			<button type="button" @click="reset">重置</button>
-		</div>
+		<DetailCard title="活动编辑" subtitle="保存后会同步到活动列表">
+			<div class="form-grid">
+				<label><span>标题</span><input v-model="form.title" placeholder="活动标题" /></label>
+				<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
+				<label><span>地点</span><input v-model="form.location" placeholder="活动地点" /></label>
+				<label><span>名额</span><input v-model.number="form.capacity" type="number" min="0" /></label>
+				<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒" /></label>
+				<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒" /></label>
+				<label class="full"><span>摘要</span><input v-model="form.summary" placeholder="摘要" /></label>
+				<label class="full"><span>内容</span><textarea v-model="form.content" rows="4" placeholder="活动说明"></textarea></label>
+			</div>
+			<div class="form-actions">
+				<button class="primary" type="button" @click="save">保存活动</button>
+				<button type="button" @click="reset">重置</button>
+			</div>
+		</DetailCard>
 
-		<div class="table-card">
+		<DetailCard title="活动列表" subtitle="点击行可加载报名记录">
 			<table>
 				<thead><tr><th>活动</th><th>时间</th><th>名额</th><th>状态</th><th>操作</th></tr></thead>
 				<tbody>
@@ -41,13 +43,9 @@
 					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无活动。</td></tr>
 				</tbody>
 			</table>
-		</div>
+		</DetailCard>
 
-		<div class="table-card">
-			<div class="panel-head compact">
-				<h3>报名记录</h3>
-				<span>{{ signups.length }} 条</span>
-			</div>
+		<DetailCard title="报名记录" :subtitle="`${signups.length} 条`">
 			<table>
 				<thead><tr><th>活动</th><th>住户</th><th>房号</th><th>状态</th><th>操作</th></tr></thead>
 				<tbody>
@@ -64,12 +62,13 @@
 					<tr v-if="!signups.length"><td colspan="5" class="empty-cell">暂无报名。</td></tr>
 				</tbody>
 			</table>
-		</div>
+		</DetailCard>
 	</section>
 </template>
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 

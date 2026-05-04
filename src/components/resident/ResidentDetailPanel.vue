@@ -1,12 +1,8 @@
 <template>
-	<div v-if="resident" class="detail-card resident-detail">
-		<div class="panel-head compact">
-			<h3>{{ resident.identityType === 'tenant' ? '租户详情' : '业主详情' }}</h3>
-			<div class="head-actions">
-				<span>{{ buildResidentDisplayLabel(resident) }}</span>
-				<button type="button" @click="$emit('close')">收起</button>
-			</div>
-		</div>
+	<DetailCard v-if="resident" class="resident-detail" :title="resident.identityType === 'tenant' ? '租户详情' : '业主详情'" :subtitle="buildResidentDisplayLabel(resident)">
+		<template #actions>
+			<button type="button" @click="$emit('close')">收起</button>
+		</template>
 		<div class="detail-grid">
 			<div><strong>姓名</strong><p>{{ resident.name || '-' }}</p></div>
 			<div><strong>手机号</strong><p>{{ resident.mobile || '-' }}</p></div>
@@ -31,11 +27,12 @@
 			</div>
 			<p v-else class="empty-text">暂无手机号、房号或状态变更记录。</p>
 		</div>
-	</div>
+	</DetailCard>
 </template>
 
 <script setup>
 import { buildResidentDisplayLabel } from '../../utils/residentDirectory.js';
+import DetailCard from '../common/DetailCard.vue';
 
 defineProps({
 	resident: {

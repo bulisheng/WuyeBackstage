@@ -13,11 +13,7 @@
 
 		<template v-if="workspace.activePermissionTab === 'admins'">
 			<div class="permission-grid">
-				<div class="permission-card">
-					<div class="panel-head compact">
-						<h3>管理员手机号</h3>
-						<span>{{ workspace.editingAdminId ? '编辑中' : '新增' }}</span>
-					</div>
+				<DetailCard title="管理员手机号" :subtitle="workspace.editingAdminId ? '编辑中' : '新增'" cardClass="permission-card">
 					<div class="form-grid">
 						<label class="field">
 							<span>管理员手机号</span>
@@ -96,7 +92,7 @@
 						<button @click="workspace.resetAdminPermissionToRole">重置权限</button>
 						<button @click="workspace.resetAdminForm">{{ workspace.editingAdminId ? '取消编辑' : '清空' }}</button>
 					</div>
-				</div>
+				</DetailCard>
 			</div>
 			<table class="spaced-table">
 				<thead>
@@ -125,11 +121,7 @@
 
 		<template v-else-if="workspace.activePermissionTab === 'permissions'">
 			<div class="permission-grid">
-				<div class="permission-card span-2">
-					<div class="panel-head compact">
-						<h3>管理权限</h3>
-						<span>{{ workspace.editingPermissionId ? '编辑权限记录' : '新增权限记录' }}</span>
-					</div>
+				<DetailCard title="管理权限" :subtitle="workspace.editingPermissionId ? '编辑权限记录' : '新增权限记录'" cardClass="permission-card span-2">
 					<div class="form-grid">
 						<label class="field">
 							<span>管理员</span>
@@ -164,7 +156,7 @@
 						<button class="primary" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.savePermission">{{ workspace.editingPermissionId ? '保存权限' : '新增权限' }}</button>
 						<button @click="workspace.resetPermissionForm">{{ workspace.editingPermissionId ? '取消编辑' : '清空' }}</button>
 					</div>
-				</div>
+				</DetailCard>
 			</div>
 			<table class="spaced-table">
 				<thead>
@@ -198,11 +190,7 @@
 
 		<template v-else-if="workspace.activePermissionTab === 'modules'">
 			<div class="permission-grid">
-				<div class="permission-card span-2">
-					<div class="panel-head compact">
-						<h3>当前小区模块开关</h3>
-						<span>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区' }}</span>
-					</div>
+				<DetailCard title="当前小区模块开关" :subtitle="workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区'" cardClass="permission-card span-2">
 					<div v-if="!workspace.activeCommunity" class="empty-state">
 						<div class="empty-title">请先在顶部选择一个小区</div>
 						<span class="subtle">模块开关按小区保存，新建小区默认全部开启。</span>
@@ -245,16 +233,12 @@
 							</tbody>
 						</table>
 					</template>
-				</div>
+				</DetailCard>
 			</div>
 		</template>
 
 		<template v-else>
-			<div v-if="workspace.canAction('admin:audit:view')" class="audit-panel">
-				<div class="panel-head compact">
-					<h3>操作审计</h3>
-					<span>{{ workspace.auditLogs.length }} 条最近记录</span>
-				</div>
+			<DetailCard v-if="workspace.canAction('admin:audit:view')" title="操作审计" :subtitle="`${workspace.auditLogs.length} 条最近记录`" cardClass="audit-panel">
 				<table class="spaced-table">
 					<thead>
 						<tr>
@@ -279,13 +263,14 @@
 						</tr>
 					</tbody>
 				</table>
-			</div>
+			</DetailCard>
 		</template>
 	</section>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import DetailCard from '../components/common/DetailCard.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
