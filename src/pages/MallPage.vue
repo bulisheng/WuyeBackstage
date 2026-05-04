@@ -24,6 +24,36 @@
 		</div>
 
 		<section v-if="activeTab === 'products'" class="stack">
+			<div class="detail-card">
+				<div class="panel-head compact">
+					<h3>商品分类</h3>
+					<span>{{ categories.length }} 个分类</span>
+				</div>
+				<div class="form-grid">
+					<label><span>分类名称</span><input v-model="categoryForm.name" placeholder="例如 社区严选" /></label>
+					<label><span>排序</span><input v-model.number="categoryForm.sort" type="number" min="0" /></label>
+					<label><span>状态</span><select v-model.number="categoryForm.enabled"><option :value="1">启用</option><option :value="0">停用</option></select></label>
+				</div>
+				<div class="form-actions">
+					<button class="primary" type="button" @click="saveCategory">{{ editingCategoryId ? '保存分类' : '新增分类' }}</button>
+					<button type="button" @click="resetCategory">{{ editingCategoryId ? '取消编辑' : '重置' }}</button>
+				</div>
+				<table>
+					<thead><tr><th>分类</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+					<tbody>
+						<tr v-for="item in categories" :key="item.id">
+							<td>{{ item.name }}</td>
+							<td>{{ item.sort || 0 }}</td>
+							<td>{{ item.enabled ? '启用' : '停用' }}</td>
+							<td class="actions">
+								<button @click="editCategory(item)">编辑</button>
+								<button class="danger" @click="deleteCategory(item)">删除</button>
+							</td>
+						</tr>
+						<tr v-if="!categories.length"><td colspan="4" class="empty-cell">暂无分类。</td></tr>
+					</tbody>
+				</table>
+			</div>
 			<div class="form-grid">
 				<label><span>商品名称</span><input v-model="productForm.title" placeholder="例如：社区优选大米" /></label>
 				<label><span>分类</span><select v-model.number="productForm.categoryId"><option :value="0">未分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
@@ -54,6 +84,7 @@
 							<td class="actions">
 								<button @click="editProduct(item)">编辑</button>
 								<button @click="setProductStatus(item, item.status === 'on_sale' ? 'off_sale' : 'on_sale')">{{ item.status === 'on_sale' ? '下架' : '上架' }}</button>
+								<button class="danger" @click="deleteProduct(item)">删除</button>
 							</td>
 						</tr>
 						<tr v-if="!products.length"><td colspan="6" class="empty-cell">暂无商品。</td></tr>
@@ -133,10 +164,16 @@ const products = ref([]);
 const orders = ref([]);
 const afterSales = ref([]);
 const selectedOrder = ref(null);
+const categoryForm = ref(emptyCategory());
+const editingCategoryId = ref('');
 const productForm = ref(emptyProduct());
 
 function emptyProduct() {
 	return { id: '', title: '', subtitle: '', categoryId: 0, coverUrl: '', price: 0, stock: 0, status: 'on_sale', description: '', sort: 100 };
+}
+
+function emptyCategory() {
+	return { name: '', sort: 100, enabled: 1 };
 }
 
 function money(value) {
@@ -197,6 +234,45 @@ function resetProduct() {
 	productForm.value = emptyProduct();
 }
 
+function resetCategory() {
+	editingCategoryId.value = '';
+	categoryForm.value = emptyCategory();
+}
+
+function editCategory(item) {
+	editingCategoryId.value = String(item.id || '');
+	categoryForm.value = {
+		name: item.name || '',
+		sort: item.sort || 100,
+		enabled: item.enabled ? 1 : 0
+	};
+}
+
+async function saveCategory() {
+	const payload = {
+		id: editingCategoryId.value || undefined,
+		name: categoryForm.value.name,
+		sort: categoryForm.value.sort,
+		enabled: categoryForm.value.enabled
+	};
+	if (!String(payload.name || '').trim()) {
+		window.alert('请输入分类名称');
+		return;
+	}
+	await adminApi.mallCategorySave(payload);
+	resetCategory();
+	await reload();
+}
+
+async function deleteCategory(item) {
+	if (!window.confirm(`确认删除分类「${item.name}」？`)) return;
+	await adminApi.mallCategoryDelete(item.id);
+	if (editingCategoryId.value === String(item.id)) {
+		resetCategory();
+	}
+	await reload();
+}
+
 function editProduct(item) {
 	productForm.value = {
 		id: item.id,
@@ -228,6 +304,15 @@ async function setProductStatus(item, status) {
 	await reload();
 }
 
+async function deleteProduct(item) {
+	if (!window.confirm(`确认删除商品「${item.title}」？`)) return;
+	await adminApi.mallProductDelete(item.id);
+	if (String(productForm.value.id || '') === String(item.id)) {
+		resetProduct();
+	}
+	await reload();
+}
+
 async function loadOrder(item) {
 	selectedOrder.value = await adminApi.mallOrderDetail(item.id);
 }
@@ -248,6 +333,7 @@ async function afterSaleAction(item, status) {
 onMounted(reload);
 watch(() => workspace.selectedSchema, async () => {
 	selectedOrder.value = null;
+	resetCategory();
 	resetProduct();
 	await reload();
 });

@@ -84,11 +84,11 @@
 					<td class="actions resident-actions">
 						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="workspace.auditOwner(item.raw, 'approved')">审核通过</button>
 						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="workspace.auditOwner(item.raw, 'rejected')">驳回</button>
-						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, item.status === 'disabled' ? '解冻' : '冻结')">{{ item.status === 'disabled' ? '解冻' : '冻结' }}</button>
-						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, '编辑')">编辑</button>
-						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, '换手机号')">换手机号</button>
-						<button :disabled="!canManage(item)" @click.stop="recordPendingAction(item, '换房号')">换房号</button>
-						<button :disabled="!workspace.canAction('resident:import')" @click.stop="recordPendingAction(item, '合并')">合并</button>
+						<button :disabled="!canManage(item)" @click.stop="toggleResidentStatus(item)">{{ item.status === 'disabled' ? '解冻' : '冻结' }}</button>
+						<button :disabled="!canManage(item)" @click.stop="editResident(item)">编辑</button>
+						<button :disabled="!canManage(item)" @click.stop="changeResidentMobile(item)">换手机号</button>
+						<button :disabled="!canManage(item)" @click.stop="changeResidentHouse(item)">换房号</button>
+						<button :disabled="!canManage(item)" @click.stop="deleteResident(item)" class="danger">删除</button>
 					</td>
 				</tr>
 			</tbody>
@@ -237,9 +237,90 @@ function canManage(item) {
 	return item.identityType === 'tenant' ? workspace.canAction('tenant:manage') : workspace.canAction('owner:manage');
 }
 
-function recordPendingAction(item, action) {
-	selectResident(item);
-	actionHint.value = `${action} 功能将在导入与详情闭环步骤补齐`;
+async function refreshResidents() {
+	await Promise.all([
+		workspace.loadOwnerRecords(),
+		workspace.loadTenantRecords(),
+		workspace.loadResidentChangeLogs({ limit: 100 })
+	]);
+}
+
+function buildResidentPayload(item, overrides = {}) {
+	return {
+		id: item.raw?.id,
+		name: overrides.name !== undefined ? overrides.name : item.name || '',
+		mobile: overrides.mobile !== undefined ? overrides.mobile : item.mobile || '',
+		house: overrides.house !== undefined ? overrides.house : item.house || ''
+	};
+}
+
+async function editResident(item) {
+	const name = window.prompt('请输入姓名', item.name || '');
+	if (name === null) return;
+	const mobile = window.prompt('请输入手机号', item.mobile || '');
+	if (mobile === null) return;
+	const house = window.prompt('请输入房号', item.house || '');
+	if (house === null) return;
+	await saveResident(item, { name: name.trim(), mobile: mobile.trim(), house: house.trim() });
+}
+
+async function toggleResidentStatus(item) {
+	const nextStatus = item.identityType === 'tenant'
+		? (item.status === 'disabled' ? 'active' : 'disabled')
+		: (item.status === 'disabled' ? 'approved' : 'disabled');
+	await saveResident(item, { status: nextStatus });
+}
+
+async function changeResidentMobile(item) {
+	const mobile = window.prompt('请输入新的手机号', item.mobile || '');
+	if (mobile === null) return;
+	await saveResident(item, { mobile: mobile.trim() });
+}
+
+async function changeResidentHouse(item) {
+	const house = window.prompt('请输入新的房号', item.house || '');
+	if (house === null) return;
+	await saveResident(item, { house: house.trim() });
+}
+
+async function saveResident(item, overrides = {}) {
+	const payload = buildResidentPayload(item, overrides);
+	try {
+		if (item.identityType === 'tenant') {
+			await adminApi.tenantSave({
+				...payload,
+				status: overrides.status || item.status || 'active'
+			});
+		} else {
+			await adminApi.ownerSave({
+				...payload,
+				auditStatus: overrides.status || item.status || 'approved'
+			});
+		}
+		actionHint.value = '住户资料已更新';
+		await refreshResidents();
+	} catch (err) {
+		window.alert(err.message || '保存失败');
+	}
+}
+
+async function deleteResident(item) {
+	const confirmed = window.confirm(`确认删除${item.identityType === 'tenant' ? '租户' : '业主'}「${item.name || item.mobile || item.id}」？`);
+	if (!confirmed) return;
+	try {
+		if (item.identityType === 'tenant') {
+			await adminApi.tenantDelete(item.raw.id);
+		} else {
+			await adminApi.ownerDelete(item.raw.id);
+		}
+		actionHint.value = '住户已删除';
+		await refreshResidents();
+		if (workspace.residentSelectedId === `${item.identityType}-${item.id}`) {
+			clearSelectedResident();
+		}
+	} catch (err) {
+		window.alert(err.message || '删除失败');
+	}
 }
 
 async function handleResidentImport(payload) {

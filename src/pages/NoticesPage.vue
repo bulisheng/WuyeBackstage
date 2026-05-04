@@ -146,6 +146,7 @@
 						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
 						<td class="actions">
 							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="workspace.editNoticeConfig(item)">编辑</button>
+							<button class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
 						</td>
 					</tr>
 				</tbody>
@@ -260,5 +261,12 @@ function channelLabel(value) {
 		wechat: '小程序订阅消息',
 		system: '站内通知'
 	}[value] || value || '-';
+}
+
+async function deleteNoticeConfig(item) {
+	await workspace.removeNoticeConfig(item);
+	if (selectedConfig.value && String(selectedConfig.value.id) === String(item.id)) {
+		selectedConfig.value = null;
+	}
 }
 </script>

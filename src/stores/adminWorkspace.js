@@ -1219,6 +1219,13 @@ async function saveNoticeConfig() {
 	await reload();
 }
 
+async function removeNoticeConfig(item) {
+	const confirmed = window.confirm(`确认删除通知配置「${item.scene || item.templateName || item.id}」？`);
+	if (!confirmed) return;
+	await adminApi.noticeConfigDelete(item.id);
+	await reload();
+}
+
 async function sendNotice() {
 	const payload = {
 		scene: noticeSendForm.value.scene,
@@ -1518,6 +1525,7 @@ export function useAdminWorkspaceStore() {
 		resetFeeForm,
 		editNoticeConfig,
 		saveNoticeConfig,
+		removeNoticeConfig,
 		resetNoticeConfigForm,
 		sendNotice,
 		retryNotice,
