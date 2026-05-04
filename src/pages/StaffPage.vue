@@ -80,7 +80,7 @@
 						<button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button>
 						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleDuty(staff)">{{ staff.onDuty ? '设为离岗' : '设为在岗' }}</button>
 						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleActive(staff)">{{ staff.active ? '停用' : '启用' }}</button>
-						<button class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
+						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
 					</td>
 				</tr>
 			</tbody>

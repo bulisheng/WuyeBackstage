@@ -5,10 +5,13 @@
 				<h2>{{ meta.title }}</h2>
 				<p>{{ meta.desc }}</p>
 			</div>
-			<button class="primary" type="button" @click="loadList">重新加载</button>
+			<div class="form-actions compact">
+				<button type="button" @click="showList = !showList">{{ showList ? '收起列表' : '展开列表' }}</button>
+				<button class="primary" type="button" @click="loadList">重新加载</button>
+			</div>
 		</div>
 
-		<div class="table-card">
+		<div v-show="showList" class="table-card">
 			<table>
 				<thead>
 					<tr>
@@ -19,6 +22,7 @@
 						<th>状态</th>
 						<th>处理人</th>
 						<th>时间</th>
+						<th>操作</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -30,9 +34,12 @@
 						<td><span class="status-pill">{{ item.statusText || item.status }}</span></td>
 						<td>{{ item.assignee || '-' }}</td>
 						<td>{{ item.createdAt || '-' }}</td>
+						<td class="actions">
+							<button v-if="workspace.canShowDeleteButton" @click.stop="deleteItem(item)">删除</button>
+						</td>
 					</tr>
 					<tr v-if="!list.length">
-						<td colspan="7" class="empty-cell">当前没有{{ meta.title }}记录。</td>
+						<td colspan="8" class="empty-cell">当前没有{{ meta.title }}记录。</td>
 					</tr>
 				</tbody>
 			</table>
@@ -107,6 +114,7 @@ const list = ref([]);
 const detail = ref(null);
 const selectedId = ref(0);
 const actionForm = ref({ action: 'accept', assignee: '', staffId: '', reply: '' });
+const showList = ref(true);
 
 const config = {
 	complaints: {
@@ -163,6 +171,22 @@ async function submitAction() {
 	if (!detail.value) return;
 	const res = await meta.value.action(Object.assign({ id: detail.value.item.id }, actionForm.value));
 	detail.value = res;
+	await loadList();
+}
+
+async function deleteItem(item) {
+	if (!workspace.canShowDeleteButton) return;
+	const confirmed = window.confirm(`确认删除「${item.title || item.serviceType || item.question || item.id}」？`);
+	if (!confirmed) return;
+	const deleteMap = {
+		complaints: adminApi.complaintDelete,
+		property_service: adminApi.serviceDelete,
+		customer_service: adminApi.customerDelete
+	};
+	await deleteMap[workspace.activeRoute](item.id);
+	if (selectedId.value === item.id) {
+		closeDetail();
+	}
 	await loadList();
 }
 

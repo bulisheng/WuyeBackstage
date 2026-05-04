@@ -116,7 +116,7 @@
 					<td class="actions">
 						<button :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.editFee(item)">编辑</button>
 						<button :disabled="!workspace.canAction('fee:remind')" @click.stop="workspace.remindFee(item)">催缴</button>
-						<button class="danger" :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.removeFee(item)">删除</button>
+						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.removeFee(item)">删除</button>
 					</td>
 				</tr>
 			</tbody>

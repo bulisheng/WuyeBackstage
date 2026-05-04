@@ -34,7 +34,7 @@
 						<td>{{ item.publishAt || item.createdAt || '-' }}</td>
 						<td class="actions">
 							<button @click="edit(item)">编辑</button>
-							<button @click="remove(item)">删除</button>
+							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
 						</td>
 					</tr>
 					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无公告。</td></tr>

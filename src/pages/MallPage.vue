@@ -43,7 +43,7 @@
 							<td>{{ item.enabled ? '启用' : '停用' }}</td>
 							<td class="actions">
 								<button @click="editCategory(item)">编辑</button>
-								<button class="danger" @click="deleteCategory(item)">删除</button>
+								<button v-if="workspace.canShowDeleteButton" class="danger" @click="deleteCategory(item)">删除</button>
 							</td>
 						</tr>
 						<tr v-if="!categories.length"><td colspan="4" class="empty-cell">当前暂无分类。</td></tr>
@@ -81,7 +81,7 @@
 							<td class="actions">
 								<button @click="editProduct(item)">编辑</button>
 								<button @click="setProductStatus(item, item.status === 'on_sale' ? 'off_sale' : 'on_sale')">{{ item.status === 'on_sale' ? '下架' : '上架' }}</button>
-								<button class="danger" @click="deleteProduct(item)">删除</button>
+								<button v-if="workspace.canShowDeleteButton" class="danger" @click="deleteProduct(item)">删除</button>
 							</td>
 						</tr>
 						<tr v-if="!products.length"><td colspan="6" class="empty-cell">当前暂无商品。</td></tr>

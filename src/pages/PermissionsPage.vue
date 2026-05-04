@@ -178,7 +178,7 @@
 						<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
 						<td class="actions">
 							<button :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.editPermission(item)">编辑</button>
-							<button class="danger" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.removePermission(item)">删除</button>
+							<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.removePermission(item)">删除</button>
 						</td>
 					</tr>
 					<tr v-if="!workspace.permissions.length">

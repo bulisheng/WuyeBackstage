@@ -5,7 +5,11 @@
 				<h2>社区活动</h2>
 				<p>发布活动、查看报名并核销签到。</p>
 			</div>
-			<button class="primary" type="button" @click="reload">重新加载</button>
+			<div class="form-actions compact">
+				<button type="button" @click="showActivityList = !showActivityList">{{ showActivityList ? '收起活动列表' : '展开活动列表' }}</button>
+				<button type="button" @click="showSignupList = !showSignupList">{{ showSignupList ? '收起报名记录' : '展开报名记录' }}</button>
+				<button class="primary" type="button" @click="reload">重新加载</button>
+			</div>
 		</div>
 
 		<DetailCard title="活动编辑" subtitle="保存后会同步到活动列表">
@@ -26,7 +30,7 @@
 		</DetailCard>
 
 		<DetailCard title="活动列表" subtitle="点击行可加载对应报名记录">
-			<table>
+			<table v-show="showActivityList">
 				<thead><tr><th>活动</th><th>时间</th><th>名额</th><th>状态</th><th>操作</th></tr></thead>
 				<tbody>
 					<tr v-for="item in list" :key="item.id" :class="{ selected: selectedActivityId === item.id }">
@@ -36,7 +40,7 @@
 						<td>{{ statusText(item.status) }}</td>
 						<td class="actions">
 							<button @click="edit(item)">编辑</button>
-							<button @click="remove(item)">删除</button>
+							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
 							<button @click="loadSignups(item)">报名</button>
 						</td>
 					</tr>
@@ -46,7 +50,7 @@
 		</DetailCard>
 
 		<DetailCard title="报名记录" :subtitle="`${signups.length} 条`">
-			<table>
+			<table v-show="showSignupList">
 				<thead><tr><th>活动</th><th>住户</th><th>房号</th><th>状态</th><th>操作</th></tr></thead>
 				<tbody>
 					<tr v-for="item in signups" :key="item.id">
@@ -78,6 +82,8 @@ const signups = ref([]);
 const selectedActivityId = ref('');
 const selectedActivityTitle = ref('');
 const form = ref(emptyForm());
+const showActivityList = ref(true);
+const showSignupList = ref(true);
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', content: '', location: '', startAt: '', endAt: '', capacity: 0, status: 'published' };

@@ -120,7 +120,11 @@
 		</div>
 
 		<div class="spaced-block">
-			<table class="spaced-table">
+			<div class="panel-head compact">
+				<h3>通知配置列表</h3>
+				<button type="button" @click="showConfigList = !showConfigList">{{ showConfigList ? '收起列表' : '展开列表' }}</button>
+			</div>
+			<table v-show="showConfigList" class="spaced-table">
 				<thead>
 					<tr>
 						<th>场景</th>
@@ -146,7 +150,7 @@
 						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
 						<td class="actions">
 							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="handleEditNoticeConfig(item)">编辑</button>
-							<button class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
+							<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
 						</td>
 					</tr>
 				</tbody>
@@ -154,7 +158,11 @@
 		</div>
 
 		<div class="spaced-block">
-			<table class="spaced-table">
+			<div class="panel-head compact">
+				<h3>发送记录列表</h3>
+				<button type="button" @click="showRecordList = !showRecordList">{{ showRecordList ? '收起列表' : '展开列表' }}</button>
+			</div>
+			<table v-show="showRecordList" class="spaced-table">
 				<thead>
 					<tr>
 						<th>时间</th>
@@ -227,6 +235,8 @@ const workspace = useAdminWorkspaceStore();
 const selectedConfig = ref(null);
 const selectedRecord = ref(null);
 const noticeConfigEditor = ref(null);
+const showConfigList = ref(true);
+const showRecordList = ref(true);
 const activeNoticeStaff = computed(() => workspace.propertyStaff.filter((item) =>
 	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('notices') || String(item.moduleKeys).includes('notice'))
 ));

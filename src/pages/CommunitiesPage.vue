@@ -51,7 +51,7 @@
 					<span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span>
 					<button :disabled="!workspace.canAction('community:edit')" @click.stop="workspace.editCommunity(item)">编辑</button>
 					<button :disabled="!workspace.canAction('community:edit')" @click.stop="workspace.toggleCommunityActive(item)">{{ item.active ? '停用' : '启用' }}</button>
-					<button class="danger" :disabled="!workspace.canAction('community:delete')" @click.stop="workspace.removeCommunity(item)">删除</button>
+					<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('community:delete')" @click.stop="workspace.removeCommunity(item)">删除</button>
 				</div>
 			</div>
 		</div>

@@ -104,6 +104,10 @@ const activeCommunities = computed(() => communities.value.filter((item) => item
 const activeCommunity = computed(() => communities.value.find((item) => item.schemaName === selectedSchema.value) || null);
 const isLoggedIn = computed(() => Boolean(currentAdminId.value));
 const currentAdminInfo = computed(() => adminAccess.value && adminAccess.value.admin ? adminAccess.value.admin : null);
+const canShowDeleteButton = computed(() => {
+	const role = String(currentAdminInfo.value && currentAdminInfo.value.role ? currentAdminInfo.value.role : '').trim();
+	return ['super_admin', 'admin'].includes(role);
+});
 const pageTitle = computed(() => routeLabels[activeRoute.value] || '数据看板');
 const pendingCount = computed(() => owners.value.filter((item) => item.auditStatus === 'pending').length);
 const currentCommunityModuleMatrix = computed(() => {
@@ -121,7 +125,7 @@ const adminMenuOptions = computed(() => MODULE_CATALOG.map((item) => ({
 	label: item.name || buildMenuLabel(item.key),
 	description: item.description || ''
 })));
-const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'service:handle', 'customer:handle', 'mall:view', 'mall:product', 'mall:order', 'mall:after_sale', 'mall:dashboard', 'announcement:publish', 'activity:manage', 'activity:checkin', 'survey:view', 'survey:manage', 'faq:manage', 'notice:publish'];
+const quickPermissionTokens = ['community:edit', 'owner:manage', 'owner:audit', 'tenant:manage', 'resident:import', 'resident:change_log:view', 'staff:view', 'staff:manage', 'repair:view', 'repair:assign', 'repair:update', 'repair:close', 'fee:view', 'fee:collect', 'fee:remind', 'fee:export', 'complaint:handle', 'complaint:delete', 'service:handle', 'service:delete', 'customer:handle', 'customer:delete', 'mall:view', 'mall:product', 'mall:order', 'mall:after_sale', 'mall:dashboard', 'announcement:publish', 'activity:manage', 'activity:checkin', 'survey:view', 'survey:manage', 'faq:manage', 'notice:publish'];
 const adminActionOptions = computed(() => quickPermissionTokens.map((item) => ({
 	key: item,
 	label: buildActionLabel(item)
@@ -390,7 +394,12 @@ function parsePastedTable(text = '') {
 
 function canMenu(menu) {
 	if (!adminAccess.value) return true;
-	return allowedMenus.value.includes(menu);
+	if (allowedMenus.value.includes(menu)) return true;
+	if (['activities', 'surveys'].includes(menu)) {
+		const moduleRecord = currentCommunityModules.value.find((item) => item.key === menu);
+		return Boolean(moduleRecord && moduleRecord.enabled);
+	}
+	return false;
 }
 
 function canAction(action) {
@@ -1282,8 +1291,8 @@ async function sendNotice() {
 		content: noticeSendForm.value.content
 	};
 	const result = await adminApi.noticeSend(payload);
-	noticeRecords.value = result.list || noticeRecords.value;
-	window.alert('已发送通知');
+	const statusText = result && result.sendResult ? `${result.sendResult.status || 'sent'}` : 'sent';
+	window.alert(statusText === 'sent' ? '已发送通知，手动发送不保存记录' : `通知已处理，当前状态：${statusText}`);
 }
 
 async function retryNotice(item) {
@@ -1479,6 +1488,7 @@ export function useAdminWorkspaceStore() {
 		activeCommunity,
 		isLoggedIn,
 		currentAdminInfo,
+		canShowDeleteButton,
 		pageTitle,
 		pendingCount,
 		currentCommunityModules,

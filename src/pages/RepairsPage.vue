@@ -173,7 +173,7 @@
 						<td>{{ staff.active ? '启用' : '停用' }}</td>
 			<td class="actions">
 				<button :disabled="!workspace.canAction('repair:assign')" @click="workspace.editRepairStaff(staff)">编辑</button>
-				<button class="danger" :disabled="!workspace.canAction('repair:assign')" @click="workspace.removeRepairStaff(staff)">删除</button>
+						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('repair:assign')" @click="workspace.removeRepairStaff(staff)">删除</button>
 			</td>
 					</tr>
 				</tbody>

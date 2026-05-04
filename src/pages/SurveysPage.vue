@@ -26,8 +26,11 @@
 			</div>
 		</DetailCard>
 
-		<DetailCard title="调研列表" subtitle="编辑、归档与查看现有调研">
-			<table>
+		<DetailCard title="调研列表" subtitle="编辑、删除与查看现有调研">
+			<template #actions>
+				<button type="button" @click="showList = !showList">{{ showList ? '收起列表' : '展开列表' }}</button>
+			</template>
+			<table v-show="showList">
 				<thead><tr><th>调研</th><th>状态</th><th>链接</th><th>有效期</th><th>操作</th></tr></thead>
 				<tbody>
 					<tr v-for="item in list" :key="item.id">
@@ -40,7 +43,7 @@
 						<td>{{ item.startAt || '不限' }} 至 {{ item.endAt || '不限' }}</td>
 						<td class="actions">
 							<button @click="edit(item)">编辑</button>
-							<button @click="remove(item)">归档</button>
+							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
 						</td>
 					</tr>
 					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无社区调研。</td></tr>
@@ -59,6 +62,7 @@ import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 const workspace = useAdminWorkspaceStore();
 const list = ref([]);
 const form = ref(emptyForm());
+const showList = ref(true);
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', externalUrl: '', miniAppId: '', miniPath: '', status: 'published', sort: 100, startAt: '', endAt: '' };
@@ -99,7 +103,7 @@ async function save() {
 }
 
 async function remove(item) {
-	if (!window.confirm(`确认归档调研「${item.title}」？`)) return;
+	if (!window.confirm(`确认删除调研「${item.title}」？`)) return;
 	await adminApi.surveyDelete(item.id);
 	await loadList();
 }
