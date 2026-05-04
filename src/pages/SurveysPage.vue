@@ -5,20 +5,20 @@
 				<h2>社区调研</h2>
 				<p>配置问卷星链接或小程序跳转参数，住户端展示“社区调研”。</p>
 			</div>
-			<button class="primary" type="button" @click="loadList">刷新</button>
+			<button class="primary" type="button" @click="loadList">重新加载</button>
 		</div>
 
 		<DetailCard title="调研编辑" subtitle="保存后会同步到调研列表">
 			<div class="form-grid">
-				<label><span>标题</span><input v-model="form.title" placeholder="例如 2026 物业服务满意度调研" /></label>
+				<label><span>标题</span><input v-model="form.title" placeholder="如：2026 物业服务满意度调研" /></label>
 				<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
 				<label><span>排序</span><input v-model.number="form.sort" type="number" /></label>
-				<label><span>问卷星小程序编号</span><input v-model="form.miniAppId" placeholder="可选，配置后优先跳小程序" /></label>
-				<label class="full"><span>问卷星链接</span><input v-model="form.externalUrl" placeholder="https:// 或问卷星调研链接" /></label>
-				<label class="full"><span>小程序路径</span><input v-model="form.miniPath" placeholder="可选，例如 pages/index/index?..." /></label>
-				<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒，可空" /></label>
-				<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒，可空" /></label>
-				<label class="full"><span>说明</span><textarea v-model="form.summary" rows="3" placeholder="说明调研目的，体现用心服务"></textarea></label>
+				<label><span>问卷星小程序编号</span><input v-model="form.miniAppId" placeholder="留空则不跳转小程序" /></label>
+				<label class="full"><span>问卷星链接</span><input v-model="form.externalUrl" placeholder="填写问卷星或外部调研链接" /></label>
+				<label class="full"><span>小程序路径</span><input v-model="form.miniPath" placeholder="如：pages/index/index?..." /></label>
+				<label><span>开始时间</span><input v-model="form.startAt" placeholder="YYYY-MM-DD HH:mm:ss，留空表示立即生效" /></label>
+				<label><span>结束时间</span><input v-model="form.endAt" placeholder="YYYY-MM-DD HH:mm:ss，留空表示长期有效" /></label>
+				<label class="full"><span>说明</span><textarea v-model="form.summary" rows="3" placeholder="填写调研目的和说明"></textarea></label>
 			</div>
 			<div class="form-actions">
 				<button class="primary" type="button" @click="save">保存调研</button>
@@ -33,7 +33,7 @@
 					<tr v-for="item in list" :key="item.id">
 						<td>
 							<strong>{{ item.title }}</strong>
-							<p>{{ item.summary || '暂无说明' }}</p>
+					<p>{{ item.summary || '当前暂无说明。' }}</p>
 						</td>
 						<td>{{ statusText(item.status) }}</td>
 						<td>{{ item.miniAppId ? `小程序编号：${item.miniAppId}` : (item.externalUrl || '-') }}</td>
@@ -43,7 +43,7 @@
 							<button @click="remove(item)">归档</button>
 						</td>
 					</tr>
-					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无社区调研。</td></tr>
+					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无社区调研。</td></tr>
 				</tbody>
 			</table>
 		</DetailCard>

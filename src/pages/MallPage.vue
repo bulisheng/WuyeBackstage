@@ -5,7 +5,7 @@
 				<h2>盛兴严选商城</h2>
 				<p>管理当前小区商品、订单、售后和基础经营指标。</p>
 			</div>
-			<button class="primary" type="button" @click="reload">刷新</button>
+			<button class="primary" type="button" @click="reload">重新加载</button>
 		</div>
 
 		<section class="panel-grid">
@@ -26,7 +26,7 @@
 		<section v-if="activeTab === 'products'" class="stack">
 			<DetailCard title="商品分类" :subtitle="`${categories.length} 个分类`">
 				<div class="form-grid">
-					<label><span>分类名称</span><input v-model="categoryForm.name" placeholder="例如 社区严选" /></label>
+					<label><span>分类名称</span><input v-model="categoryForm.name" placeholder="如：社区严选" /></label>
 					<label><span>排序</span><input v-model.number="categoryForm.sort" type="number" min="0" /></label>
 					<label><span>状态</span><select v-model.number="categoryForm.enabled"><option :value="1">启用</option><option :value="0">停用</option></select></label>
 				</div>
@@ -46,13 +46,13 @@
 								<button class="danger" @click="deleteCategory(item)">删除</button>
 							</td>
 						</tr>
-						<tr v-if="!categories.length"><td colspan="4" class="empty-cell">暂无分类。</td></tr>
+						<tr v-if="!categories.length"><td colspan="4" class="empty-cell">当前暂无分类。</td></tr>
 					</tbody>
 				</table>
 			</DetailCard>
 			<DetailCard title="商品编辑" subtitle="保存后会同步到商品列表">
 				<div class="form-grid">
-					<label><span>商品名称</span><input v-model="productForm.title" placeholder="例如：社区优选大米" /></label>
+					<label><span>商品名称</span><input v-model="productForm.title" placeholder="如：社区优选大米" /></label>
 					<label><span>分类</span><select v-model.number="productForm.categoryId"><option :value="0">未分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
 					<label><span>价格</span><input v-model.number="productForm.price" type="number" min="0" /></label>
 					<label><span>库存</span><input v-model.number="productForm.stock" type="number" min="0" /></label>
@@ -65,7 +65,7 @@
 				<div class="form-actions">
 					<button class="primary" type="button" @click="saveProduct">保存商品</button>
 					<button type="button" @click="resetProduct">重置</button>
-					<button type="button" @click="saveDefaultCategory">快速创建默认分类</button>
+				<button type="button" @click="saveDefaultCategory">创建默认分类</button>
 				</div>
 			</DetailCard>
 			<div class="table-card">
@@ -84,7 +84,7 @@
 								<button class="danger" @click="deleteProduct(item)">删除</button>
 							</td>
 						</tr>
-						<tr v-if="!products.length"><td colspan="6" class="empty-cell">暂无商品。</td></tr>
+						<tr v-if="!products.length"><td colspan="6" class="empty-cell">当前暂无商品。</td></tr>
 					</tbody>
 				</table>
 			</div>
@@ -106,7 +106,7 @@
 							<button :disabled="item.status === 'cancelled'" @click="orderAction(item, 'cancel')">关闭</button>
 						</td>
 					</tr>
-					<tr v-if="!orders.length"><td colspan="6" class="empty-cell">暂无订单。</td></tr>
+						<tr v-if="!orders.length"><td colspan="6" class="empty-cell">当前暂无订单。</td></tr>
 				</tbody>
 			</table>
 			<DetailCard v-if="selectedOrder" title="订单详情" :subtitle="selectedOrder.order?.orderNo || ''">
@@ -121,7 +121,7 @@
 					<div><strong>状态</strong><p>{{ selectedOrder.order?.statusText || selectedOrder.order?.status || '-' }}</p></div>
 					<div><strong>创建时间</strong><p>{{ selectedOrder.order?.createdAt || '-' }}</p></div>
 					<div><strong>更新时间</strong><p>{{ selectedOrder.order?.updatedAt || '-' }}</p></div>
-					<div class="wide"><strong>备注</strong><p>{{ selectedOrder.order?.note || '暂无' }}</p></div>
+					<div class="wide"><strong>备注</strong><p>{{ selectedOrder.order?.note || '暂无备注' }}</p></div>
 				</div>
 				<div class="timeline">
 					<div v-for="item in selectedOrder.items" :key="item.id" class="timeline-item">
@@ -152,7 +152,7 @@
 							<button @click="afterSaleAction(item, 'refunded')">标记退款</button>
 						</td>
 					</tr>
-					<tr v-if="!afterSales.length"><td colspan="6" class="empty-cell">暂无售后。</td></tr>
+						<tr v-if="!afterSales.length"><td colspan="6" class="empty-cell">当前暂无售后。</td></tr>
 				</tbody>
 			</table>
 		</section>
@@ -209,7 +209,7 @@ const mallVisuals = computed(() => [
 		label: '待发货',
 		value: dashboard.value.statusCounts?.paid || 0,
 		percent: Math.min(100, Number(dashboard.value.statusCounts?.paid || 0) * 20),
-		desc: '需要运营尽快处理'
+		desc: '需要运营优先处理'
 	},
 	{
 		key: 'afterSale',

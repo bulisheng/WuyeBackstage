@@ -10,7 +10,7 @@
 			<div><strong>状态</strong><p>{{ statusLabel || resident.status || '-' }}</p></div>
 			<div><strong>住户类型</strong><p>{{ resident.identityType === 'tenant' ? '租户' : '业主' }}</p></div>
 			<div><strong>小区</strong><p>{{ resident.communityName || '-' }}</p></div>
-			<div class="wide"><strong>最近动作</strong><p>{{ actionHint || '暂无待处理动作' }}</p></div>
+			<div class="wide"><strong>最近动作</strong><p>{{ actionHint || '当前暂无待处理动作' }}</p></div>
 		</div>
 
 		<div class="state-panel">
@@ -25,7 +25,7 @@
 					<small>{{ log.source || '-' }} · {{ log.operatorName || '系统' }} · {{ log.createdAt || '-' }}</small>
 				</div>
 			</div>
-			<p v-else class="empty-text">暂无手机号、房号或状态变更记录。</p>
+			<p v-else class="empty-text">当前暂无手机号、房号或状态变更记录。</p>
 		</div>
 	</DetailCard>
 </template>

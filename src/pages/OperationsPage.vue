@@ -5,7 +5,7 @@
 				<h2>{{ meta.title }}</h2>
 				<p>{{ meta.desc }}</p>
 			</div>
-			<button class="primary" type="button" @click="loadList">刷新</button>
+			<button class="primary" type="button" @click="loadList">重新加载</button>
 		</div>
 
 		<div class="table-card">
@@ -77,14 +77,14 @@
 				</label>
 				<label class="full">
 					<span>{{ actionForm.action === 'followup' ? '回访说明' : '处理说明 / 回复' }}</span>
-					<textarea v-model="actionForm.reply" :placeholder="actionForm.action === 'followup' ? '记录回访结果、住户反馈和是否满意' : '填写处理说明，会记录到工单日志'"></textarea>
+					<textarea v-model="actionForm.reply" :placeholder="actionForm.action === 'followup' ? '填写回访结果、住户反馈和满意度情况' : '填写处理说明，将记录到工单日志'"></textarea>
 				</label>
 			</div>
 			<button class="primary" type="button" @click="submitAction">保存处理</button>
 
 			<div class="timeline">
 				<h4>处理记录</h4>
-				<div v-if="!detail.logs.length" class="empty-cell">暂无处理记录。</div>
+				<div v-if="!detail.logs.length" class="empty-cell">当前暂无处理记录。</div>
 				<div v-for="log in detail.logs" :key="log.id" class="timeline-item">
 					<strong>{{ log.action || '记录' }}</strong>
 					<span>{{ log.fromStatus || '-' }} -> {{ log.toStatus || '-' }}</span>

@@ -124,10 +124,10 @@
 					<p>{{ log.content || '无说明' }}</p>
 					<small>{{ log.createdAt || '-' }} / {{ log.operatorType || '-' }}</small>
 				</div>
-				<p v-if="!workspace.repairLogs.length" class="empty-text">暂无流转记录</p>
+			<p v-if="!workspace.repairLogs.length" class="empty-text">当前暂无流转记录。</p>
 			</div>
 		</DetailCard>
-		<p v-if="!workspace.repairDetail" class="empty-text">点击列表中的工单查看详情和处理流转。</p>
+		<p v-if="!workspace.repairDetail" class="empty-text">请在列表中选择工单，查看详情和流转信息。</p>
 		<div class="detail-card">
 			<div class="panel-head compact">
 				<h3>维修人员档案</h3>
@@ -152,7 +152,7 @@
 				</label>
 			</div>
 			<div class="form-actions">
-				<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="workspace.saveRepairStaff">{{ workspace.editingRepairStaffId ? '保存人员' : '新增人员' }}</button>
+				<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="workspace.saveRepairStaff">{{ workspace.editingRepairStaffId ? '保存档案' : '新增档案' }}</button>
 				<button @click="workspace.resetRepairStaffForm">重置</button>
 			</div>
 			<table>

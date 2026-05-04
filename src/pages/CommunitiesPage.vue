@@ -8,11 +8,11 @@
 			<div class="form-grid">
 				<label class="field">
 					<span>小区编码</span>
-					<input v-model="workspace.communityForm.code" type="text" placeholder="例如 rzb-001" />
+					<input v-model="workspace.communityForm.code" type="text" placeholder="如：rzb-001" />
 				</label>
 				<label class="field">
 					<span>小区名称</span>
-					<input v-model="workspace.communityForm.name" type="text" placeholder="例如 荣尊堡" />
+					<input v-model="workspace.communityForm.name" type="text" placeholder="如：荣尊堡" />
 				</label>
 				<label class="field">
 					<span>Schema</span>
@@ -45,7 +45,7 @@
 				<div class="community-meta">
 					<strong>{{ item.name }}</strong>
 					<span>{{ item.code }}</span>
-					<small>{{ item.address || '暂无地址' }}</small>
+					<small>{{ item.address || '暂无地址信息' }}</small>
 				</div>
 				<div class="community-actions">
 					<span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span>

@@ -3,8 +3,8 @@
 		<section class="overview-hero">
 			<div>
 				<span class="eyebrow">运营总览</span>
-				<h2>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区' }}</h2>
-				<p>统一查看收费、报修、服务、客服和通知概况，先看总览，再处理明细。</p>
+				<h2>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请先选择小区' }}</h2>
+				<p>统一查看收费、报修、服务、客服和通知概况，按优先级处理相关明细。</p>
 			</div>
 			<div class="hero-number">
 				<span>待办总数</span>
@@ -17,7 +17,7 @@
 				<strong>{{ item.value }}</strong>
 			</article>
 		</section>
-		<DetailCard title="风险概况" subtitle="展示当前小区关键指标">
+		<DetailCard title="风险概览" subtitle="展示当前小区关键指标">
 			<div class="visual-grid">
 				<article v-for="item in visualRows" :key="item.key" class="visual-card">
 					<div class="visual-top">
@@ -31,7 +31,7 @@
 				</article>
 			</div>
 		</DetailCard>
-		<DetailCard title="今日待办聚合" subtitle="按当前小区统计">
+		<DetailCard title="今日待办汇总" subtitle="按当前小区统计">
 			<div class="panel-grid">
 				<article v-for="item in workspace.dashboardTodos" :key="item.key" class="metric clickable" @click="workspace.navigate(item.route)">
 					<span>{{ item.title }}</span>
@@ -51,10 +51,10 @@
 						<strong>{{ item.moduleName }}：{{ item.title || '-' }}</strong>
 						<span>{{ statusText(item.status) }}{{ item.assignee ? ` / ${item.assignee}` : '' }}</span>
 					</div>
-					<p v-if="!group.items.length" class="empty-text">暂无待办。</p>
+					<p v-if="!group.items.length" class="empty-text">当前暂无待办事项。</p>
 				</div>
 			</div>
-			<p v-if="!staffTodoGroups.length" class="empty-text">暂无负责人待办。</p>
+			<p v-if="!staffTodoGroups.length" class="empty-text">当前暂无负责人待办事项。</p>
 		</DetailCard>
 		<section class="permission-grid">
 			<DetailCard title="待处理报修" :subtitle="`${repairTodos.length} 条`">
@@ -62,42 +62,42 @@
 					<strong>{{ item.title || '-' }}</strong>
 					<span>{{ workspace.workStatusText(item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
-				<p v-if="!repairTodos.length" class="empty-text">暂无待处理报修。</p>
+				<p v-if="!repairTodos.length" class="empty-text">当前暂无待处理报修。</p>
 			</DetailCard>
 			<DetailCard title="待缴账单" :subtitle="`${billTodos.length} 条`">
 				<div v-for="item in billTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || item.billNo }}</strong>
 					<span>{{ item.ownerName || '-' }} / {{ workspace.money(item.amount) }}</span>
 				</div>
-				<p v-if="!billTodos.length" class="empty-text">暂无待缴账单。</p>
+				<p v-if="!billTodos.length" class="empty-text">当前暂无待缴账单。</p>
 			</DetailCard>
 			<DetailCard title="通知异常" :subtitle="`${noticeTodos.length} 条`">
 				<div v-for="item in noticeTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || item.eventType }}</strong>
 					<span>{{ channelText(item.channel) }} / {{ workspace.noticeStatusText(item.status) }}</span>
 				</div>
-				<p v-if="!noticeTodos.length" class="empty-text">暂无通知异常。</p>
+				<p v-if="!noticeTodos.length" class="empty-text">当前暂无通知异常。</p>
 			</DetailCard>
 			<DetailCard title="待处理投诉" :subtitle="`${complaintTodos.length} 条`">
 				<div v-for="item in complaintTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.title || item.category || '投诉建议' }}</strong>
 					<span>{{ statusText(item.statusText || item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
-				<p v-if="!complaintTodos.length" class="empty-text">暂无待处理投诉。</p>
+				<p v-if="!complaintTodos.length" class="empty-text">当前暂无待处理投诉。</p>
 			</DetailCard>
 			<DetailCard title="待处理物业服务" :subtitle="`${serviceTodos.length} 条`">
 				<div v-for="item in serviceTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.serviceType || item.title || '物业服务' }}</strong>
 					<span>{{ statusText(item.statusText || item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
-				<p v-if="!serviceTodos.length" class="empty-text">暂无待处理服务。</p>
+				<p v-if="!serviceTodos.length" class="empty-text">当前暂无待处理服务。</p>
 			</DetailCard>
 			<DetailCard title="待处理客服" :subtitle="`${customerTodos.length} 条`">
 				<div v-for="item in customerTodos" :key="item.id" class="todo-row">
 					<strong>{{ item.question || item.title || '在线客服' }}</strong>
 					<span>{{ statusText(item.statusText || item.status) }} / {{ item.assignee || '未分配' }}</span>
 				</div>
-				<p v-if="!customerTodos.length" class="empty-text">暂无待处理客服工单。</p>
+				<p v-if="!customerTodos.length" class="empty-text">当前暂无待处理客服工单。</p>
 			</DetailCard>
 		</section>
 	</div>
@@ -132,7 +132,7 @@ const visualRows = computed(() => {
 			value: ownerPending,
 			unit: '户',
 			percent: ownerTotal ? Math.min(100, Math.round(ownerPending / ownerTotal * 100)) : 0,
-			desc: ownerTotal ? `共 ${ownerTotal} 户，待审核 ${ownerPending} 户` : '暂无业主数据'
+			desc: ownerTotal ? `共 ${ownerTotal} 户，待审核 ${ownerPending} 户` : '当前暂无业主数据'
 		},
 		{
 			key: 'fees',

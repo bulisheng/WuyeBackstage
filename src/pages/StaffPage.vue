@@ -9,7 +9,7 @@
 			<div class="form-grid">
 				<label class="field">
 					<span>姓名</span>
-					<input v-model="workspace.propertyStaffForm.name" type="text" placeholder="例如 张师傅" />
+					<input v-model="workspace.propertyStaffForm.name" type="text" placeholder="如：张师傅" />
 				</label>
 				<label class="field">
 					<span>手机号</span>

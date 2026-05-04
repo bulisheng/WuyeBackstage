@@ -32,10 +32,10 @@
 		</div>
 		<DetailCard title="批量导入账单" subtitle="支持从表格复制粘贴，或上传 CSV / TSV 文本表格">
 			<div class="form-actions compact">
-				<button type="button" @click="workspace.fillFeeImportExample">填入示例测试数据</button>
+					<button type="button" @click="workspace.fillFeeImportExample">载入样例数据</button>
 			</div>
 			<textarea v-model="workspace.feeImportText" rows="6" placeholder="手机号	标题	金额	类型	截止日期&#10;13363280414	2026年5月物业费	188.50	物业费	2026-05-31"></textarea>
-			<p class="field-hint">示例数据手机号统一使用 13363280414；正式导入前请确认该手机号已完成业主认证。</p>
+			<p class="field-hint">样例数据统一使用手机号 13363280414；正式导入前请确认该手机号已完成业主认证。</p>
 			<p v-if="workspace.feeImportSummary" class="field-hint">
 				导入结果：成功 {{ workspace.feeImportSummary.created || 0 }} 条，失败 {{ workspace.feeImportSummary.failed || 0 }} 条
 			</p>
@@ -48,7 +48,7 @@
 				</label>
 				<label class="field">
 					<span>标题</span>
-					<input v-model="workspace.feeForm.title" type="text" placeholder="例如 2026年4月物业费" />
+					<input v-model="workspace.feeForm.title" type="text" placeholder="如：2026年4月物业费" />
 				</label>
 				<label class="field">
 					<span>业主手机号</span>
@@ -64,7 +64,7 @@
 				</label>
 				<label class="field">
 					<span>类型</span>
-					<input v-model="workspace.feeForm.billType" type="text" placeholder="例如 物业费 / 停车费" />
+					<input v-model="workspace.feeForm.billType" type="text" placeholder="如：物业费 / 停车费" />
 				</label>
 				<label class="field">
 					<span>金额</span>
@@ -135,7 +135,7 @@
 				<div><strong>金额</strong><p>{{ workspace.money(selectedFee.amount) }}</p></div>
 				<div><strong>状态</strong><p>{{ workspace.feeStatusText(selectedFee.status) }}</p></div>
 				<div><strong>截止日期</strong><p>{{ selectedFee.dueDate || '-' }}</p></div>
-				<div><strong>备注</strong><p>{{ selectedFee.note || '暂无' }}</p></div>
+				<div><strong>备注</strong><p>{{ selectedFee.note || '暂无备注' }}</p></div>
 			</div>
 			<div class="payment-section">
 				<div class="panel-head compact">
@@ -164,7 +164,7 @@
 						</tr>
 					</tbody>
 				</table>
-				<p v-if="!selectedFeePayments.length" class="empty-text">当前账单暂无支付流水。</p>
+			<p v-if="!selectedFeePayments.length" class="empty-text">当前账单暂无支付流水记录。</p>
 			</div>
 		</DetailCard>
 		<DetailCard title="支付流水视图" :subtitle="`${filteredPayments.length} 条`">
@@ -233,7 +233,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<p v-if="!filteredPayments.length" class="empty-text">暂无匹配支付流水。</p>
+		<p v-if="!filteredPayments.length" class="empty-text">当前暂无匹配的支付流水记录。</p>
 		</DetailCard>
 	</section>
 </template>

@@ -5,7 +5,7 @@
 				<h2>公告管理</h2>
 				<p>发布当前小区公告，住户端按当前小区查看。</p>
 			</div>
-			<button class="primary" type="button" @click="loadList">刷新</button>
+			<button class="primary" type="button" @click="loadList">重新加载</button>
 		</div>
 
 		<DetailCard :title="form.id ? '编辑公告' : '新建公告'" subtitle="保存后会同步到住户端公告列表">
@@ -37,7 +37,7 @@
 							<button @click="remove(item)">删除</button>
 						</td>
 					</tr>
-					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无公告。</td></tr>
+					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无公告。</td></tr>
 				</tbody>
 			</table>
 		</DetailCard>

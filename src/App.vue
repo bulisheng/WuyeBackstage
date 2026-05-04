@@ -34,14 +34,14 @@
 					<label class="schema-switch">
 						<span>当前小区</span>
 						<select v-model="workspace.selectedSchema" @change="workspace.onSchemaChange">
-							<option value="">请选择</option>
+							<option value="">选择小区</option>
 							<option v-for="item in workspace.activeCommunities" :key="item.schemaName || item.code" :value="item.schemaName">
 								{{ workspace.communityLabel(item) }}
 							</option>
 						</select>
 					</label>
 					<button @click="workspace.logoutAdmin">退出</button>
-					<button class="primary" @click="workspace.reload">刷新</button>
+					<button class="primary" @click="workspace.reload">重新加载</button>
 				</div>
 			</header>
 

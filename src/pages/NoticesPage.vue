@@ -34,13 +34,13 @@
 					<label class="field span-2">
 						<span>默认通知对象</span>
 						<select v-model="workspace.noticeConfigForm.defaultStaffId">
-							<option value="">不指定，按业务处理人</option>
+							<option value="">未指定则按业务处理人</option>
 							<option v-for="staff in activeNoticeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
 						</select>
 					</label>
 					<label class="field span-2">
 						<span>机器人名称</span>
-						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="只需按小区替换机器人名称、地址和指定对象" />
+						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="按小区配置替换机器人名称、地址和指定对象" />
 					</label>
 					<label class="field span-2">
 						<span>Webhook</span>
@@ -72,7 +72,7 @@
 			<div class="permission-card">
 				<div class="panel-head compact">
 					<h3>手动发送</h3>
-					<span>测试发送 / 手动通知</span>
+					<span>通知发送测试 / 手动发送</span>
 				</div>
 				<div class="form-grid">
 					<label class="field">
@@ -100,7 +100,7 @@
 					<label class="field span-2">
 						<span>通知对象</span>
 						<select v-model="workspace.noticeSendForm.targetStaffId">
-							<option value="">请选择物业人员</option>
+							<option value="">选择物业人员</option>
 							<option v-for="staff in activeNoticeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
 						</select>
 					</label>
@@ -211,7 +211,7 @@
 				<div><strong>状态</strong><p>{{ workspace.noticeStatusText(selectedRecord.status) }}</p></div>
 				<div><strong>通知对象</strong><p>{{ selectedRecord.targetStaffName || '-' }}{{ selectedRecord.targetStaffMobile ? ` / ${selectedRecord.targetStaffMobile}` : '' }}</p></div>
 				<div><strong>重试</strong><p>{{ selectedRecord.retryCount }}</p></div>
-				<div><strong>错误</strong><p>{{ selectedRecord.errorMessage || '无' }}</p></div>
+				<div><strong>错误</strong><p>{{ selectedRecord.errorMessage || '无错误信息' }}</p></div>
 				<div><strong>内容</strong><p>{{ selectedRecord.content || '-' }}</p></div>
 			</div>
 		</DetailCard>

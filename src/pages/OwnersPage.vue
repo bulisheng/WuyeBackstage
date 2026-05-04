@@ -55,7 +55,7 @@
 				<div><strong>小区</strong><p>{{ selectedOwner.communityName || '-' }}</p></div>
 				<div><strong>房屋</strong><p>{{ selectedOwner.house || '-' }}</p></div>
 				<div><strong>状态</strong><p>{{ workspace.statusText(selectedOwner.auditStatus) }}</p></div>
-				<div><strong>备注</strong><p>{{ selectedOwner.note || '暂无' }}</p></div>
+				<div><strong>备注</strong><p>{{ selectedOwner.note || '暂无备注' }}</p></div>
 			</div>
 		</DetailCard>
 	</section>

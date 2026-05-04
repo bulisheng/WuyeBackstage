@@ -126,14 +126,14 @@
 						<label class="field">
 							<span>管理员</span>
 							<select v-model.number="workspace.permissionForm.adminId">
-								<option :value="0">请选择管理员</option>
+								<option :value="0">选择管理员</option>
 								<option v-for="item in workspace.admins" :key="item.id" :value="item.id">{{ item.mobileMasked || item.mobile || item.username }} · {{ item.roleLabel }}</option>
 							</select>
 						</label>
 						<label class="field">
 							<span>小区</span>
 							<select v-model.number="workspace.permissionForm.communityId">
-								<option :value="0">请选择小区</option>
+								<option :value="0">选择小区</option>
 								<option v-for="item in workspace.communities" :key="item.id" :value="item.id">{{ workspace.communityLabel(item) }}</option>
 							</select>
 						</label>
@@ -149,7 +149,7 @@
 						</label>
 						<label class="field span-2">
 							<span>权限令牌</span>
-							<textarea v-model="workspace.permissionForm.permissions" placeholder="例如 menu:permissions, action:admin:user:manage, !menu:fees"></textarea>
+							<textarea v-model="workspace.permissionForm.permissions" placeholder="如：menu:permissions, action:admin:user:manage, !menu:fees"></textarea>
 						</label>
 					</div>
 					<div class="form-actions">
@@ -182,7 +182,7 @@
 						</td>
 					</tr>
 					<tr v-if="!workspace.permissions.length">
-						<td colspan="6" class="empty-cell">暂无权限记录</td>
+						<td colspan="6" class="empty-cell">当前暂无权限记录。</td>
 					</tr>
 				</tbody>
 			</table>
@@ -190,9 +190,9 @@
 
 		<template v-else-if="workspace.activePermissionTab === 'modules'">
 			<div class="permission-grid">
-				<DetailCard title="当前小区模块开关" :subtitle="workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区'" cardClass="permission-card span-2">
+				<DetailCard title="当前小区模块开关" :subtitle="workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请先选择小区'" cardClass="permission-card span-2">
 					<div v-if="!workspace.activeCommunity" class="empty-state">
-						<div class="empty-title">请先在顶部选择一个小区</div>
+						<div class="empty-title">请先在顶部选择小区。</div>
 						<span class="subtle">模块开关按小区保存，新建小区默认全部开启。</span>
 					</div>
 					<template v-else>
@@ -222,7 +222,7 @@
 											<span>{{ item.key }}</span>
 										</div>
 									</td>
-									<td>{{ workspace.moduleDisplayDescription(item) || '暂无说明' }}</td>
+									<td>{{ workspace.moduleDisplayDescription(item) || '当前暂无说明。' }}</td>
 									<td>{{ item.group || '-' }}</td>
 									<td>{{ item.authRequired ? '是' : '否' }}</td>
 									<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ workspace.moduleEnabledLabel(item) }}</span></td>
@@ -277,7 +277,7 @@ const workspace = useAdminWorkspaceStore();
 
 const permissionPanelSummary = computed(() => {
 	if (workspace.activePermissionTab === 'modules') {
-		const community = workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请选择小区';
+		const community = workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请先选择小区';
 		return `${workspace.currentCommunityModuleSummary} · ${community}`;
 	}
 	if (workspace.activePermissionTab === 'permissions') {

@@ -5,12 +5,12 @@
 				<h2>常见问题管理</h2>
 				<p>维护在线客服关键词和自动回复。</p>
 			</div>
-			<button class="primary" type="button" @click="loadList">刷新</button>
+			<button class="primary" type="button" @click="loadList">重新加载</button>
 		</div>
 
 		<DetailCard :title="form.id ? '编辑常见问题' : '新建常见问题'" subtitle="保存后会同步到在线客服自动回复">
 			<div class="form-grid">
-				<label class="full"><span>问题</span><input v-model="form.question" placeholder="例如：怎么缴物业费" /></label>
+				<label class="full"><span>问题</span><input v-model="form.question" placeholder="如：怎么缴物业费" /></label>
 				<label class="full"><span>关键词</span><input v-model="form.keywords" placeholder="缴费,物业费,账单" /></label>
 				<label><span>排序</span><input v-model.number="form.sort" type="number" /></label>
 				<label><span>启用</span><select v-model.number="form.enabled"><option :value="1">启用</option><option :value="0">停用</option></select></label>
@@ -36,7 +36,7 @@
 							<button @click="remove(item)">删除</button>
 						</td>
 					</tr>
-					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无常见问题。</td></tr>
+					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无常见问题。</td></tr>
 				</tbody>
 			</table>
 		</DetailCard>

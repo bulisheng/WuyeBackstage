@@ -5,7 +5,7 @@
 				<h2>社区活动</h2>
 				<p>发布活动、查看报名并核销签到。</p>
 			</div>
-			<button class="primary" type="button" @click="reload">刷新</button>
+			<button class="primary" type="button" @click="reload">重新加载</button>
 		</div>
 
 		<DetailCard title="活动编辑" subtitle="保存后会同步到活动列表">
@@ -25,7 +25,7 @@
 			</div>
 		</DetailCard>
 
-		<DetailCard title="活动列表" subtitle="点击行可加载报名记录">
+		<DetailCard title="活动列表" subtitle="点击行可加载对应报名记录">
 			<table>
 				<thead><tr><th>活动</th><th>时间</th><th>名额</th><th>状态</th><th>操作</th></tr></thead>
 				<tbody>
@@ -40,7 +40,7 @@
 							<button @click="loadSignups(item)">报名</button>
 						</td>
 					</tr>
-					<tr v-if="!list.length"><td colspan="5" class="empty-cell">暂无活动。</td></tr>
+					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无活动。</td></tr>
 				</tbody>
 			</table>
 		</DetailCard>
@@ -59,7 +59,7 @@
 							<button :disabled="item.status === 'cancelled'" @click="signupAction(item, 'cancel')">取消</button>
 						</td>
 					</tr>
-					<tr v-if="!signups.length"><td colspan="5" class="empty-cell">暂无报名。</td></tr>
+					<tr v-if="!signups.length"><td colspan="5" class="empty-cell">当前暂无报名记录。</td></tr>
 				</tbody>
 			</table>
 		</DetailCard>

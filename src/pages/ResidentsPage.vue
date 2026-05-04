@@ -119,8 +119,8 @@
 			</tbody>
 		</table>
 
-		<p v-if="workspace.residentActiveTab !== 'logs' && !visibleRows.length" class="empty-text">暂无匹配住户。</p>
-		<p v-if="workspace.residentActiveTab === 'logs' && !visibleLogs.length" class="empty-text">暂无变更记录。</p>
+	<p v-if="workspace.residentActiveTab !== 'logs' && !visibleRows.length" class="empty-text">当前暂无匹配住户。</p>
+	<p v-if="workspace.residentActiveTab === 'logs' && !visibleLogs.length" class="empty-text">当前暂无变更记录。</p>
 
 		<ResidentDetailPanel
 			:resident="selectedResident"
