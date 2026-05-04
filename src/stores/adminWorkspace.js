@@ -1132,6 +1132,16 @@ async function saveRepairStaff() {
 	resetRepairStaffForm();
 }
 
+async function removeRepairStaff(item) {
+	const confirmed = window.confirm(`确认删除维修人员「${item.name || item.mobile || item.id}」？`);
+	if (!confirmed) return;
+	await adminApi.repairStaffDelete(item.id);
+	if (String(editingRepairStaffId.value || '') === String(item.id)) {
+		resetRepairStaffForm();
+	}
+	await reload();
+}
+
 function editPropertyStaff(item) {
 	editingPropertyStaffId.value = String(item.id || '');
 	propertyStaffForm.value = {
@@ -1163,6 +1173,16 @@ async function savePropertyStaff() {
 	});
 	propertyStaff.value = result.list || propertyStaff.value;
 	resetPropertyStaffForm();
+}
+
+async function removePropertyStaff(item) {
+	const confirmed = window.confirm(`确认删除物业人员「${item.name || item.mobile || item.id}」？`);
+	if (!confirmed) return;
+	await adminApi.staffDelete(item.id);
+	if (String(editingPropertyStaffId.value || '') === String(item.id)) {
+		resetPropertyStaffForm();
+	}
+	await reload();
 }
 
 async function scanRepairSla() {
@@ -1505,9 +1525,11 @@ export function useAdminWorkspaceStore() {
 		editPropertyStaff,
 		resetPropertyStaffForm,
 		savePropertyStaff,
+		removePropertyStaff,
 		editRepairStaff,
 		resetRepairStaffForm,
 		saveRepairStaff,
+		removeRepairStaff,
 		scanRepairSla,
 		exportRepairs,
 		editFee,

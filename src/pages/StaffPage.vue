@@ -80,7 +80,10 @@
 					<td>{{ workspace.moduleKeysLabel(staff.moduleKeys) }}</td>
 					<td>{{ staff.onDuty ? '在岗' : '离岗' }}</td>
 					<td>{{ staff.active ? '启用' : '停用' }}</td>
-					<td class="actions"><button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button></td>
+			<td class="actions">
+				<button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button>
+				<button class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
+			</td>
 				</tr>
 			</tbody>
 		</table>
