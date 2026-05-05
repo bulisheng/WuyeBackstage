@@ -28,7 +28,7 @@
 						<td>{{ item.startAt || '不限' }} 至 {{ item.endAt || '不限' }}</td>
 						<td class="actions">
 							<button @click="openSurveyModal(item)">编辑</button>
-							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
+							<button v-if="workspace.canAction('survey:manage')" @click="remove(item)">删除</button>
 						</td>
 					</tr>
 					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无社区调研。</td></tr>
@@ -122,8 +122,13 @@ async function save() {
 
 async function remove(item) {
 	if (!window.confirm(`确认删除调研「${item.title}」？`)) return;
-	await adminApi.surveyDelete(item.id);
-	await loadList();
+	try {
+		await adminApi.surveyDelete(item.id);
+		window.alert('调研已归档');
+		await loadList();
+	} catch (err) {
+		window.alert(err.message || '调研删除失败');
+	}
 }
 
 function closeSurveyModal() {

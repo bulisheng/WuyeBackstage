@@ -38,7 +38,7 @@
 							<td>{{ item.enabled ? '启用' : '停用' }}</td>
 							<td class="actions">
 								<button @click="openCategoryModal(item)">编辑</button>
-								<button v-if="workspace.canShowDeleteButton" class="danger" @click="deleteCategory(item)">删除</button>
+								<button v-if="workspace.canAction('mall:product')" class="danger" @click="deleteCategory(item)">删除</button>
 							</td>
 						</tr>
 						<tr v-if="!categories.length"><td colspan="4" class="empty-cell">当前暂无分类。</td></tr>
@@ -63,7 +63,7 @@
 							<td class="actions">
 								<button @click="openProductModal(item)">编辑</button>
 								<button @click="setProductStatus(item, item.status === 'on_sale' ? 'off_sale' : 'on_sale')">{{ item.status === 'on_sale' ? '下架' : '上架' }}</button>
-								<button v-if="workspace.canShowDeleteButton" class="danger" @click="deleteProduct(item)">删除</button>
+								<button v-if="workspace.canAction('mall:product')" class="danger" @click="deleteProduct(item)">删除</button>
 							</td>
 						</tr>
 						<tr v-if="!products.length"><td colspan="6" class="empty-cell">当前暂无商品。</td></tr>
@@ -308,11 +308,16 @@ async function saveCategory() {
 
 async function deleteCategory(item) {
 	if (!window.confirm(`确认删除分类「${item.name}」？`)) return;
-	await adminApi.mallCategoryDelete(item.id);
-	if (editingCategoryId.value === String(item.id)) {
-		resetCategory();
+	try {
+		await adminApi.mallCategoryDelete(item.id);
+		window.alert('分类已删除');
+		if (editingCategoryId.value === String(item.id)) {
+			resetCategory();
+		}
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '分类删除失败');
 	}
-	await reload();
 }
 
 function editProduct(item) {
@@ -364,11 +369,16 @@ async function setProductStatus(item, status) {
 
 async function deleteProduct(item) {
 	if (!window.confirm(`确认删除商品「${item.title}」？`)) return;
-	await adminApi.mallProductDelete(item.id);
-	if (String(productForm.value.id || '') === String(item.id)) {
-		resetProduct();
+	try {
+		await adminApi.mallProductDelete(item.id);
+		window.alert('商品已删除');
+		if (String(productForm.value.id || '') === String(item.id)) {
+			resetProduct();
+		}
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '商品删除失败');
 	}
-	await reload();
 }
 
 async function loadOrder(item) {

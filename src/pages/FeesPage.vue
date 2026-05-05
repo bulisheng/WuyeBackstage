@@ -77,8 +77,8 @@
 					<td><span class="status" :class="item.status">{{ workspace.feeStatusText(item.status) }}</span></td>
 					<td class="actions">
 						<button :disabled="!workspace.canAction('fee:manage')" @click.stop="openEditFeeModal(item)">编辑</button>
-						<button :disabled="!workspace.canAction('fee:remind')" @click.stop="workspace.remindFee(item)">催缴</button>
-						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.removeFee(item)">删除</button>
+						<button :disabled="!workspace.canAction('fee:remind')" @click.stop="openRemindFeeModal(item)">催缴</button>
+						<button v-if="workspace.canAction('fee:manage')" class="danger" :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.removeFee(item)">删除</button>
 					</td>
 				</tr>
 			</tbody>
@@ -271,6 +271,39 @@
 				</div>
 			</div>
 		</div>
+
+		<div v-if="remindModalOpen" class="modal-backdrop" @click.self="closeRemindFeeModal">
+			<div class="modal-shell" role="dialog" aria-modal="true" aria-label="账单催缴">
+				<div class="modal-head">
+					<div>
+						<h3>账单催缴</h3>
+						<p>先确认催缴方式和手机号，再创建催缴记录。</p>
+					</div>
+					<button class="icon-button" type="button" @click="closeRemindFeeModal">关闭</button>
+				</div>
+				<div class="modal-body">
+					<div class="detail-grid remind-preview">
+						<div><strong>账单</strong><p>{{ remindTarget?.title || remindTarget?.billNo || '-' }}</p></div>
+						<div><strong>业主</strong><p>{{ remindTarget?.ownerName || '-' }}</p></div>
+						<div><strong>手机号</strong><p>{{ remindTarget?.ownerMobile || '-' }}</p></div>
+						<div><strong>房屋</strong><p>{{ remindTarget?.house || '-' }}</p></div>
+					</div>
+					<div class="form-grid">
+						<label class="field full">
+							<span>催缴方式</span>
+							<select v-model="remindChannel">
+								<option value="phone_task">电话催缴</option>
+								<option value="sms">短信催缴</option>
+							</select>
+						</label>
+					</div>
+				</div>
+				<div class="modal-actions">
+					<button type="button" @click="closeRemindFeeModal">取消</button>
+					<button class="primary" type="button" :disabled="!remindTarget" @click="sendFeeReminder">确认催缴</button>
+				</div>
+			</div>
+		</div>
 	</section>
 </template>
 
@@ -288,6 +321,9 @@ const paymentStatus = ref('');
 const operationNotice = ref('');
 const feeModalOpen = ref(false);
 const feeModalTitle = computed(() => workspace.editingFeeId ? '编辑账单' : '新增账单');
+const remindModalOpen = ref(false);
+const remindTarget = ref(null);
+const remindChannel = ref('phone_task');
 
 const filteredFees = computed(() => workspace.fees.filter((item) => {
 	const text = `${item.billNo || ''} ${item.ownerName || ''} ${item.ownerMobile || ''} ${item.house || ''} ${item.title || ''}`.toLowerCase();
@@ -375,6 +411,18 @@ function closeFeeModal() {
 	workspace.resetFeeForm();
 }
 
+function openRemindFeeModal(item) {
+	remindTarget.value = item || null;
+	remindChannel.value = 'phone_task';
+	remindModalOpen.value = true;
+}
+
+function closeRemindFeeModal() {
+	remindModalOpen.value = false;
+	remindTarget.value = null;
+	remindChannel.value = 'phone_task';
+}
+
 async function handleSaveFee() {
 	const result = await workspace.saveFee();
 	if (!result) return;
@@ -410,6 +458,14 @@ async function handleReconcileFees() {
 	if (!result) return;
 	const summary = result.summary || {};
 	operationNotice.value = `对账完成：共 ${summary.totalBills || 0} 笔账单，发现 ${summary.anomalyCount || 0} 条异常。`;
+}
+
+async function sendFeeReminder() {
+	if (!remindTarget.value) return;
+	const result = await workspace.remindFee(remindTarget.value, remindChannel.value);
+	if (result) {
+		closeRemindFeeModal();
+	}
 }
 </script>
 

@@ -711,8 +711,13 @@ async function toggleCommunityActive(item) {
 async function removeCommunity(item) {
 	const confirmed = window.confirm(`确认删除/停用小区「${buildCommunityLabel(item)}」？`);
 	if (!confirmed) return;
-	await adminApi.deleteCommunity(item.id);
-	await reload();
+	try {
+		await adminApi.deleteCommunity(item.id);
+		window.alert(`小区「${buildCommunityLabel(item)}」已删除`);
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '小区删除失败');
+	}
 }
 
 async function auditOwner(owner, auditStatus) {
@@ -865,8 +870,13 @@ async function savePermission() {
 async function removePermission(item) {
 	const confirmed = window.confirm(`确认删除权限记录「${item.mobileMasked || item.mobile || item.username} / ${item.communityName}」？`);
 	if (!confirmed) return;
-	await adminApi.deletePermission(item.id);
-	await reload();
+	try {
+		await adminApi.deletePermission(item.id);
+		window.alert('权限记录已删除');
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '权限记录删除失败');
+	}
 }
 
 async function loadPermissionTables() {
@@ -1043,18 +1053,36 @@ async function resolveFeeOwnerByMobile(mobileValue = feeForm.value.ownerMobile, 
 async function removeFee(item) {
 	const confirmed = window.confirm(`确认删除账单「${item.billNo || item.title}」？`);
 	if (!confirmed) return;
-	await adminApi.deleteFee(item.id);
-	await reload();
+	try {
+		await adminApi.deleteFee(item.id);
+		window.alert(`账单「${item.billNo || item.title || item.id}」已删除`);
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '账单删除失败');
+	}
 }
 
-async function remindFee(item) {
-	await adminApi.remindFee({
-		id: item.id,
-		title: item.title,
-		content: `您有一笔待缴账单：${item.title || item.billNo || ''}`,
-		sendNow: true
-	});
-	window.alert('已创建催缴记录');
+async function remindFee(item, channel = 'phone_task') {
+	const nextChannel = String(channel || 'phone_task').trim() || 'phone_task';
+	const channelLabel = {
+		phone_task: '电话催缴',
+		sms: '短信催缴',
+		system: '系统催缴'
+	}[nextChannel] || nextChannel;
+	try {
+		const result = await adminApi.remindFee({
+			id: item.id,
+			channel: nextChannel,
+			title: `${channelLabel}：${item.title || item.billNo || ''}`,
+			content: `催缴方式：${channelLabel}；业主：${item.ownerName || '未填写'}；手机号：${item.ownerMobile || '未填写'}；房屋：${item.house || '未填写'}；账单：${item.title || item.billNo || item.id}`,
+			sendNow: true
+		});
+		window.alert(`已创建${channelLabel}记录`);
+		return result;
+	} catch (err) {
+		window.alert(err.message || '催缴创建失败');
+		return null;
+	}
 }
 
 async function importFeesFromText() {
@@ -1205,11 +1233,16 @@ async function saveRepairStaff() {
 async function removeRepairStaff(item) {
 	const confirmed = window.confirm(`确认删除维修人员「${item.name || item.mobile || item.id}」？`);
 	if (!confirmed) return;
-	await adminApi.repairStaffDelete(item.id);
-	if (String(editingRepairStaffId.value || '') === String(item.id)) {
-		resetRepairStaffForm();
+	try {
+		await adminApi.repairStaffDelete(item.id);
+		window.alert('维修人员已删除');
+		if (String(editingRepairStaffId.value || '') === String(item.id)) {
+			resetRepairStaffForm();
+		}
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '维修人员删除失败');
 	}
-	await reload();
 }
 
 function editPropertyStaff(item) {
@@ -1255,11 +1288,16 @@ async function savePropertyStaff() {
 async function removePropertyStaff(item) {
 	const confirmed = window.confirm(`确认删除物业人员「${item.name || item.mobile || item.id}」？`);
 	if (!confirmed) return;
-	await adminApi.staffDelete(item.id);
-	if (String(editingPropertyStaffId.value || '') === String(item.id)) {
-		resetPropertyStaffForm();
+	try {
+		await adminApi.staffDelete(item.id);
+		window.alert('物业人员已删除');
+		if (String(editingPropertyStaffId.value || '') === String(item.id)) {
+			resetPropertyStaffForm();
+		}
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '物业人员删除失败');
 	}
-	await reload();
 }
 
 async function scanRepairSla() {
@@ -1326,8 +1364,13 @@ async function saveNoticeConfig() {
 async function removeNoticeConfig(item) {
 	const confirmed = window.confirm(`确认删除通知配置「${item.scene || item.templateName || item.id}」？`);
 	if (!confirmed) return;
-	await adminApi.noticeConfigDelete(item.id);
-	await reload();
+	try {
+		await adminApi.noticeConfigDelete(item.id);
+		window.alert('通知配置已删除');
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '通知配置删除失败');
+	}
 }
 
 async function sendNotice() {

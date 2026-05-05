@@ -97,7 +97,7 @@
 						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
 						<td class="actions">
 							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="openNoticeConfigModal(item)">编辑</button>
-							<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
+							<button v-if="workspace.canAction('notice:publish')" class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
 						</td>
 					</tr>
 				</tbody>

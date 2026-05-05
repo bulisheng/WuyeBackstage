@@ -24,7 +24,7 @@
 						<td>{{ statusText(item.status) }}</td>
 						<td class="actions">
 							<button @click="openActivityModal(item)">编辑</button>
-							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
+							<button v-if="workspace.canAction('activity:manage')" @click="remove(item)">删除</button>
 							<button @click="loadSignups(item)">报名</button>
 						</td>
 					</tr>
@@ -140,13 +140,18 @@ async function save() {
 
 async function remove(item) {
 	if (!window.confirm(`确认归档活动「${item.title}」？`)) return;
-	await adminApi.activityDelete(item.id);
-	if (selectedActivityId.value === item.id) {
-		selectedActivityId.value = '';
-		selectedActivityTitle.value = '';
-		signups.value = [];
+	try {
+		await adminApi.activityDelete(item.id);
+		window.alert('活动已归档');
+		if (selectedActivityId.value === item.id) {
+			selectedActivityId.value = '';
+			selectedActivityTitle.value = '';
+			signups.value = [];
+		}
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '活动删除失败');
 	}
-	await reload();
 }
 
 async function loadSignups(item) {

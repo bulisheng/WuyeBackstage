@@ -35,7 +35,7 @@
 						<td>{{ item.assignee || '-' }}</td>
 						<td>{{ item.createdAt || '-' }}</td>
 						<td class="actions">
-							<button v-if="workspace.canShowDeleteButton" @click.stop="deleteItem(item)">删除</button>
+							<button v-if="canDeleteItem()" @click.stop="deleteItem(item)">删除</button>
 						</td>
 					</tr>
 					<tr v-if="!list.length">
@@ -175,7 +175,6 @@ async function submitAction() {
 }
 
 async function deleteItem(item) {
-	if (!workspace.canShowDeleteButton) return;
 	const confirmed = window.confirm(`确认删除「${item.title || item.serviceType || item.question || item.id}」？`);
 	if (!confirmed) return;
 	const deleteMap = {
@@ -183,11 +182,23 @@ async function deleteItem(item) {
 		property_service: adminApi.serviceDelete,
 		customer_service: adminApi.customerDelete
 	};
-	await deleteMap[workspace.activeRoute](item.id);
-	if (selectedId.value === item.id) {
-		closeDetail();
+	try {
+		await deleteMap[workspace.activeRoute](item.id);
+		window.alert(`${meta.value.title}已删除`);
+		if (selectedId.value === item.id) {
+			closeDetail();
+		}
+		await loadList();
+	} catch (err) {
+		window.alert(err.message || '删除失败');
 	}
-	await loadList();
+}
+
+function canDeleteItem() {
+	if (workspace.activeRoute === 'complaints') return workspace.canAction('complaint:delete');
+	if (workspace.activeRoute === 'property_service') return workspace.canAction('service:delete');
+	if (workspace.activeRoute === 'customer_service') return workspace.canAction('customer:delete');
+	return false;
 }
 
 onMounted(loadList);

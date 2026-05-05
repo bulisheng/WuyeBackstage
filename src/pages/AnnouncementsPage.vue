@@ -22,7 +22,7 @@
 						<td>{{ item.publishAt || item.createdAt || '-' }}</td>
 						<td class="actions">
 							<button @click="openAnnouncementModal(item)">编辑</button>
-							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
+							<button v-if="workspace.canAction('announcement:delete')" @click="remove(item)">删除</button>
 						</td>
 					</tr>
 					<tr v-if="!list.length"><td colspan="5" class="empty-cell">当前暂无公告。</td></tr>
@@ -105,8 +105,13 @@ async function saveAnnouncement() {
 
 async function remove(item) {
 	if (!window.confirm(`确认删除公告「${item.title}」？`)) return;
-	await adminApi.deleteAnnouncement(item.id);
-	await loadList();
+	try {
+		await adminApi.deleteAnnouncement(item.id);
+		window.alert('公告已删除');
+		await loadList();
+	} catch (err) {
+		window.alert(err.message || '公告删除失败');
+	}
 }
 
 function closeAnnouncementModal() {

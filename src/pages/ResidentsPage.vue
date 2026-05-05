@@ -88,7 +88,7 @@
 						<button :disabled="!canManage(item)" @click.stop="editResident(item)">编辑</button>
 						<button :disabled="!canManage(item)" @click.stop="changeResidentMobile(item)">换手机号</button>
 						<button :disabled="!canManage(item)" @click.stop="changeResidentHouse(item)">换房号</button>
-						<button v-if="workspace.canShowDeleteButton" :disabled="!canManage(item)" @click.stop="deleteResident(item)" class="danger">删除</button>
+						<button v-if="canManage(item)" :disabled="!canManage(item)" @click.stop="deleteResident(item)" class="danger">删除</button>
 					</td>
 				</tr>
 			</tbody>

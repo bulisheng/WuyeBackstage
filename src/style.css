@@ -71,6 +71,7 @@ p {
 	display: grid;
 	grid-template-columns: 272px minmax(0, 1fr);
 	position: relative;
+	overflow-x: hidden;
 }
 
 .layout::before {
@@ -226,6 +227,8 @@ p {
 	padding: 28px;
 	position: relative;
 	z-index: 1;
+	min-width: 0;
+	overflow-x: hidden;
 }
 
 .login-main {
@@ -691,6 +694,7 @@ p {
 .table-card {
 	display: grid;
 	gap: 16px;
+	min-width: 0;
 }
 
 .detail-card {
@@ -1385,4 +1389,3 @@ tr:hover td {
 		display: grid;
 	}
 }
-
