@@ -8,26 +8,10 @@
 			<div class="form-actions compact">
 				<button type="button" @click="showActivityList = !showActivityList">{{ showActivityList ? '收起活动列表' : '展开活动列表' }}</button>
 				<button type="button" @click="showSignupList = !showSignupList">{{ showSignupList ? '收起报名记录' : '展开报名记录' }}</button>
-				<button class="primary" type="button" @click="reload">重新加载</button>
+				<button type="button" @click="reload">重新加载</button>
+				<button class="primary" type="button" @click="openActivityModal()">新增活动</button>
 			</div>
 		</div>
-
-		<DetailCard title="活动编辑" subtitle="保存后会同步到活动列表">
-			<div class="form-grid">
-				<label><span>标题</span><input v-model="form.title" placeholder="活动标题" /></label>
-				<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
-				<label><span>地点</span><input v-model="form.location" placeholder="活动地点" /></label>
-				<label><span>名额</span><input v-model.number="form.capacity" type="number" min="0" /></label>
-				<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒" /></label>
-				<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒" /></label>
-				<label class="full"><span>摘要</span><input v-model="form.summary" placeholder="摘要" /></label>
-				<label class="full"><span>内容</span><textarea v-model="form.content" rows="4" placeholder="活动说明"></textarea></label>
-			</div>
-			<div class="form-actions">
-				<button class="primary" type="button" @click="save">保存活动</button>
-				<button type="button" @click="reset">重置</button>
-			</div>
-		</DetailCard>
 
 		<DetailCard title="活动列表" subtitle="点击行可加载对应报名记录">
 			<table v-show="showActivityList">
@@ -39,7 +23,7 @@
 						<td>{{ item.joinedCount }} / {{ item.capacity || '不限' }}</td>
 						<td>{{ statusText(item.status) }}</td>
 						<td class="actions">
-							<button @click="edit(item)">编辑</button>
+							<button @click="openActivityModal(item)">编辑</button>
 							<button v-if="workspace.canShowDeleteButton" @click="remove(item)">删除</button>
 							<button @click="loadSignups(item)">报名</button>
 						</td>
@@ -67,12 +51,30 @@
 				</tbody>
 			</table>
 		</DetailCard>
+
+		<ModalDialog v-if="activityModalOpen" :title="activityModalTitle" subtitle="保存后会同步到活动列表" @close="closeActivityModal">
+			<div class="form-grid">
+				<label><span>标题</span><input v-model="form.title" placeholder="活动标题" /></label>
+				<label><span>状态</span><select v-model="form.status"><option value="published">发布</option><option value="draft">草稿</option><option value="closed">关闭</option><option value="archived">归档</option></select></label>
+				<label><span>地点</span><input v-model="form.location" placeholder="活动地点" /></label>
+				<label><span>名额</span><input v-model.number="form.capacity" type="number" min="0" /></label>
+				<label><span>开始时间</span><input v-model="form.startAt" placeholder="年-月-日 时:分:秒" /></label>
+				<label><span>结束时间</span><input v-model="form.endAt" placeholder="年-月-日 时:分:秒" /></label>
+				<label class="full"><span>摘要</span><input v-model="form.summary" placeholder="摘要" /></label>
+				<label class="full"><span>内容</span><textarea v-model="form.content" rows="4" placeholder="活动说明"></textarea></label>
+			</div>
+			<template #actions>
+				<button type="button" @click="closeActivityModal">取消</button>
+				<button class="primary" type="button" @click="saveActivity">保存活动</button>
+			</template>
+		</ModalDialog>
 	</section>
 </template>
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import DetailCard from '../components/common/DetailCard.vue';
+import ModalDialog from '../components/common/ModalDialog.vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
@@ -84,6 +86,8 @@ const selectedActivityTitle = ref('');
 const form = ref(emptyForm());
 const showActivityList = ref(true);
 const showSignupList = ref(true);
+const activityModalOpen = ref(false);
+const activityModalTitle = ref('新增活动');
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', content: '', location: '', startAt: '', endAt: '', capacity: 0, status: 'published' };
@@ -107,14 +111,31 @@ function edit(item) {
 	form.value = { id: item.id, title: item.title, summary: item.summary, content: item.content, location: item.location, startAt: item.startAt, endAt: item.endAt, capacity: item.capacity, status: item.status };
 }
 
+function openActivityModal(item = null) {
+	if (item) {
+		edit(item);
+		activityModalTitle.value = '编辑活动';
+	} else {
+		reset();
+		activityModalTitle.value = '新增活动';
+	}
+	activityModalOpen.value = true;
+}
+
 function reset() {
 	form.value = emptyForm();
 }
 
 async function save() {
-	await adminApi.activitySave(form.value);
-	reset();
-	await reload();
+	try {
+		await adminApi.activitySave(form.value);
+		window.alert('活动保存成功');
+		reset();
+		activityModalOpen.value = false;
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '活动保存失败');
+	}
 }
 
 async function remove(item) {
@@ -138,6 +159,16 @@ async function loadSignups(item) {
 async function signupAction(item, action) {
 	await adminApi.activitySignupAction({ id: item.id, action, activityId: selectedActivityId.value });
 	await loadSignups({ id: selectedActivityId.value, title: selectedActivityTitle.value });
+}
+
+function closeActivityModal() {
+	activityModalOpen.value = false;
+	reset();
+	activityModalTitle.value = '新增活动';
+}
+
+async function saveActivity() {
+	await save();
 }
 
 onMounted(reload);

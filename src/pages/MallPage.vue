@@ -45,7 +45,7 @@
 					</tbody>
 				</table>
 			</DetailCard>
-			<DetailCard title="商品编辑" subtitle="保存后会同步到商品列表">
+			<DetailCard title="商品管理" subtitle="新增和编辑都在弹窗中完成">
 				<div class="form-actions">
 					<button class="primary" type="button" @click="openProductModal()">新增商品</button>
 				</div>
