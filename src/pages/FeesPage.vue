@@ -7,11 +7,11 @@
 		<div class="form-actions">
 			<label class="file-action" :class="{ disabled: !workspace.canAction('fee:manage') }">
 				选择表格导入
-				<input type="file" accept=".csv,.txt,.tsv" :disabled="!workspace.canAction('fee:manage')" @change="workspace.importFeesFromFile" />
+				<input type="file" accept=".csv,.txt,.tsv" :disabled="!workspace.canAction('fee:manage')" @change="handleImportFile" />
 			</label>
-			<button :disabled="!workspace.canAction('fee:manage')" @click="workspace.importFeesFromText">导入粘贴表格</button>
-			<button :disabled="!workspace.canAction('fee:export')" @click="workspace.exportFees">导出账单</button>
-			<button :disabled="!workspace.canAction('fee:collect')" @click="workspace.reconcileFees">微信支付对账</button>
+			<button :disabled="!workspace.canAction('fee:manage')" @click="handleImportText">导入粘贴表格</button>
+			<button :disabled="!workspace.canAction('fee:export')" @click="handleExportFees">导出账单</button>
+			<button :disabled="!workspace.canAction('fee:collect')" @click="handleReconcileFees">微信支付对账</button>
 		</div>
 		<div class="filter-row">
 			<label class="field">
@@ -36,9 +36,19 @@
 			</div>
 			<textarea v-model="workspace.feeImportText" rows="6" placeholder="手机号	标题	金额	类型	截止日期&#10;13363280414	2026年5月物业费	188.50	物业费	2026-05-31"></textarea>
 			<p class="field-hint">样例数据统一使用手机号 13363280414；正式导入前请确认该手机号已完成业主认证。</p>
-			<p v-if="workspace.feeImportSummary" class="field-hint">
-				导入结果：成功 {{ workspace.feeImportSummary.created || 0 }} 条，失败 {{ workspace.feeImportSummary.failed || 0 }} 条
-			</p>
+			<div v-if="workspace.feeImportSummary" class="import-summary">
+				<div class="reconcile-summary">
+					<span>新增 {{ workspace.feeImportSummary.created || 0 }} 条</span>
+					<span>更新 {{ workspace.feeImportSummary.updated || 0 }} 条</span>
+					<span>失败 {{ workspace.feeImportSummary.failed || 0 }} 条</span>
+				</div>
+				<p class="field-hint">如果失败较多，先检查手机号、标题和金额是否完整，再重新导入。</p>
+				<ul v-if="importFailureRows.length" class="issue-list">
+					<li v-for="item in importFailureRows" :key="item.key">
+						{{ item.label }}：{{ item.reason }}
+					</li>
+				</ul>
+			</div>
 		</DetailCard>
 		<DetailCard :title="workspace.editingFeeId ? '编辑账单' : '新增账单'" subtitle="保存后会同步到账单列表">
 			<div class="form-grid">
@@ -168,9 +178,16 @@
 			</div>
 		</DetailCard>
 		<DetailCard title="支付流水视图" :subtitle="`${filteredPayments.length} 条`">
-			<p v-if="workspace.feeReconcileResult" class="field-hint">
-				最近对账：共 {{ workspace.feeReconcileResult.summary?.totalBills || 0 }} 笔账单，异常 {{ workspace.feeReconcileResult.summary?.anomalyCount || 0 }} 条
-			</p>
+			<div v-if="workspace.feeReconcileResult" class="import-summary">
+				<div class="reconcile-summary">
+					<span>总账单 {{ workspace.feeReconcileResult.summary?.totalBills || 0 }} 笔</span>
+					<span>异常 {{ workspace.feeReconcileResult.summary?.anomalyCount || 0 }} 条</span>
+					<span>未标记已支付 {{ reconcileIssueStats.notMarkedPaid || 0 }} 条</span>
+					<span>已支付不足额 {{ reconcileIssueStats.paidNotEnough || 0 }} 条</span>
+					<span>实收超额 {{ reconcileIssueStats.overpaid || 0 }} 条</span>
+				</div>
+				<p class="field-hint">{{ reconcileSummaryText }}</p>
+			</div>
 			<table v-if="workspace.feeReconcileResult && workspace.feeReconcileResult.anomalies && workspace.feeReconcileResult.anomalies.length" class="spaced-table">
 				<thead>
 					<tr>
@@ -191,6 +208,7 @@
 					</tr>
 				</tbody>
 			</table>
+			<p v-else-if="workspace.feeReconcileResult" class="empty-text">当前对账未发现金额异常，账单与支付流水可继续保持一致。</p>
 			<div class="filter-row">
 				<label class="field">
 					<span>流水关键词</span>
@@ -233,7 +251,8 @@
 					</tr>
 				</tbody>
 			</table>
-		<p v-if="!filteredPayments.length" class="empty-text">当前暂无匹配的支付流水记录。</p>
+		<p v-if="!filteredPayments.length" class="empty-text">{{ paymentEmptyText }}</p>
+		<p v-if="operationNotice" class="field-hint">{{ operationNotice }}</p>
 		</DetailCard>
 	</section>
 </template>
@@ -249,6 +268,7 @@ const status = ref('');
 const selectedFee = ref(null);
 const paymentKeyword = ref('');
 const paymentStatus = ref('');
+const operationNotice = ref('');
 
 const filteredFees = computed(() => workspace.fees.filter((item) => {
 	const text = `${item.billNo || ''} ${item.ownerName || ''} ${item.ownerMobile || ''} ${item.house || ''} ${item.title || ''}`.toLowerCase();
@@ -265,6 +285,37 @@ const filteredPayments = computed(() => workspace.paymentRecords.filter((item) =
 	const statusMatched = !paymentStatus.value || item.status === paymentStatus.value;
 	return keywordMatched && statusMatched;
 }));
+const importFailureRows = computed(() => (workspace.feeImportResults || [])
+	.filter((item) => item && item.ok === false)
+	.slice(0, 5)
+	.map((item, index) => ({
+		key: `${index}-${item.ownerMobile || item.title || item.reason || 'import'}`,
+		label: item.ownerMobile || item.title || `第 ${index + 1} 条`,
+		reason: item.reason || '导入失败'
+	})));
+const reconcileIssueStats = computed(() => {
+	const anomalies = workspace.feeReconcileResult?.anomalies || [];
+	return anomalies.reduce((acc, item) => {
+		const issue = String(item.issue || '');
+		if (issue.includes('未标记已支付')) acc.notMarkedPaid += 1;
+		else if (issue.includes('金额不足')) acc.paidNotEnough += 1;
+		else if (issue.includes('超过账单金额')) acc.overpaid += 1;
+		return acc;
+	}, { notMarkedPaid: 0, paidNotEnough: 0, overpaid: 0 });
+});
+const reconcileSummaryText = computed(() => {
+	if (!workspace.feeReconcileResult) return '';
+	const anomalies = workspace.feeReconcileResult.anomalies || [];
+	if (!anomalies.length) return '当前对账没有发现金额异常，可以继续按账单和流水核对。';
+	return '先处理“未标记已支付”和“已支付不足额”的账单，再核查超额流水，能最快恢复账实一致。';
+});
+const paymentEmptyText = computed(() => {
+	if (filteredPayments.value.length) return '';
+	if (paymentKeyword.value || paymentStatus.value) {
+		return '当前筛选条件下没有匹配的支付流水，请放宽关键词或状态后再试。';
+	}
+	return '当前暂无支付流水记录，可能还未产生收款数据。';
+});
 
 function paymentStatusText(value) {
 	return {
@@ -288,5 +339,36 @@ async function selectFee(item) {
 async function clearSelectedFee() {
 	selectedFee.value = null;
 	await workspace.selectFee(null);
+}
+
+async function handleImportText() {
+	operationNotice.value = '';
+	const result = await workspace.importFeesFromText();
+	if (!result) return;
+	const summary = result.summary || {};
+	operationNotice.value = `导入完成：新增 ${summary.created || 0} 条，更新 ${summary.updated || 0} 条，失败 ${summary.failed || 0} 条。`;
+}
+
+async function handleImportFile(event) {
+	operationNotice.value = '';
+	const result = await workspace.importFeesFromFile(event);
+	if (!result) return;
+	const summary = result.summary || {};
+	operationNotice.value = `文件导入完成：新增 ${summary.created || 0} 条，更新 ${summary.updated || 0} 条，失败 ${summary.failed || 0} 条。`;
+}
+
+async function handleExportFees() {
+	operationNotice.value = '';
+	const result = await workspace.exportFees();
+	if (!result) return;
+	operationNotice.value = `已导出账单文件：${result.filename || 'fees.csv'}。`;
+}
+
+async function handleReconcileFees() {
+	operationNotice.value = '';
+	const result = await workspace.reconcileFees();
+	if (!result) return;
+	const summary = result.summary || {};
+	operationNotice.value = `对账完成：共 ${summary.totalBills || 0} 笔账单，发现 ${summary.anomalyCount || 0} 条异常。`;
 }
 </script>

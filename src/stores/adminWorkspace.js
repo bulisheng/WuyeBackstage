@@ -92,6 +92,7 @@ const feeSaving = ref(false);
 const feeLookupLoading = ref(false);
 const feeImportText = ref('');
 const feeImportSummary = ref(null);
+const feeImportResults = ref([]);
 const feeReconcileResult = ref(null);
 const noticeConfigs = ref([]);
 const noticeRecords = ref([]);
@@ -646,6 +647,7 @@ async function logoutAdmin() {
 	selectedFeePayments.value = [];
 	feeImportText.value = '';
 	feeImportSummary.value = null;
+	feeImportResults.value = [];
 	feeReconcileResult.value = null;
 	noticeConfigs.value = [];
 	noticeRecords.value = [];
@@ -1036,12 +1038,14 @@ async function importFeesFromText() {
 	const rows = parsePastedTable(feeImportText.value);
 	if (!rows.length) {
 		window.alert('请先粘贴账单数据');
-		return;
+		return null;
 	}
 	const result = await adminApi.feeImport({ rows });
 	feeImportSummary.value = result.summary || null;
+	feeImportResults.value = result.results || [];
 	fees.value = result.list || fees.value;
 	await loadFeePayments();
+	return result;
 }
 
 function fillFeeImportExample() {
@@ -1050,22 +1054,26 @@ function fillFeeImportExample() {
 
 async function importFeesFromFile(event) {
 	const file = event && event.target && event.target.files ? event.target.files[0] : null;
-	if (!file) return;
+	if (!file) return null;
 	const text = await file.text();
 	feeImportText.value = text;
-	await importFeesFromText();
-	event.target.value = '';
+	const result = await importFeesFromText();
+	if (event && event.target) {
+		event.target.value = '';
+	}
+	return result;
 }
 
 async function exportFees() {
 	const result = await adminApi.feeExport();
 	downloadTextFile(result.filename, result.content, result.contentType);
+	return result;
 }
 
 async function reconcileFees() {
 	const result = await adminApi.feeReconcile();
 	feeReconcileResult.value = result;
-	window.alert(`对账完成，异常 ${result.summary?.anomalyCount || 0} 条`);
+	return result;
 }
 
 async function selectFee(item) {
@@ -1335,6 +1343,10 @@ async function reload() {
 		selectedFeeId.value = '';
 		paymentRecords.value = [];
 		selectedFeePayments.value = [];
+		feeImportText.value = '';
+		feeImportSummary.value = null;
+		feeImportResults.value = [];
+		feeReconcileResult.value = null;
 		propertyStaff.value = [];
 		repairStaff.value = [];
 		repairSlaSummary.value = null;
@@ -1477,6 +1489,7 @@ export function useAdminWorkspaceStore() {
 		feeLookupLoading,
 		feeImportText,
 		feeImportSummary,
+		feeImportResults,
 		feeReconcileResult,
 		noticeConfigs,
 		noticeRecords,

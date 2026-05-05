@@ -5,6 +5,16 @@
 				<span class="eyebrow">运营总览</span>
 				<h2>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请先选择小区' }}</h2>
 				<p>统一查看收费、报修、服务、客服和通知概况，按优先级处理相关明细。</p>
+				<div class="hero-stats">
+					<span class="hero-stat-chip"><strong>{{ totalTodoCount }}</strong> 项待办</span>
+					<span class="hero-stat-chip"><strong>{{ staffTodoGroups.length }}</strong> 个负责人分组</span>
+					<span class="hero-stat-chip"><strong>{{ workspace.activeCommunities.length }}</strong> 个启用小区</span>
+				</div>
+				<div class="hero-actions">
+					<button class="primary" type="button" @click="workspace.navigate('repairs')">查看报修</button>
+					<button type="button" @click="workspace.navigate('fees')">费用处理</button>
+					<button type="button" @click="workspace.navigate('notices')">通知中心</button>
+				</div>
 			</div>
 			<div class="hero-number">
 				<span>待办总数</span>
@@ -15,6 +25,13 @@
 			<article v-for="item in workspace.stats" :key="item.label" class="metric">
 				<span>{{ item.label }}</span>
 				<strong>{{ item.value }}</strong>
+			</article>
+		</section>
+		<section class="priority-strip">
+			<article v-for="item in priorityRows" :key="item.key" class="priority-card clickable" @click="workspace.navigate(item.route)">
+				<span>{{ item.title }}</span>
+				<strong>{{ item.count }}</strong>
+				<p>{{ item.note }}</p>
 			</article>
 		</section>
 		<DetailCard title="风险概览" subtitle="展示当前小区关键指标">
@@ -117,6 +134,54 @@ const serviceTodos = computed(() => workspace.dashboardTodoLists.services || [])
 const customerTodos = computed(() => workspace.dashboardTodoLists.customers || []);
 const staffTodoGroups = computed(() => workspace.dashboardStaffTodos || []);
 const totalTodoCount = computed(() => workspace.dashboardTodos.reduce((sum, item) => sum + Number(item.count || 0), 0));
+const priorityRows = computed(() => {
+	const stats = workspace.dashboardCrossModuleStats || {};
+	const ownerPending = Number(stats.owners?.pending || 0);
+	const unpaidBills = Number(stats.fees?.unpaid || 0);
+	const unpaidAmount = Number(stats.fees?.unpaidAmount || 0);
+	const repairOpen = Number(stats.repairs?.open || 0);
+	const repairTimeout = Number(stats.repairs?.timeout || 0);
+	const noticeFailed = Number(stats.notices?.failed || 0);
+	const noticePending = Number(stats.notices?.pending || 0);
+	const operationsCount = Number(stats.operations?.complaints || 0) + Number(stats.operations?.services || 0) + Number(stats.operations?.customerTickets || 0);
+	return [
+		{
+			key: 'owners',
+			title: '待审核业主',
+			count: ownerPending,
+			note: ownerPending ? `还有 ${ownerPending} 户等待认证` : '当前没有待审核业主',
+			route: 'owners'
+		},
+		{
+			key: 'fees',
+			title: '待缴账单',
+			count: unpaidBills,
+			note: unpaidBills ? `合计 ${workspace.money(unpaidAmount)} 待收` : '当前没有待缴账单',
+			route: 'fees'
+		},
+		{
+			key: 'repairs',
+			title: '报修异常',
+			count: repairOpen + repairTimeout,
+			note: `处理中 ${repairOpen} 单，超时/升级 ${repairTimeout} 单`,
+			route: 'repairs'
+		},
+		{
+			key: 'notices',
+			title: '通知异常',
+			count: noticeFailed + noticePending,
+			note: `失败 ${noticeFailed} 条，待发送 ${noticePending} 条`,
+			route: 'notices'
+		},
+		{
+			key: 'operations',
+			title: '运营事项',
+			count: operationsCount,
+			note: '投诉、物业服务、客服待办合并查看',
+			route: 'complaints'
+		}
+	];
+});
 const visualRows = computed(() => {
 	const stats = workspace.dashboardCrossModuleStats || {};
 	const ownerTotal = Number(stats.owners?.total || 0);
@@ -182,3 +247,74 @@ function channelText(channel) {
 	}[channel] || channel || '-';
 }
 </script>
+
+<style scoped>
+.priority-strip {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	margin: 12px 0 16px;
+}
+
+.priority-card {
+	padding: 14px;
+	border-radius: 16px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 248, 252, 0.94));
+	border: 1px solid rgba(114, 137, 176, 0.16);
+	box-shadow: 0 10px 24px rgba(26, 34, 56, 0.06);
+	cursor: pointer;
+	transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.priority-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 16px 28px rgba(26, 34, 56, 0.1);
+}
+
+.priority-card span,
+.priority-card p {
+	display: block;
+}
+
+.priority-card span {
+	font-size: 12px;
+	color: #6b7280;
+	margin-bottom: 8px;
+}
+
+.priority-card strong {
+	display: block;
+	font-size: 26px;
+	line-height: 1.1;
+	color: #0f172a;
+}
+
+.priority-card p {
+	margin: 8px 0 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #475569;
+}
+
+.clickable {
+	cursor: pointer;
+}
+
+.muted-line {
+	margin: 6px 0 0;
+	color: #64748b;
+	font-size: 13px;
+}
+
+.empty-text {
+	margin: 10px 0 0;
+	color: #94a3b8;
+	font-size: 13px;
+}
+
+@media (max-width: 768px) {
+	.priority-strip {
+		grid-template-columns: 1fr;
+	}
+}
+</style>
