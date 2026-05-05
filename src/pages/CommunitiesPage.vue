@@ -71,7 +71,7 @@
 			<template #actions>
 				<button type="button" @click="closeCommunityModal">取消</button>
 				<button class="primary" :disabled="!workspace.canAction('community:edit')" @click="saveCommunity">
-					{{ workspace.editingCommunityId ? '保存修改' : '新增小区' }}
+					{{ workspace.editingCommunityId ? '保存' : '新增小区' }}
 				</button>
 			</template>
 		</ModalDialog>

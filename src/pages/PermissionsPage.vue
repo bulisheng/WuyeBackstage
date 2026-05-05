@@ -118,7 +118,7 @@
 					<template #actions>
 						<button type="button" @click="closeAdminModal">取消</button>
 						<button class="primary" :disabled="!workspace.canAction('admin:user:manage')" @click="saveAdmin">
-							{{ workspace.editingAdminId ? '保存管理员' : '新增管理员' }}
+							{{ workspace.editingAdminId ? '保存' : '新增管理员' }}
 						</button>
 					</template>
 				</ModalDialog>
@@ -193,7 +193,7 @@
 					<template #actions>
 						<button type="button" @click="closePermissionModal">取消</button>
 						<button class="primary" :disabled="!workspace.canAction('admin:permission:manage')" @click="savePermission">
-							{{ workspace.editingPermissionId ? '保存权限' : '新增权限' }}
+							{{ workspace.editingPermissionId ? '保存' : '新增权限' }}
 						</button>
 					</template>
 				</ModalDialog>
@@ -204,7 +204,7 @@
 				<DetailCard title="当前小区模块开关" :subtitle="workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '请先选择小区'" cardClass="permission-card span-2">
 					<div v-if="!workspace.activeCommunity" class="empty-state">
 						<div class="empty-title">请先在顶部选择小区。</div>
-						<span class="subtle">模块开关按小区保存，新建小区默认全部开启。</span>
+						<span class="subtle">模块开关按小区保存，新增小区默认全部开启。</span>
 					</div>
 					<template v-else>
 						<div class="module-actions">

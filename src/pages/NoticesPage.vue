@@ -227,7 +227,7 @@
 			<template #actions>
 				<button type="button" @click="closeNoticeConfigModal">取消</button>
 				<button class="primary" :disabled="!workspace.canAction('notice:publish')" @click="saveNoticeConfig">
-					{{ workspace.editingNoticeConfigId ? '保存配置' : '新增配置' }}
+					{{ workspace.editingNoticeConfigId ? '保存' : '新增配置' }}
 				</button>
 			</template>
 		</ModalDialog>

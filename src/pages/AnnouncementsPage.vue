@@ -41,7 +41,7 @@
 			</div>
 			<template #actions>
 				<button type="button" @click="closeAnnouncementModal">取消</button>
-				<button class="primary" type="button" @click="saveAnnouncement">保存公告</button>
+				<button class="primary" type="button" @click="saveAnnouncement">保存</button>
 			</template>
 		</ModalDialog>
 	</section>
@@ -58,7 +58,7 @@ const workspace = useAdminWorkspaceStore();
 const list = ref([]);
 const form = ref(emptyForm());
 const announcementModalOpen = ref(false);
-const announcementModalTitle = computed(() => form.value.id ? '编辑公告' : '新建公告');
+const announcementModalTitle = computed(() => form.value.id ? '编辑公告' : '新增公告');
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', content: '', status: 'published', isPinned: 1, sort: 0 };

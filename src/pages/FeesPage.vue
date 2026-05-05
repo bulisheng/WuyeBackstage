@@ -266,7 +266,7 @@
 				<div class="modal-actions">
 					<button type="button" @click="closeFeeModal">取消</button>
 					<button class="primary" :disabled="!workspace.canAction('fee:manage') || workspace.feeSaving || workspace.feeLookupLoading" @click="handleSaveFee">
-						{{ workspace.editingFeeId ? '保存账单' : '新增账单' }}
+						{{ workspace.editingFeeId ? '保存' : '新增账单' }}
 					</button>
 				</div>
 			</div>

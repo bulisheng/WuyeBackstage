@@ -147,7 +147,7 @@
 			</div>
 			<template #actions>
 				<button type="button" @click="closeCategoryModal">取消</button>
-				<button class="primary" type="button" @click="saveCategory">{{ editingCategoryId ? '保存分类' : '新增分类' }}</button>
+				<button class="primary" type="button" @click="saveCategory">{{ editingCategoryId ? '保存' : '新增分类' }}</button>
 			</template>
 		</ModalDialog>
 
@@ -165,7 +165,7 @@
 			</div>
 			<template #actions>
 				<button type="button" @click="closeProductModal">取消</button>
-				<button class="primary" type="button" @click="saveProduct">保存商品</button>
+				<button class="primary" type="button" @click="saveProduct">保存</button>
 			</template>
 		</ModalDialog>
 	</section>

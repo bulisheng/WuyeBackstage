@@ -40,7 +40,7 @@
 			</div>
 			<template #actions>
 				<button type="button" @click="closeFaqModal">取消</button>
-				<button class="primary" type="button" @click="saveFaq">保存常见问题</button>
+				<button class="primary" type="button" @click="saveFaq">保存</button>
 			</template>
 		</ModalDialog>
 	</section>
@@ -57,7 +57,7 @@ const workspace = useAdminWorkspaceStore();
 const list = ref([]);
 const form = ref(emptyForm());
 const faqModalOpen = ref(false);
-const faqModalTitle = computed(() => form.value.id ? '编辑常见问题' : '新建常见问题');
+const faqModalTitle = computed(() => form.value.id ? '编辑常见问题' : '新增常见问题');
 
 function emptyForm() {
 	return { id: '', question: '', keywords: '', answer: '', enabled: 1, sort: 0 };

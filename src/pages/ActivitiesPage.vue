@@ -65,7 +65,7 @@
 			</div>
 			<template #actions>
 				<button type="button" @click="closeActivityModal">取消</button>
-				<button class="primary" type="button" @click="saveActivity">保存活动</button>
+				<button class="primary" type="button" @click="saveActivity">保存</button>
 			</template>
 		</ModalDialog>
 	</section>

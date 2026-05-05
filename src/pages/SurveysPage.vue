@@ -50,7 +50,7 @@
 			</div>
 			<template #actions>
 				<button type="button" @click="closeSurveyModal">取消</button>
-				<button class="primary" type="button" @click="saveSurvey">保存调研</button>
+				<button class="primary" type="button" @click="saveSurvey">保存</button>
 			</template>
 		</ModalDialog>
 	</section>
@@ -68,7 +68,7 @@ const list = ref([]);
 const form = ref(emptyForm());
 const showList = ref(true);
 const surveyModalOpen = ref(false);
-const surveyModalTitle = computed(() => form.value.id ? '编辑调研' : '新建调研');
+const surveyModalTitle = computed(() => form.value.id ? '编辑调研' : '新增调研');
 
 function emptyForm() {
 	return { id: '', title: '', summary: '', externalUrl: '', miniAppId: '', miniPath: '', status: 'published', sort: 100, startAt: '', endAt: '' };

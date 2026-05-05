@@ -87,7 +87,7 @@
 					<textarea v-model="actionForm.reply" :placeholder="actionForm.action === 'followup' ? '填写回访结果、住户反馈和满意度情况' : '填写处理说明，将记录到工单日志'"></textarea>
 				</label>
 			</div>
-			<button class="primary" type="button" @click="submitAction">保存处理</button>
+			<button class="primary" type="button" @click="submitAction">提交处理</button>
 
 			<div class="timeline">
 				<h4>处理记录</h4>

@@ -86,7 +86,7 @@
 			<template #actions>
 				<button type="button" @click="closeStaffModal">取消</button>
 				<button class="primary" :disabled="!workspace.canAction('staff:manage')" @click="saveStaff">
-					{{ workspace.editingPropertyStaffId ? '保存人员' : '新增人员' }}
+					{{ workspace.editingPropertyStaffId ? '保存' : '新增人员' }}
 				</button>
 			</template>
 		</ModalDialog>

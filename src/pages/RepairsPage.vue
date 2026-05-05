@@ -53,7 +53,7 @@
 
 		<DetailCard
 			v-if="workspace.repairDetail"
-			title="基础信息编辑"
+			title="工单基础信息"
 			:subtitle="workspace.repairDetail.title || '工单详情'"
 		>
 			<template #actions>
@@ -77,7 +77,7 @@
 				<div class="wide"><strong>描述</strong><textarea v-model="workspace.repairActionForm.desc" rows="4" placeholder="同步修改报修描述"></textarea></div>
 			</div>
 			<div class="form-actions">
-				<button class="primary" :disabled="!workspace.canAction('repair:update')" @click="workspace.saveRepairAction('edit')">保存基础信息</button>
+				<button class="primary" :disabled="!workspace.canAction('repair:update')" @click="workspace.saveRepairAction('edit')">保存</button>
 				<button :disabled="!workspace.canAction('repair:update')" @click="restoreRepairDraft">恢复原值</button>
 			</div>
 		</DetailCard>
@@ -177,7 +177,7 @@
 			<template #actions>
 				<button type="button" @click="closeRepairStaffModal">取消</button>
 				<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="saveRepairStaff">
-					{{ workspace.editingRepairStaffId ? '保存档案' : '新增档案' }}
+					{{ workspace.editingRepairStaffId ? '保存' : '新增档案' }}
 				</button>
 			</template>
 		</ModalDialog>
