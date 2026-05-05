@@ -943,8 +943,10 @@ async function saveFee() {
 		window.alert(`账单已保存${result.billNo ? `，账单号：${result.billNo}` : ''}`);
 		resetFeeForm();
 		await loadFeePayments();
+		return result;
 	} catch (err) {
 		window.alert(err.message || '保存账单失败');
+		return null;
 	} finally {
 		feeSaving.value = false;
 	}

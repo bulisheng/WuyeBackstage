@@ -13,6 +13,9 @@
 			<button :disabled="!workspace.canAction('fee:export')" @click="handleExportFees">导出账单</button>
 			<button :disabled="!workspace.canAction('fee:collect')" @click="handleReconcileFees">微信支付对账</button>
 		</div>
+		<div class="form-actions compact">
+			<button class="primary" :disabled="!workspace.canAction('fee:manage')" @click="openCreateFeeModal">新增账单</button>
+		</div>
 		<div class="filter-row">
 			<label class="field">
 				<span>关键词</span>
@@ -50,57 +53,6 @@
 				</ul>
 			</div>
 		</DetailCard>
-		<DetailCard :title="workspace.editingFeeId ? '编辑账单' : '新增账单'" subtitle="保存后会同步到账单列表">
-			<div class="form-grid">
-				<label class="field">
-					<span>账单号</span>
-					<input v-model="workspace.feeForm.billNo" type="text" placeholder="不填则自动生成，系统保证唯一" />
-				</label>
-				<label class="field">
-					<span>标题</span>
-					<input v-model="workspace.feeForm.title" type="text" placeholder="如：2026年4月物业费" />
-				</label>
-				<label class="field">
-					<span>业主手机号</span>
-					<input v-model="workspace.feeForm.ownerMobile" type="text" placeholder="输入手机号后自动查询业主" @blur="workspace.resolveFeeOwnerByMobile()" />
-				</label>
-				<label class="field readonly-field">
-					<span>业主姓名</span>
-					<input :value="workspace.feeForm.ownerName || '输入手机号后自动带出'" type="text" readonly />
-				</label>
-				<label class="field readonly-field">
-					<span>房屋</span>
-					<input :value="workspace.feeForm.house || '输入手机号后自动带出'" type="text" readonly />
-				</label>
-				<label class="field">
-					<span>类型</span>
-					<input v-model="workspace.feeForm.billType" type="text" placeholder="如：物业费 / 停车费" />
-				</label>
-				<label class="field">
-					<span>金额</span>
-					<input v-model.number="workspace.feeForm.amount" type="number" min="0" step="0.01" />
-				</label>
-				<label class="field">
-					<span>状态</span>
-					<select v-model="workspace.feeForm.status">
-						<option value="pending">待支付</option>
-						<option value="paid">已支付</option>
-						<option value="overdue">已逾期</option>
-						<option value="cancelled">已取消</option>
-						<option value="refunded">已退款</option>
-					</select>
-				</label>
-				<label class="field">
-					<span>截止日期</span>
-					<input v-model="workspace.feeForm.dueDate" type="date" />
-				</label>
-			</div>
-			<p class="field-hint">{{ workspace.feeOwnerLookupText }}</p>
-			<div class="form-actions">
-				<button class="primary" :disabled="!workspace.canAction('fee:manage') || workspace.feeSaving || workspace.feeLookupLoading" @click="workspace.saveFee">{{ workspace.editingFeeId ? '保存账单' : '新增账单' }}</button>
-				<button @click="workspace.resetFeeForm">重置</button>
-			</div>
-		</DetailCard>
 		<table>
 			<thead>
 				<tr>
@@ -124,7 +76,7 @@
 					<td>{{ workspace.money(item.amount) }}</td>
 					<td><span class="status" :class="item.status">{{ workspace.feeStatusText(item.status) }}</span></td>
 					<td class="actions">
-						<button :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.editFee(item)">编辑</button>
+						<button :disabled="!workspace.canAction('fee:manage')" @click.stop="openEditFeeModal(item)">编辑</button>
 						<button :disabled="!workspace.canAction('fee:remind')" @click.stop="workspace.remindFee(item)">催缴</button>
 						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('fee:manage')" @click.stop="workspace.removeFee(item)">删除</button>
 					</td>
@@ -251,9 +203,74 @@
 					</tr>
 				</tbody>
 			</table>
-		<p v-if="!filteredPayments.length" class="empty-text">{{ paymentEmptyText }}</p>
+			<p v-if="!filteredPayments.length" class="empty-text">{{ paymentEmptyText }}</p>
 		<p v-if="operationNotice" class="field-hint">{{ operationNotice }}</p>
 		</DetailCard>
+
+		<div v-if="feeModalOpen" class="modal-backdrop" @click.self="closeFeeModal">
+			<div class="modal-shell" role="dialog" aria-modal="true" :aria-label="feeModalTitle">
+				<div class="modal-head">
+					<div>
+						<h3>{{ feeModalTitle }}</h3>
+						<p>保存后会同步到账单列表，成功或失败都会给出提示。</p>
+					</div>
+					<button class="icon-button" type="button" @click="closeFeeModal">关闭</button>
+				</div>
+				<div class="modal-body">
+					<div class="form-grid">
+						<label class="field">
+							<span>账单号</span>
+							<input v-model="workspace.feeForm.billNo" type="text" placeholder="不填则自动生成，系统保证唯一" />
+						</label>
+						<label class="field">
+							<span>标题</span>
+							<input v-model="workspace.feeForm.title" type="text" placeholder="如：2026年4月物业费" />
+						</label>
+						<label class="field">
+							<span>业主手机号</span>
+							<input v-model="workspace.feeForm.ownerMobile" type="text" placeholder="输入手机号后自动查询业主" @blur="workspace.resolveFeeOwnerByMobile()" />
+						</label>
+						<label class="field readonly-field">
+							<span>业主姓名</span>
+							<input :value="workspace.feeForm.ownerName || '输入手机号后自动带出'" type="text" readonly />
+						</label>
+						<label class="field readonly-field">
+							<span>房屋</span>
+							<input :value="workspace.feeForm.house || '输入手机号后自动带出'" type="text" readonly />
+						</label>
+						<label class="field">
+							<span>类型</span>
+							<input v-model="workspace.feeForm.billType" type="text" placeholder="如：物业费 / 停车费" />
+						</label>
+						<label class="field">
+							<span>金额</span>
+							<input v-model.number="workspace.feeForm.amount" type="number" min="0" step="0.01" />
+						</label>
+						<label class="field">
+							<span>状态</span>
+							<select v-model="workspace.feeForm.status">
+								<option value="pending">待支付</option>
+								<option value="paid">已支付</option>
+								<option value="overdue">已逾期</option>
+								<option value="cancelled">已取消</option>
+								<option value="refunded">已退款</option>
+							</select>
+						</label>
+						<label class="field">
+							<span>截止日期</span>
+							<input v-model="workspace.feeForm.dueDate" type="date" />
+						</label>
+					</div>
+					<p class="field-hint">{{ workspace.feeOwnerLookupText }}</p>
+				</div>
+				<div class="modal-actions">
+					<button type="button" @click="closeFeeModal">取消</button>
+					<button class="primary" :disabled="!workspace.canAction('fee:manage') || workspace.feeSaving || workspace.feeLookupLoading" @click="handleSaveFee">
+						{{ workspace.editingFeeId ? '保存账单' : '新增账单' }}
+					</button>
+				</div>
+			</div>
+		</div>
 	</section>
 </template>
 
@@ -269,6 +286,8 @@ const selectedFee = ref(null);
 const paymentKeyword = ref('');
 const paymentStatus = ref('');
 const operationNotice = ref('');
+const feeModalOpen = ref(false);
+const feeModalTitle = computed(() => workspace.editingFeeId ? '编辑账单' : '新增账单');
 
 const filteredFees = computed(() => workspace.fees.filter((item) => {
 	const text = `${item.billNo || ''} ${item.ownerName || ''} ${item.ownerMobile || ''} ${item.house || ''} ${item.title || ''}`.toLowerCase();
@@ -341,6 +360,27 @@ async function clearSelectedFee() {
 	await workspace.selectFee(null);
 }
 
+function openCreateFeeModal() {
+	workspace.resetFeeForm();
+	feeModalOpen.value = true;
+}
+
+function openEditFeeModal(item) {
+	workspace.editFee(item);
+	feeModalOpen.value = true;
+}
+
+function closeFeeModal() {
+	feeModalOpen.value = false;
+	workspace.resetFeeForm();
+}
+
+async function handleSaveFee() {
+	const result = await workspace.saveFee();
+	if (!result) return;
+	feeModalOpen.value = false;
+}
+
 async function handleImportText() {
 	operationNotice.value = '';
 	const result = await workspace.importFeesFromText();
@@ -372,3 +412,89 @@ async function handleReconcileFees() {
 	operationNotice.value = `对账完成：共 ${summary.totalBills || 0} 笔账单，发现 ${summary.anomalyCount || 0} 条异常。`;
 }
 </script>
+
+<style scoped>
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 60;
+	background: rgba(9, 14, 24, 0.52);
+	backdrop-filter: blur(8px);
+	display: grid;
+	place-items: center;
+	padding: 20px;
+}
+
+.modal-shell {
+	width: min(880px, 100%);
+	max-height: min(90vh, 900px);
+	overflow: auto;
+	background: rgba(255, 251, 244, 0.98);
+	border: 1px solid rgba(14, 23, 38, 0.12);
+	border-radius: 24px;
+	box-shadow: 0 28px 72px rgba(18, 26, 39, 0.24);
+	padding: 22px;
+	display: grid;
+	gap: 18px;
+}
+
+.modal-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 16px;
+}
+
+.modal-head h3 {
+	font-size: 20px;
+	line-height: 1.2;
+}
+
+.modal-head p {
+	margin-top: 6px;
+	color: #64748b;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.modal-body {
+	display: grid;
+	gap: 12px;
+}
+
+.modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+.icon-button {
+	border: 1px solid rgba(14, 23, 38, 0.14);
+	background: #fff;
+	border-radius: 999px;
+	padding: 8px 14px;
+}
+
+@media (max-width: 768px) {
+	.modal-backdrop {
+		padding: 12px;
+	}
+
+	.modal-shell {
+		padding: 16px;
+		border-radius: 18px;
+	}
+
+	.modal-head {
+		flex-direction: column;
+	}
+
+	.modal-actions {
+		flex-direction: column-reverse;
+	}
+
+	.modal-actions button {
+		width: 100%;
+	}
+}
+</style>
