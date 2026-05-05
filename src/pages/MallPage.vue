@@ -25,14 +25,9 @@
 
 		<section v-if="activeTab === 'products'" class="stack">
 			<DetailCard title="商品分类" :subtitle="`${categories.length} 个分类`">
-				<div class="form-grid">
-					<label><span>分类名称</span><input v-model="categoryForm.name" placeholder="如：社区严选" /></label>
-					<label><span>排序</span><input v-model.number="categoryForm.sort" type="number" min="0" /></label>
-					<label><span>状态</span><select v-model.number="categoryForm.enabled"><option :value="1">启用</option><option :value="0">停用</option></select></label>
-				</div>
 				<div class="form-actions">
-					<button class="primary" type="button" @click="saveCategory">{{ editingCategoryId ? '保存分类' : '新增分类' }}</button>
-					<button type="button" @click="resetCategory">{{ editingCategoryId ? '取消编辑' : '重置' }}</button>
+					<button class="primary" type="button" @click="openCategoryModal()">新增分类</button>
+					<button type="button" @click="saveDefaultCategory">创建默认分类</button>
 				</div>
 				<table>
 					<thead><tr><th>分类</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
@@ -42,7 +37,7 @@
 							<td>{{ item.sort || 0 }}</td>
 							<td>{{ item.enabled ? '启用' : '停用' }}</td>
 							<td class="actions">
-								<button @click="editCategory(item)">编辑</button>
+								<button @click="openCategoryModal(item)">编辑</button>
 								<button v-if="workspace.canShowDeleteButton" class="danger" @click="deleteCategory(item)">删除</button>
 							</td>
 						</tr>
@@ -51,21 +46,8 @@
 				</table>
 			</DetailCard>
 			<DetailCard title="商品编辑" subtitle="保存后会同步到商品列表">
-				<div class="form-grid">
-					<label><span>商品名称</span><input v-model="productForm.title" placeholder="如：社区优选大米" /></label>
-					<label><span>分类</span><select v-model.number="productForm.categoryId"><option :value="0">未分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
-					<label><span>价格</span><input v-model.number="productForm.price" type="number" min="0" /></label>
-					<label><span>库存</span><input v-model.number="productForm.stock" type="number" min="0" /></label>
-					<label><span>状态</span><select v-model="productForm.status"><option value="on_sale">上架</option><option value="draft">草稿</option><option value="off_sale">下架</option></select></label>
-					<label><span>排序</span><input v-model.number="productForm.sort" type="number" /></label>
-					<label class="full"><span>封面图片链接</span><input v-model="productForm.coverUrl" placeholder="填写图片地址" /></label>
-					<label class="full"><span>摘要</span><input v-model="productForm.subtitle" placeholder="商品卖点" /></label>
-					<label class="full"><span>详情</span><textarea v-model="productForm.description" rows="4" placeholder="商品详情"></textarea></label>
-				</div>
 				<div class="form-actions">
-					<button class="primary" type="button" @click="saveProduct">保存商品</button>
-					<button type="button" @click="resetProduct">重置</button>
-				<button type="button" @click="saveDefaultCategory">创建默认分类</button>
+					<button class="primary" type="button" @click="openProductModal()">新增商品</button>
 				</div>
 			</DetailCard>
 			<div class="table-card">
@@ -79,7 +61,7 @@
 							<td>{{ item.sales }}</td>
 							<td>{{ productStatusText(item.status) }}</td>
 							<td class="actions">
-								<button @click="editProduct(item)">编辑</button>
+								<button @click="openProductModal(item)">编辑</button>
 								<button @click="setProductStatus(item, item.status === 'on_sale' ? 'off_sale' : 'on_sale')">{{ item.status === 'on_sale' ? '下架' : '上架' }}</button>
 								<button v-if="workspace.canShowDeleteButton" class="danger" @click="deleteProduct(item)">删除</button>
 							</td>
@@ -156,12 +138,43 @@
 				</tbody>
 			</table>
 		</section>
+
+		<ModalDialog v-if="categoryModalOpen" :title="categoryModalTitle" subtitle="保存后会同步到商品分类列表" @close="closeCategoryModal">
+			<div class="form-grid">
+				<label><span>分类名称</span><input v-model="categoryForm.name" placeholder="如：社区严选" /></label>
+				<label><span>排序</span><input v-model.number="categoryForm.sort" type="number" min="0" /></label>
+				<label><span>状态</span><select v-model.number="categoryForm.enabled"><option :value="1">启用</option><option :value="0">停用</option></select></label>
+			</div>
+			<template #actions>
+				<button type="button" @click="closeCategoryModal">取消</button>
+				<button class="primary" type="button" @click="saveCategory">{{ editingCategoryId ? '保存分类' : '新增分类' }}</button>
+			</template>
+		</ModalDialog>
+
+		<ModalDialog v-if="productModalOpen" :title="productModalTitle" subtitle="保存后会同步到商品列表" @close="closeProductModal">
+			<div class="form-grid">
+				<label><span>商品名称</span><input v-model="productForm.title" placeholder="如：社区优选大米" /></label>
+				<label><span>分类</span><select v-model.number="productForm.categoryId"><option :value="0">未分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+				<label><span>价格</span><input v-model.number="productForm.price" type="number" min="0" /></label>
+				<label><span>库存</span><input v-model.number="productForm.stock" type="number" min="0" /></label>
+				<label><span>状态</span><select v-model="productForm.status"><option value="on_sale">上架</option><option value="draft">草稿</option><option value="off_sale">下架</option></select></label>
+				<label><span>排序</span><input v-model.number="productForm.sort" type="number" /></label>
+				<label class="full"><span>封面图片链接</span><input v-model="productForm.coverUrl" placeholder="填写图片地址" /></label>
+				<label class="full"><span>摘要</span><input v-model="productForm.subtitle" placeholder="商品卖点" /></label>
+				<label class="full"><span>详情</span><textarea v-model="productForm.description" rows="4" placeholder="商品详情"></textarea></label>
+			</div>
+			<template #actions>
+				<button type="button" @click="closeProductModal">取消</button>
+				<button class="primary" type="button" @click="saveProduct">保存商品</button>
+			</template>
+		</ModalDialog>
 	</section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import DetailCard from '../components/common/DetailCard.vue';
+import ModalDialog from '../components/common/ModalDialog.vue';
 import { adminApi } from '../api/admin.js';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
@@ -176,6 +189,10 @@ const selectedOrder = ref(null);
 const categoryForm = ref(emptyCategory());
 const editingCategoryId = ref('');
 const productForm = ref(emptyProduct());
+const categoryModalOpen = ref(false);
+const productModalOpen = ref(false);
+const categoryModalTitle = computed(() => editingCategoryId.value ? '编辑分类' : '新增分类');
+const productModalTitle = computed(() => productForm.value.id ? '编辑商品' : '新增商品');
 
 function emptyProduct() {
 	return { id: '', title: '', subtitle: '', categoryId: 0, coverUrl: '', price: 0, stock: 0, status: 'on_sale', description: '', sort: 100 };
@@ -257,6 +274,17 @@ function editCategory(item) {
 	};
 }
 
+function openCategoryModal(item = null) {
+	if (item) editCategory(item);
+	else resetCategory();
+	categoryModalOpen.value = true;
+}
+
+function closeCategoryModal() {
+	categoryModalOpen.value = false;
+	resetCategory();
+}
+
 async function saveCategory() {
 	const payload = {
 		id: editingCategoryId.value || undefined,
@@ -268,9 +296,14 @@ async function saveCategory() {
 		window.alert('请输入分类名称');
 		return;
 	}
-	await adminApi.mallCategorySave(payload);
-	resetCategory();
-	await reload();
+	try {
+		await adminApi.mallCategorySave(payload);
+		window.alert('分类保存成功');
+		closeCategoryModal();
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '分类保存失败');
+	}
 }
 
 async function deleteCategory(item) {
@@ -297,10 +330,26 @@ function editProduct(item) {
 	};
 }
 
-async function saveProduct() {
-	await adminApi.mallProductSave(productForm.value);
+function openProductModal(item = null) {
+	if (item) editProduct(item);
+	else resetProduct();
+	productModalOpen.value = true;
+}
+
+function closeProductModal() {
+	productModalOpen.value = false;
 	resetProduct();
-	await reload();
+}
+
+async function saveProduct() {
+	try {
+		await adminApi.mallProductSave(productForm.value);
+		window.alert('商品保存成功');
+		closeProductModal();
+		await reload();
+	} catch (err) {
+		window.alert(err.message || '商品保存失败');
+	}
 }
 
 async function saveDefaultCategory() {
@@ -344,6 +393,8 @@ watch(() => workspace.selectedSchema, async () => {
 	selectedOrder.value = null;
 	resetCategory();
 	resetProduct();
+	categoryModalOpen.value = false;
+	productModalOpen.value = false;
 	await reload();
 });
 </script>

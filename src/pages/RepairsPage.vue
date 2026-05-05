@@ -128,11 +128,34 @@
 			</div>
 		</DetailCard>
 		<p v-if="!workspace.repairDetail" class="empty-text">请在列表中选择工单，查看详情和流转信息。</p>
-		<div class="detail-card">
-			<div class="panel-head compact">
-				<h3>维修人员档案</h3>
-				<span>{{ workspace.repairStaff.length }} 人</span>
-			</div>
+		<div class="form-actions">
+			<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="openRepairStaffModal()">新增档案</button>
+		</div>
+		<table>
+			<thead>
+				<tr>
+					<th>姓名</th>
+					<th>电话</th>
+					<th>技能</th>
+					<th>状态</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for="staff in workspace.repairStaff" :key="staff.id">
+					<td>{{ staff.name }}</td>
+					<td>{{ staff.mobile || '-' }}</td>
+					<td>{{ staff.skillTags || '-' }}</td>
+					<td>{{ staff.active ? '启用' : '停用' }}</td>
+					<td class="actions">
+						<button :disabled="!workspace.canAction('repair:assign')" @click="openRepairStaffModal(staff)">编辑</button>
+						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('repair:assign')" @click="workspace.removeRepairStaff(staff)">删除</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<ModalDialog v-if="repairStaffModalOpen" :title="repairStaffModalTitle" subtitle="保存后会同步到维修人员档案" @close="closeRepairStaffModal">
 			<div class="form-grid">
 				<label class="field">
 					<span>姓名</span>
@@ -151,45 +174,27 @@
 					<span>启用</span>
 				</label>
 			</div>
-			<div class="form-actions">
-				<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="workspace.saveRepairStaff">{{ workspace.editingRepairStaffId ? '保存档案' : '新增档案' }}</button>
-				<button @click="workspace.resetRepairStaffForm">重置</button>
-			</div>
-			<table>
-				<thead>
-					<tr>
-						<th>姓名</th>
-						<th>电话</th>
-						<th>技能</th>
-						<th>状态</th>
-						<th>操作</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr v-for="staff in workspace.repairStaff" :key="staff.id">
-						<td>{{ staff.name }}</td>
-						<td>{{ staff.mobile || '-' }}</td>
-						<td>{{ staff.skillTags || '-' }}</td>
-						<td>{{ staff.active ? '启用' : '停用' }}</td>
-			<td class="actions">
-				<button :disabled="!workspace.canAction('repair:assign')" @click="workspace.editRepairStaff(staff)">编辑</button>
-						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('repair:assign')" @click="workspace.removeRepairStaff(staff)">删除</button>
-			</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
+			<template #actions>
+				<button type="button" @click="closeRepairStaffModal">取消</button>
+				<button class="primary" :disabled="!workspace.canAction('repair:assign')" @click="saveRepairStaff">
+					{{ workspace.editingRepairStaffId ? '保存档案' : '新增档案' }}
+				</button>
+			</template>
+		</ModalDialog>
 	</section>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
 import DetailCard from '../components/common/DetailCard.vue';
+import ModalDialog from '../components/common/ModalDialog.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
 const keyword = ref('');
 const status = ref('');
+const repairStaffModalOpen = ref(false);
+const repairStaffModalTitle = computed(() => workspace.editingRepairStaffId ? '编辑档案' : '新增档案');
 const activeRepairStaff = computed(() => workspace.propertyStaff.filter((item) =>
 	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('repairs') || String(item.moduleKeys).includes('repair'))
 ));
@@ -215,5 +220,23 @@ function restoreRepairDraft() {
 	workspace.repairActionForm.contact = workspace.repairDetail.contact || '';
 	workspace.repairActionForm.phone = workspace.repairDetail.phone || '';
 	workspace.repairActionForm.desc = workspace.repairDetail.desc || '';
+}
+
+function openRepairStaffModal(item = null) {
+	if (item) workspace.editRepairStaff(item);
+	else workspace.resetRepairStaffForm();
+	repairStaffModalOpen.value = true;
+}
+
+function closeRepairStaffModal() {
+	repairStaffModalOpen.value = false;
+	workspace.resetRepairStaffForm();
+}
+
+async function saveRepairStaff() {
+	const result = await workspace.saveRepairStaff();
+	if (result) {
+		repairStaffModalOpen.value = false;
+	}
 }
 </script>
