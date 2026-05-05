@@ -8,6 +8,11 @@
 					<div class="brand-subtitle">智慧运营后台</div>
 				</div>
 			</div>
+			<div class="sidebar-meta">
+				<strong>运营中枢</strong>
+				<p>集中处理住户、报修、费用、通知和活动流程，按小区切换工作空间。</p>
+				<small>{{ workspace.activeCommunities.length }} 个启用小区，{{ workspace.stats.length }} 项总览指标</small>
+			</div>
 			<nav v-if="workspace.isLoggedIn" class="nav">
 				<button
 					v-for="item in workspace.visibleRoutes"
@@ -18,6 +23,11 @@
 					{{ item.label }}
 				</button>
 			</nav>
+			<div class="sidebar-footer">
+				<span>当前工作区</span>
+				<strong>{{ workspace.activeCommunity ? workspace.communityLabel(workspace.activeCommunity) : '未选择小区' }}</strong>
+				<small>{{ workspace.currentAdminInfo ? workspace.currentAdminInfo.roleLabel : '未登录' }}</small>
+			</div>
 		</aside>
 
 		<main v-if="workspace.isLoggedIn" class="main">
