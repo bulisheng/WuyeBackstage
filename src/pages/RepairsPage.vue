@@ -29,6 +29,7 @@
 		<table>
 			<thead>
 				<tr>
+					<th>工单号</th>
 					<th>标题</th>
 					<th>类型</th>
 					<th>联系人</th>
@@ -40,6 +41,7 @@
 			</thead>
 			<tbody>
 				<tr v-for="item in filteredRepairs" :key="item.id" class="clickable-row" @click="workspace.openRepairDetail(item)">
+					<td>{{ formatRepairNo(item) }}</td>
 					<td>{{ item.title }}</td>
 					<td>{{ item.type }}</td>
 					<td>{{ item.contact }}</td>
@@ -61,6 +63,7 @@
 				<button type="button" @click="workspace.closeRepairDetail">收起</button>
 			</template>
 			<div class="detail-grid">
+				<div><strong>工单号</strong><p>{{ formatRepairNo(workspace.repairDetail) }}</p></div>
 				<div><strong>标题</strong><input v-model="workspace.repairActionForm.title" type="text" placeholder="工单标题" /></div>
 				<div><strong>类型</strong><input v-model="workspace.repairActionForm.type" type="text" placeholder="维修类型 / 来源" /></div>
 				<div><strong>房屋</strong><input v-model="workspace.repairActionForm.house" type="text" placeholder="房屋信息" /></div>
@@ -198,6 +201,13 @@ const repairStaffModalTitle = computed(() => workspace.editingRepairStaffId ? '�
 const activeRepairStaff = computed(() => workspace.propertyStaff.filter((item) =>
 	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('repairs') || String(item.moduleKeys).includes('repair'))
 ));
+
+function formatRepairNo(item = {}) {
+	const repairNo = String(item.repairNo || item.repair_no || '').trim();
+	if (repairNo) return repairNo;
+	const id = Number(item.id || 0);
+	return id ? `BX${id}` : '-';
+}
 
 const filteredRepairs = computed(() => workspace.repairs.filter((item) => {
 	const text = `${item.title || ''} ${item.contact || ''} ${item.phone || ''}`.toLowerCase();

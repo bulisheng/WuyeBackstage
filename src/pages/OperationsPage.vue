@@ -15,7 +15,7 @@
 			<table>
 				<thead>
 					<tr>
-						<th>编号</th>
+						<th>工单号</th>
 						<th>标题/类型</th>
 						<th>住户</th>
 						<th>房号</th>
@@ -27,7 +27,7 @@
 				</thead>
 				<tbody>
 					<tr v-for="item in list" :key="item.id" :class="{ selected: selectedId === item.id }" @click="openDetail(item)">
-						<td>#{{ item.id }}</td>
+						<td>{{ formatWorkOrderNo(item) }}</td>
 						<td>{{ item.title || item.serviceType || item.question || '-' }}</td>
 						<td>{{ item.contact || item.ownerMobile || '-' }}</td>
 						<td>{{ item.house || '-' }}</td>
@@ -50,6 +50,7 @@
 				<button type="button" @click="closeDetail">收起</button>
 			</template>
 			<div class="detail-grid">
+				<div><span>工单号</span><strong>{{ formatWorkOrderNo(detail.item) }}</strong></div>
 				<div><span>住户</span><strong>{{ detail.item.contact || '-' }}</strong></div>
 				<div><span>手机号</span><strong>{{ detail.item.phone || detail.item.ownerMobile || '-' }}</strong></div>
 				<div><span>房号</span><strong>{{ detail.item.house || '-' }}</strong></div>
@@ -144,6 +145,21 @@ const meta = computed(() => config[workspace.activeRoute] || config.complaints);
 const activeStaff = computed(() => workspace.propertyStaff.filter((item) =>
 	item.active && (!item.moduleKeys || String(item.moduleKeys).includes(workspace.activeRoute) || String(item.moduleKeys).includes('notices'))
 ));
+
+const workOrderPrefixes = {
+	complaints: 'TS',
+	property_service: 'FW',
+	customer_service: 'KF'
+};
+
+function formatWorkOrderNo(item = {}) {
+	const taskNo = String(item.taskNo || item.task_no || '').trim();
+	if (taskNo) return taskNo;
+	const id = Number(item.id || 0);
+	if (!id) return '-';
+	const prefix = workOrderPrefixes[workspace.activeRoute] || 'GD';
+	return `${prefix}${id}`;
+}
 
 async function loadList() {
 	const res = await meta.value.list();
