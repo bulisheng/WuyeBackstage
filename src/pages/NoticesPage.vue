@@ -6,66 +6,13 @@
 		</div>
 
 		<div class="permission-grid">
-			<div ref="noticeConfigEditor" class="permission-card span-2">
+			<div class="permission-card span-2">
 				<div class="panel-head compact">
 					<h3>通知配置</h3>
-					<span>{{ workspace.editingNoticeConfigId ? '编辑中' : '新增' }}，新小区会自动生成默认模板</span>
-				</div>
-				<div class="form-grid">
-					<label class="field">
-						<span>场景</span>
-						<select v-model="workspace.noticeConfigForm.scene">
-							<option v-for="item in sceneOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
-						</select>
-					</label>
-					<label class="field">
-						<span>渠道</span>
-						<select v-model="workspace.noticeConfigForm.channel">
-							<option value="dingtalk">钉钉机器人</option>
-							<option value="sms">短信</option>
-							<option value="wechat">小程序订阅消息</option>
-							<option value="system">站内通知</option>
-						</select>
-					</label>
-					<label class="field span-2">
-						<span>模板名称</span>
-						<input v-model="workspace.noticeConfigForm.templateName" type="text" placeholder="模板名称" />
-					</label>
-					<label class="field span-2">
-						<span>默认通知对象</span>
-						<select v-model="workspace.noticeConfigForm.defaultStaffId">
-							<option value="">未指定则按业务处理人</option>
-							<option v-for="staff in activeNoticeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
-						</select>
-					</label>
-					<label class="field span-2">
-						<span>机器人名称</span>
-						<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="按小区配置替换机器人名称、地址和指定对象" />
-					</label>
-					<label class="field span-2">
-						<span>Webhook</span>
-						<input v-model="workspace.noticeConfigForm.webhookUrl" type="text" placeholder="钉钉机器人地址" />
-					</label>
-					<label class="field span-2">
-						<span>Secret</span>
-						<input v-model="workspace.noticeConfigForm.secret" type="text" placeholder="加签密钥，编辑时可留空保留原值" />
-					</label>
-					<label class="field">
-						<span>重试次数</span>
-						<input v-model.number="workspace.noticeConfigForm.retryLimit" type="number" min="1" step="1" />
-					</label>
-					<label class="field checkbox-field">
-						<input v-model="workspace.noticeConfigForm.alarmEnabled" :true-value="1" :false-value="0" type="checkbox" />
-						<span>失败告警</span>
-					</label>
-					<label class="field checkbox-field">
-						<input v-model="workspace.noticeConfigForm.enabled" :true-value="1" :false-value="0" type="checkbox" />
-						<span>启用</span>
-					</label>
+					<span>{{ workspace.noticeConfigs.length }} 条配置记录，新增和编辑统一在弹窗中完成</span>
 				</div>
 				<div class="form-actions">
-					<button class="primary" :disabled="!workspace.canAction('notice:publish')" @click="workspace.saveNoticeConfig">{{ workspace.editingNoticeConfigId ? '保存配置' : '新增配置' }}</button>
-					<button @click="workspace.resetNoticeConfigForm">重置</button>
+					<button class="primary" :disabled="!workspace.canAction('notice:publish')" @click="openNoticeConfigModal()">新增配置</button>
 				</div>
 			</div>
 
@@ -149,7 +96,7 @@
 						<td>{{ item.retryLimit }}</td>
 						<td><span class="status" :class="item.enabled ? 'approved' : 'disabled'">{{ item.enabled ? '启用' : '停用' }}</span></td>
 						<td class="actions">
-							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="handleEditNoticeConfig(item)">编辑</button>
+							<button :disabled="!workspace.canAction('notice:publish')" @click.stop="openNoticeConfigModal(item)">编辑</button>
 							<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('notice:publish')" @click.stop="deleteNoticeConfig(item)">删除</button>
 						</td>
 					</tr>
@@ -223,20 +170,83 @@
 				<div><strong>内容</strong><p>{{ selectedRecord.content || '-' }}</p></div>
 			</div>
 		</DetailCard>
+
+		<ModalDialog v-if="noticeConfigModalOpen" :title="noticeConfigModalTitle" subtitle="保存后会同步到通知配置列表" @close="closeNoticeConfigModal">
+			<div class="form-grid">
+				<label class="field">
+					<span>场景</span>
+					<select v-model="workspace.noticeConfigForm.scene">
+						<option v-for="item in sceneOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+					</select>
+				</label>
+				<label class="field">
+					<span>渠道</span>
+					<select v-model="workspace.noticeConfigForm.channel">
+						<option value="dingtalk">钉钉机器人</option>
+						<option value="sms">短信</option>
+						<option value="wechat">小程序订阅消息</option>
+						<option value="system">站内通知</option>
+					</select>
+				</label>
+				<label class="field span-2">
+					<span>模板名称</span>
+					<input v-model="workspace.noticeConfigForm.templateName" type="text" placeholder="模板名称" />
+				</label>
+				<label class="field span-2">
+					<span>默认通知对象</span>
+					<select v-model="workspace.noticeConfigForm.defaultStaffId">
+						<option value="">未指定则按业务处理人</option>
+						<option v-for="staff in activeNoticeStaff" :key="staff.id" :value="staff.id">{{ staff.name }}{{ staff.mobile ? ` / ${staff.mobile}` : '' }}{{ staff.onDuty ? ' · 在岗' : ' · 离岗' }}</option>
+					</select>
+				</label>
+				<label class="field span-2">
+					<span>机器人名称</span>
+					<input v-model="workspace.noticeConfigForm.robotName" type="text" placeholder="按小区配置替换机器人名称、地址和指定对象" />
+				</label>
+				<label class="field span-2">
+					<span>Webhook</span>
+					<input v-model="workspace.noticeConfigForm.webhookUrl" type="text" placeholder="钉钉机器人地址" />
+				</label>
+				<label class="field span-2">
+					<span>Secret</span>
+					<input v-model="workspace.noticeConfigForm.secret" type="text" placeholder="加签密钥，编辑时可留空保留原值" />
+				</label>
+				<label class="field">
+					<span>重试次数</span>
+					<input v-model.number="workspace.noticeConfigForm.retryLimit" type="number" min="1" step="1" />
+				</label>
+				<label class="field checkbox-field">
+					<input v-model="workspace.noticeConfigForm.alarmEnabled" :true-value="1" :false-value="0" type="checkbox" />
+					<span>失败告警</span>
+				</label>
+				<label class="field checkbox-field">
+					<input v-model="workspace.noticeConfigForm.enabled" :true-value="1" :false-value="0" type="checkbox" />
+					<span>启用</span>
+				</label>
+			</div>
+			<template #actions>
+				<button type="button" @click="closeNoticeConfigModal">取消</button>
+				<button class="primary" :disabled="!workspace.canAction('notice:publish')" @click="saveNoticeConfig">
+					{{ workspace.editingNoticeConfigId ? '保存配置' : '新增配置' }}
+				</button>
+			</template>
+		</ModalDialog>
 	</section>
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, ref } from 'vue';
 import DetailCard from '../components/common/DetailCard.vue';
+import ModalDialog from '../components/common/ModalDialog.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
 const selectedConfig = ref(null);
 const selectedRecord = ref(null);
-const noticeConfigEditor = ref(null);
+const noticeConfigModalOpen = ref(false);
 const showConfigList = ref(true);
 const showRecordList = ref(true);
+const noticeConfigModalTitle = computed(() => workspace.editingNoticeConfigId ? '编辑通知配置' : '新增通知配置');
 const activeNoticeStaff = computed(() => workspace.propertyStaff.filter((item) =>
 	item.active && (!item.moduleKeys || String(item.moduleKeys).includes('notices') || String(item.moduleKeys).includes('notice'))
 ));
@@ -273,20 +283,29 @@ function channelLabel(value) {
 	}[value] || value || '-';
 }
 
-async function handleEditNoticeConfig(item) {
-	selectedConfig.value = item;
-	workspace.editNoticeConfig(item);
-	await nextTick();
-	if (noticeConfigEditor.value && typeof noticeConfigEditor.value.scrollIntoView === 'function') {
-		noticeConfigEditor.value.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}
-	window.alert('已载入通知配置到编辑区');
+function openNoticeConfigModal(item = null) {
+	selectedConfig.value = item || selectedConfig.value;
+	if (item) workspace.editNoticeConfig(item);
+	else workspace.resetNoticeConfigForm();
+	noticeConfigModalOpen.value = true;
 }
 
 async function deleteNoticeConfig(item) {
 	await workspace.removeNoticeConfig(item);
 	if (selectedConfig.value && String(selectedConfig.value.id) === String(item.id)) {
 		selectedConfig.value = null;
+	}
+}
+
+function closeNoticeConfigModal() {
+	noticeConfigModalOpen.value = false;
+	workspace.resetNoticeConfigForm();
+}
+
+async function saveNoticeConfig() {
+	const result = await workspace.saveNoticeConfig();
+	if (result) {
+		noticeConfigModalOpen.value = false;
 	}
 }
 </script>

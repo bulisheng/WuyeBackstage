@@ -4,8 +4,41 @@
 			<h2>物业人员</h2>
 			<span>{{ workspace.propertyStaff.length }} 人</span>
 		</div>
+		<div class="form-actions">
+			<button class="primary" :disabled="!workspace.canAction('staff:manage')" @click="openStaffModal()">新增人员</button>
+		</div>
 
-		<DetailCard :title="workspace.editingPropertyStaffId ? '编辑人员' : '新增人员'" subtitle="负责模块、手机号和在岗状态会被各业务下拉复用">
+		<table>
+			<thead>
+				<tr>
+					<th>姓名</th>
+					<th>手机号</th>
+					<th>岗位</th>
+					<th>负责模块</th>
+					<th>在岗</th>
+					<th>状态</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for="staff in workspace.propertyStaff" :key="staff.id">
+					<td>{{ staff.name }}</td>
+					<td>{{ staff.mobile || '-' }}</td>
+					<td>{{ staff.role || '-' }}</td>
+					<td>{{ workspace.moduleKeysLabel(staff.moduleKeys) }}</td>
+					<td>{{ staff.onDuty ? '在岗' : '离岗' }}</td>
+					<td>{{ staff.active ? '启用' : '停用' }}</td>
+					<td class="actions">
+						<button :disabled="!workspace.canAction('staff:manage')" @click="openStaffModal(staff)">编辑</button>
+						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleDuty(staff)">{{ staff.onDuty ? '设为离岗' : '设为在岗' }}</button>
+						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleActive(staff)">{{ staff.active ? '停用' : '启用' }}</button>
+						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<ModalDialog v-if="staffModalOpen" :title="staffModalTitle" subtitle="负责模块、手机号和在岗状态会被各业务下拉复用" @close="closeStaffModal">
 			<div class="form-grid">
 				<label class="field">
 					<span>姓名</span>
@@ -50,49 +83,42 @@
 					<textarea v-model="workspace.propertyStaffForm.remark" rows="3" placeholder="负责范围、班次、钉钉群等说明"></textarea>
 				</label>
 			</div>
-			<div class="form-actions">
-				<button class="primary" :disabled="!workspace.canAction('staff:manage')" @click="workspace.savePropertyStaff">{{ workspace.editingPropertyStaffId ? '保存人员' : '新增人员' }}</button>
-				<button @click="workspace.resetPropertyStaffForm">重置</button>
-			</div>
-		</DetailCard>
-
-		<table>
-			<thead>
-				<tr>
-					<th>姓名</th>
-					<th>手机号</th>
-					<th>岗位</th>
-					<th>负责模块</th>
-					<th>在岗</th>
-					<th>状态</th>
-					<th>操作</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr v-for="staff in workspace.propertyStaff" :key="staff.id">
-					<td>{{ staff.name }}</td>
-					<td>{{ staff.mobile || '-' }}</td>
-					<td>{{ staff.role || '-' }}</td>
-					<td>{{ workspace.moduleKeysLabel(staff.moduleKeys) }}</td>
-					<td>{{ staff.onDuty ? '在岗' : '离岗' }}</td>
-					<td>{{ staff.active ? '启用' : '停用' }}</td>
-					<td class="actions">
-						<button :disabled="!workspace.canAction('staff:manage')" @click="workspace.editPropertyStaff(staff)">编辑</button>
-						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleDuty(staff)">{{ staff.onDuty ? '设为离岗' : '设为在岗' }}</button>
-						<button :disabled="!workspace.canAction('staff:manage')" @click="toggleActive(staff)">{{ staff.active ? '停用' : '启用' }}</button>
-						<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('staff:manage')" @click="workspace.removePropertyStaff(staff)">删除</button>
-					</td>
-				</tr>
-			</tbody>
-		</table>
+			<template #actions>
+				<button type="button" @click="closeStaffModal">取消</button>
+				<button class="primary" :disabled="!workspace.canAction('staff:manage')" @click="saveStaff">
+					{{ workspace.editingPropertyStaffId ? '保存人员' : '新增人员' }}
+				</button>
+			</template>
+		</ModalDialog>
 	</section>
 </template>
 
 <script setup>
-import DetailCard from '../components/common/DetailCard.vue';
+import { computed, ref } from 'vue';
+import ModalDialog from '../components/common/ModalDialog.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
+const staffModalOpen = ref(false);
+const staffModalTitle = computed(() => workspace.editingPropertyStaffId ? '编辑人员' : '新增人员');
+
+function openStaffModal(item = null) {
+	if (item) workspace.editPropertyStaff(item);
+	else workspace.resetPropertyStaffForm();
+	staffModalOpen.value = true;
+}
+
+function closeStaffModal() {
+	staffModalOpen.value = false;
+	workspace.resetPropertyStaffForm();
+}
+
+async function saveStaff() {
+	const result = await workspace.savePropertyStaff();
+	if (result) {
+		staffModalOpen.value = false;
+	}
+}
 
 async function quickToggleStaffField(staff, field) {
 	workspace.editPropertyStaff(staff);

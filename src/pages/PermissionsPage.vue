@@ -13,7 +13,35 @@
 
 		<template v-if="workspace.activePermissionTab === 'admins'">
 			<div class="permission-grid">
-				<DetailCard title="管理员手机号" :subtitle="workspace.editingAdminId ? '编辑中' : '新增'" cardClass="permission-card">
+				<div class="form-actions">
+					<button class="primary" :disabled="!workspace.canAction('admin:user:manage')" @click="openAdminModal()">新增管理员</button>
+				</div>
+			</div>
+			<table class="spaced-table">
+				<thead>
+					<tr>
+						<th>手机号</th>
+						<th>全局角色</th>
+						<th>默认小区</th>
+						<th>状态</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="item in workspace.admins" :key="item.id">
+						<td>{{ item.mobileMasked || item.mobile || item.username }}</td>
+						<td>{{ item.roleLabel }}</td>
+						<td>{{ workspace.communityNameById(item.communityId) }}</td>
+						<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
+						<td class="actions">
+							<button :disabled="!workspace.canAction('admin:user:manage')" @click="openAdminModal(item)">编辑</button>
+							<button class="danger" :disabled="!workspace.canAction('admin:user:manage')" @click="workspace.removeAdmin(item)">停用</button>
+						</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<ModalDialog v-if="adminModalOpen" :title="adminModalTitle" subtitle="保存后会同步到管理员列表" @close="closeAdminModal">
 					<div class="form-grid">
 						<label class="field">
 							<span>管理员手机号</span>
@@ -28,10 +56,10 @@
 						<div class="role-preview span-2">
 							<div class="preview-head">
 								<h4>默认菜单</h4>
-							<span>{{ workspace.adminRoleAccess.note || '默认权限预览' }}</span>
-						</div>
-						<div class="chip-row">
-							<span v-for="item in (workspace.adminRoleAccess.menuLabels || [])" :key="item" class="chip">{{ item }}</span>
+								<span>{{ workspace.adminRoleAccess.note || '默认权限预览' }}</span>
+							</div>
+							<div class="chip-row">
+								<span v-for="item in (workspace.adminRoleAccess.menuLabels || [])" :key="item" class="chip">{{ item }}</span>
 							</div>
 						</div>
 						<label class="field">
@@ -87,41 +115,51 @@
 							<p class="helper-text">当前拒绝动作：{{ deniedActionText }}</p>
 						</div>
 					</div>
-					<div class="form-actions">
-						<button class="primary" :disabled="!workspace.canAction('admin:user:manage')" @click="workspace.saveAdmin">{{ workspace.editingAdminId ? '保存管理员' : '新增管理员' }}</button>
-						<button @click="workspace.resetAdminPermissionToRole">重置权限</button>
-						<button @click="workspace.resetAdminForm">{{ workspace.editingAdminId ? '取消编辑' : '清空' }}</button>
-					</div>
-				</DetailCard>
+					<template #actions>
+						<button type="button" @click="closeAdminModal">取消</button>
+						<button class="primary" :disabled="!workspace.canAction('admin:user:manage')" @click="saveAdmin">
+							{{ workspace.editingAdminId ? '保存管理员' : '新增管理员' }}
+						</button>
+					</template>
+				</ModalDialog>
+		</template>
+
+		<template v-else-if="workspace.activePermissionTab === 'permissions'">
+			<div class="permission-grid">
+				<div class="form-actions">
+					<button class="primary" :disabled="!workspace.canAction('admin:permission:manage')" @click="openPermissionModal()">新增权限记录</button>
+				</div>
 			</div>
 			<table class="spaced-table">
 				<thead>
 					<tr>
-						<th>手机号</th>
-						<th>全局角色</th>
-						<th>默认小区</th>
+						<th>管理员</th>
+						<th>小区</th>
+						<th>小区角色</th>
+						<th>权限令牌</th>
 						<th>状态</th>
 						<th>操作</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-for="item in workspace.admins" :key="item.id">
-						<td>{{ item.mobileMasked || item.mobile || item.username }}</td>
-						<td>{{ item.roleLabel }}</td>
-						<td>{{ workspace.communityNameById(item.communityId) }}</td>
+					<tr v-for="item in workspace.permissions" :key="item.id">
+						<td>{{ item.mobileMasked || item.mobile || item.username || `#${item.adminId}` }}</td>
+						<td>{{ item.communityName || workspace.communityNameById(item.communityId) }}</td>
+						<td>{{ item.roleLabel || item.role }}</td>
+						<td>{{ Array.isArray(item.permissions) && item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
 						<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
 						<td class="actions">
-							<button :disabled="!workspace.canAction('admin:user:manage')" @click="workspace.editAdmin(item)">编辑</button>
-							<button class="danger" :disabled="!workspace.canAction('admin:user:manage')" @click="workspace.removeAdmin(item)">停用</button>
+							<button :disabled="!workspace.canAction('admin:permission:manage')" @click="openPermissionModal(item)">编辑</button>
+							<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.removePermission(item)">删除</button>
 						</td>
 					</tr>
-				</tbody>
-			</table>
-		</template>
+					<tr v-if="!workspace.permissions.length">
+						<td colspan="6" class="empty-cell">当前暂无权限记录。</td>
+						</tr>
+					</tbody>
+				</table>
 
-		<template v-else-if="workspace.activePermissionTab === 'permissions'">
-			<div class="permission-grid">
-				<DetailCard title="管理权限" :subtitle="workspace.editingPermissionId ? '编辑权限记录' : '新增权限记录'" cardClass="permission-card span-2">
+				<ModalDialog v-if="permissionModalOpen" :title="permissionModalTitle" subtitle="保存后会同步到权限列表" @close="closePermissionModal">
 					<div class="form-grid">
 						<label class="field">
 							<span>管理员</span>
@@ -152,40 +190,13 @@
 							<textarea v-model="workspace.permissionForm.permissions" placeholder="如：menu:permissions, action:admin:user:manage, !menu:fees"></textarea>
 						</label>
 					</div>
-					<div class="form-actions">
-						<button class="primary" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.savePermission">{{ workspace.editingPermissionId ? '保存权限' : '新增权限' }}</button>
-						<button @click="workspace.resetPermissionForm">{{ workspace.editingPermissionId ? '取消编辑' : '清空' }}</button>
-					</div>
-				</DetailCard>
-			</div>
-			<table class="spaced-table">
-				<thead>
-					<tr>
-						<th>管理员</th>
-						<th>小区</th>
-						<th>小区角色</th>
-						<th>权限令牌</th>
-						<th>状态</th>
-						<th>操作</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr v-for="item in workspace.permissions" :key="item.id">
-						<td>{{ item.mobileMasked || item.mobile || item.username || `#${item.adminId}` }}</td>
-						<td>{{ item.communityName || workspace.communityNameById(item.communityId) }}</td>
-						<td>{{ item.roleLabel || item.role }}</td>
-						<td>{{ Array.isArray(item.permissions) && item.permissions.length ? item.permissions.join(', ') : '默认角色权限' }}</td>
-						<td><span class="status" :class="item.active ? 'approved' : 'disabled'">{{ item.active ? '启用' : '停用' }}</span></td>
-						<td class="actions">
-							<button :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.editPermission(item)">编辑</button>
-							<button v-if="workspace.canShowDeleteButton" class="danger" :disabled="!workspace.canAction('admin:permission:manage')" @click="workspace.removePermission(item)">删除</button>
-						</td>
-					</tr>
-					<tr v-if="!workspace.permissions.length">
-						<td colspan="6" class="empty-cell">当前暂无权限记录。</td>
-					</tr>
-				</tbody>
-			</table>
+					<template #actions>
+						<button type="button" @click="closePermissionModal">取消</button>
+						<button class="primary" :disabled="!workspace.canAction('admin:permission:manage')" @click="savePermission">
+							{{ workspace.editingPermissionId ? '保存权限' : '新增权限' }}
+						</button>
+					</template>
+				</ModalDialog>
 		</template>
 
 		<template v-else-if="workspace.activePermissionTab === 'modules'">
@@ -269,11 +280,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import DetailCard from '../components/common/DetailCard.vue';
+import ModalDialog from '../components/common/ModalDialog.vue';
 import { useAdminWorkspaceStore } from '../stores/adminWorkspace.js';
 
 const workspace = useAdminWorkspaceStore();
+const adminModalOpen = ref(false);
+const permissionModalOpen = ref(false);
 
 const permissionPanelSummary = computed(() => {
 	if (workspace.activePermissionTab === 'modules') {
@@ -302,4 +316,43 @@ const deniedActionText = computed(() => {
 		: [];
 	return labels.join('、') || '无';
 });
+
+const adminModalTitle = computed(() => workspace.editingAdminId ? '编辑管理员' : '新增管理员');
+const permissionModalTitle = computed(() => workspace.editingPermissionId ? '编辑权限记录' : '新增权限记录');
+
+function openAdminModal(item = null) {
+	if (item) workspace.editAdmin(item);
+	else workspace.resetAdminForm();
+	adminModalOpen.value = true;
+}
+
+function closeAdminModal() {
+	adminModalOpen.value = false;
+	workspace.resetAdminForm();
+}
+
+async function saveAdmin() {
+	const result = await workspace.saveAdmin();
+	if (result) {
+		adminModalOpen.value = false;
+	}
+}
+
+function openPermissionModal(item = null) {
+	if (item) workspace.editPermission(item);
+	else workspace.resetPermissionForm();
+	permissionModalOpen.value = true;
+}
+
+function closePermissionModal() {
+	permissionModalOpen.value = false;
+	workspace.resetPermissionForm();
+}
+
+async function savePermission() {
+	const result = await workspace.savePermission();
+	if (result) {
+		permissionModalOpen.value = false;
+	}
+}
 </script>

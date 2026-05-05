@@ -679,14 +679,21 @@ function resetCommunityForm() {
 }
 
 async function saveCommunity() {
-	const payload = buildCommunityPayload(communityForm.value);
-	const result = await adminApi.saveCommunity({
-		...payload,
-		id: editingCommunityId.value || undefined
-	});
-	communities.value = result.list || communities.value;
-	resetCommunityForm();
-	await reload();
+	try {
+		const payload = buildCommunityPayload(communityForm.value);
+		const result = await adminApi.saveCommunity({
+			...payload,
+			id: editingCommunityId.value || undefined
+		});
+		communities.value = result.list || communities.value;
+		window.alert('小区保存成功');
+		resetCommunityForm();
+		await reload();
+		return result;
+	} catch (err) {
+		window.alert(err.message || '小区保存失败');
+		return null;
+	}
 }
 
 async function toggleCommunityActive(item) {
@@ -769,37 +776,44 @@ function resetAdminForm() {
 }
 
 async function saveAdmin() {
-	const payload = {
-		id: editingAdminId.value || undefined,
-		mobile: adminForm.value.mobile,
-		role: adminForm.value.role,
-		communityId: adminForm.value.communityId || undefined,
-		active: adminForm.value.active
-	};
-	const result = await adminApi.saveAdmin(payload);
-	admins.value = result.list || admins.value;
-	const savedAdminId = Number(editingAdminId.value || (admins.value.find((item) => item.mobile === adminForm.value.mobile) || {}).id || 0);
-	const permissionCommunityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
-	if (savedAdminId && permissionCommunityId && canAction('admin:permission:manage')) {
-		const permissionPayload = buildPermissionRecord({
-			adminId: savedAdminId,
-			communityId: permissionCommunityId,
-			role: adminForm.value.permissionRole || adminForm.value.role,
-			permissions: adminForm.value.permissions,
-			active: adminForm.value.permissionActive
-		});
-		const permissionResult = await adminApi.savePermission({
-			id: adminForm.value.permissionId || undefined,
-			adminId: permissionPayload.adminId,
-			communityId: permissionPayload.communityId,
-			role: permissionPayload.role,
-			permissions: permissionPayload.permissions,
-			active: permissionPayload.active
-		});
-		permissions.value = permissionResult.list || permissions.value;
+	try {
+		const payload = {
+			id: editingAdminId.value || undefined,
+			mobile: adminForm.value.mobile,
+			role: adminForm.value.role,
+			communityId: adminForm.value.communityId || undefined,
+			active: adminForm.value.active
+		};
+		const result = await adminApi.saveAdmin(payload);
+		admins.value = result.list || admins.value;
+		const savedAdminId = Number(editingAdminId.value || (admins.value.find((item) => item.mobile === adminForm.value.mobile) || {}).id || 0);
+		const permissionCommunityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
+		if (savedAdminId && permissionCommunityId && canAction('admin:permission:manage')) {
+			const permissionPayload = buildPermissionRecord({
+				adminId: savedAdminId,
+				communityId: permissionCommunityId,
+				role: adminForm.value.permissionRole || adminForm.value.role,
+				permissions: adminForm.value.permissions,
+				active: adminForm.value.permissionActive
+			});
+			const permissionResult = await adminApi.savePermission({
+				id: adminForm.value.permissionId || undefined,
+				adminId: permissionPayload.adminId,
+				communityId: permissionPayload.communityId,
+				role: permissionPayload.role,
+				permissions: permissionPayload.permissions,
+				active: permissionPayload.active
+			});
+			permissions.value = permissionResult.list || permissions.value;
+		}
+		window.alert('管理员保存成功');
+		resetAdminForm();
+		await reload();
+		return result;
+	} catch (err) {
+		window.alert(err.message || '管理员保存失败');
+		return null;
 	}
-	resetAdminForm();
-	await reload();
 }
 
 async function removeAdmin(item) {
@@ -827,18 +841,25 @@ function resetPermissionForm() {
 }
 
 async function savePermission() {
-	const payload = buildPermissionRecord(permissionForm.value);
-	const result = await adminApi.savePermission({
-		id: editingPermissionId.value || undefined,
-		adminId: payload.adminId,
-		communityId: payload.communityId,
-		role: payload.role,
-		permissions: payload.permissions,
-		active: payload.active
-	});
-	permissions.value = result.list || permissions.value;
-	resetPermissionForm();
-	await reload();
+	try {
+		const payload = buildPermissionRecord(permissionForm.value);
+		const result = await adminApi.savePermission({
+			id: editingPermissionId.value || undefined,
+			adminId: payload.adminId,
+			communityId: payload.communityId,
+			role: payload.role,
+			permissions: payload.permissions,
+			active: payload.active
+		});
+		permissions.value = result.list || permissions.value;
+		window.alert('权限保存成功');
+		resetPermissionForm();
+		await reload();
+		return result;
+	} catch (err) {
+		window.alert(err.message || '权限保存失败');
+		return null;
+	}
 }
 
 async function removePermission(item) {
@@ -1163,15 +1184,22 @@ function resetRepairStaffForm() {
 }
 
 async function saveRepairStaff() {
-	const result = await adminApi.repairStaffSave({
-		id: editingRepairStaffId.value || undefined,
-		name: repairStaffForm.value.name,
-		mobile: repairStaffForm.value.mobile,
-		skillTags: repairStaffForm.value.skillTags,
-		active: repairStaffForm.value.active
-	});
-	repairStaff.value = result.list || repairStaff.value;
-	resetRepairStaffForm();
+	try {
+		const result = await adminApi.repairStaffSave({
+			id: editingRepairStaffId.value || undefined,
+			name: repairStaffForm.value.name,
+			mobile: repairStaffForm.value.mobile,
+			skillTags: repairStaffForm.value.skillTags,
+			active: repairStaffForm.value.active
+		});
+		repairStaff.value = result.list || repairStaff.value;
+		window.alert('维修人员保存成功');
+		resetRepairStaffForm();
+		return result;
+	} catch (err) {
+		window.alert(err.message || '维修人员保存失败');
+		return null;
+	}
 }
 
 async function removeRepairStaff(item) {
@@ -1203,18 +1231,25 @@ function resetPropertyStaffForm() {
 }
 
 async function savePropertyStaff() {
-	const result = await adminApi.staffSave({
-		id: editingPropertyStaffId.value || undefined,
-		name: propertyStaffForm.value.name,
-		mobile: propertyStaffForm.value.mobile,
-		role: propertyStaffForm.value.role,
-		moduleKeys: propertyStaffForm.value.moduleKeys,
-		onDuty: propertyStaffForm.value.onDuty,
-		active: propertyStaffForm.value.active,
-		remark: propertyStaffForm.value.remark
-	});
-	propertyStaff.value = result.list || propertyStaff.value;
-	resetPropertyStaffForm();
+	try {
+		const result = await adminApi.staffSave({
+			id: editingPropertyStaffId.value || undefined,
+			name: propertyStaffForm.value.name,
+			mobile: propertyStaffForm.value.mobile,
+			role: propertyStaffForm.value.role,
+			moduleKeys: propertyStaffForm.value.moduleKeys,
+			onDuty: propertyStaffForm.value.onDuty,
+			active: propertyStaffForm.value.active,
+			remark: propertyStaffForm.value.remark
+		});
+		propertyStaff.value = result.list || propertyStaff.value;
+		window.alert('物业人员保存成功');
+		resetPropertyStaffForm();
+		return result;
+	} catch (err) {
+		window.alert(err.message || '物业人员保存失败');
+		return null;
+	}
 }
 
 async function removePropertyStaff(item) {
@@ -1262,23 +1297,30 @@ function editNoticeConfig(item) {
 }
 
 async function saveNoticeConfig() {
-	const payload = {
-		id: editingNoticeConfigId.value || undefined,
-		scene: noticeConfigForm.value.scene,
-		channel: noticeConfigForm.value.channel,
-		templateName: noticeConfigForm.value.templateName,
-		robotName: noticeConfigForm.value.robotName,
-		webhookUrl: noticeConfigForm.value.webhookUrl,
-		secret: noticeConfigForm.value.secret,
-		retryLimit: noticeConfigForm.value.retryLimit,
-		alarmEnabled: noticeConfigForm.value.alarmEnabled,
-		defaultStaffId: noticeConfigForm.value.defaultStaffId,
-		enabled: noticeConfigForm.value.enabled
-	};
-	const result = await adminApi.noticeConfigSave(payload);
-	noticeConfigs.value = result.list || noticeConfigs.value;
-	resetNoticeConfigForm();
-	await reload();
+	try {
+		const payload = {
+			id: editingNoticeConfigId.value || undefined,
+			scene: noticeConfigForm.value.scene,
+			channel: noticeConfigForm.value.channel,
+			templateName: noticeConfigForm.value.templateName,
+			robotName: noticeConfigForm.value.robotName,
+			webhookUrl: noticeConfigForm.value.webhookUrl,
+			secret: noticeConfigForm.value.secret,
+			retryLimit: noticeConfigForm.value.retryLimit,
+			alarmEnabled: noticeConfigForm.value.alarmEnabled,
+			defaultStaffId: noticeConfigForm.value.defaultStaffId,
+			enabled: noticeConfigForm.value.enabled
+		};
+		const result = await adminApi.noticeConfigSave(payload);
+		noticeConfigs.value = result.list || noticeConfigs.value;
+		window.alert('通知配置保存成功');
+		resetNoticeConfigForm();
+		await reload();
+		return result;
+	} catch (err) {
+		window.alert(err.message || '通知配置保存失败');
+		return null;
+	}
 }
 
 async function removeNoticeConfig(item) {
