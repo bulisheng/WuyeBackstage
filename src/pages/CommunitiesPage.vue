@@ -45,7 +45,7 @@
 				</label>
 				<label class="field">
 					<span>小区名称</span>
-					<input v-model="workspace.communityForm.name" type="text" placeholder="如：荣尊堡" />
+					<input v-model="workspace.communityForm.name" type="text" placeholder="如：融华世家小区" />
 				</label>
 				<label class="field">
 					<span>Schema</span>

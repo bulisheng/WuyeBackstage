@@ -428,8 +428,9 @@ function auditParamsLabel(item) {
 }
 
 function communityNameById(id) {
+	if (!Number(id || 0)) return '全部小区';
 	const item = communities.value.find((entry) => Number(entry.id) === Number(id));
-	return item ? buildCommunityLabel(item) : '未设置';
+	return item ? buildCommunityLabel(item) : '全部小区';
 }
 
 function setCurrentAdminId(adminId) {
@@ -754,7 +755,7 @@ function editAdmin(item) {
 		role: item.role || 'admin',
 		communityId: Number(item.communityId || 0),
 		permissionId: '',
-		permissionCommunityId: Number(item.communityId || activeCommunity.value?.id || 0),
+		permissionCommunityId: Number(item.communityId || 0),
 		permissionRole: item.role || 'admin',
 		permissions: '',
 		permissionActive: 1,
@@ -780,7 +781,14 @@ function loadAdminPermissionForForm() {
 		adminForm.value.permissionActive = 1;
 		return;
 	}
-	const communityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
+	const communityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || 0);
+	if (!communityId) {
+		adminForm.value.permissionId = '';
+		adminForm.value.permissionRole = adminForm.value.role || 'admin';
+		adminForm.value.permissions = '';
+		adminForm.value.permissionActive = 1;
+		return;
+	}
 	const record = permissions.value.find((item) =>
 		Number(item.adminId) === Number(editingAdminId.value) && Number(item.communityId) === communityId
 	);
@@ -813,7 +821,7 @@ async function saveAdmin() {
 		const result = await adminApi.saveAdmin(payload);
 		admins.value = result.list || admins.value;
 		const savedAdminId = Number(editingAdminId.value || (admins.value.find((item) => item.mobile === adminForm.value.mobile) || {}).id || 0);
-		const permissionCommunityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || activeCommunity.value?.id || 0);
+		const permissionCommunityId = Number(adminForm.value.permissionCommunityId || adminForm.value.communityId || 0);
 		if (savedAdminId && permissionCommunityId && canAction('admin:permission:manage')) {
 			const permissionPayload = buildPermissionRecord({
 				adminId: savedAdminId,

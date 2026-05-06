@@ -63,9 +63,9 @@
 							</div>
 						</div>
 						<label class="field">
-							<span>默认小区</span>
+							<span>可管理小区</span>
 							<select v-model.number="workspace.adminForm.communityId">
-								<option :value="0">未设置</option>
+								<option :value="0">全部小区</option>
 								<option v-for="item in workspace.communities" :key="item.id" :value="item.id">{{ workspace.communityLabel(item) }}</option>
 							</select>
 						</label>
@@ -74,9 +74,9 @@
 							<span>启用</span>
 						</label>
 						<label class="field">
-							<span>权限小区</span>
+							<span>细分权限小区</span>
 							<select v-model.number="workspace.adminForm.permissionCommunityId" @change="workspace.loadAdminPermissionForForm">
-								<option :value="0">跟随默认小区</option>
+								<option :value="0">不设置，按全部小区默认权限</option>
 								<option v-for="item in workspace.communities" :key="item.id" :value="item.id">{{ workspace.communityLabel(item) }}</option>
 							</select>
 						</label>
