@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { buildModuleMatrix, MODULE_CATALOG, buildModuleToggleSummary } from '../src/utils/modules.js';
 
 const matrix = buildModuleMatrix(
-	[{ id: 1, name: '荣尊堡', schemaName: 'rzb' }],
+	[{ id: 1, name: '融华世家小区', schemaName: 'rzb' }],
 	MODULE_CATALOG,
 	[{ communityId: 1, moduleKey: 'fees', enabled: 0 }]
 );

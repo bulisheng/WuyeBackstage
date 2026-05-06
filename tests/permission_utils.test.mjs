@@ -28,7 +28,7 @@ assert.deepEqual(record, {
 });
 
 const financeProfile = buildRoleAccessProfile('finance');
-assert.deepEqual(financeProfile.menus, ['dashboard', 'fees', 'notices']);
+assert.deepEqual(financeProfile.menus, ['dashboard', 'fees', 'mall', 'notices']);
 assert.ok(financeProfile.actionLabels.includes('查看缴费'));
 
 const mergedAccess = buildEffectiveAccess('repairman', ['repair:close', 'repair:escalate']);
@@ -44,8 +44,8 @@ assert.equal(buildEffectiveAccess('customer_service', selectedTokens).actions.in
 
 const matrix = buildPermissionMatrix(
 	[
-		{ id: 1, name: '荣尊堡', schemaName: 'rzb' },
-		{ id: 2, name: '欧陆经典', schemaName: 'oljd' }
+		{ id: 1, name: '融华世家小区', schemaName: 'rzb' },
+		{ id: 2, name: '欧陆经典万兴苑小区', schemaName: 'oljd' }
 	],
 	[
 		{ communityId: 1, role: 'finance', permissions: ['fee:view', 'fee:remind'], active: 1 },
