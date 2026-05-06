@@ -37,6 +37,9 @@ const routeOrder = ['dashboard', 'owners', 'communities', 'permissions', 'staff'
 const routerReady = { value: false };
 
 const activeRoute = ref('login');
+const routeLoadedAt = ref({});
+const routeLoading = ref({});
+const routeLoadPromises = new Map();
 const stats = ref([]);
 const dashboardTodos = ref([]);
 const emptyDashboardTodoLists = () => ({ repairs: [], bills: [], notices: [], complaints: [], services: [], customers: [] });
@@ -451,6 +454,7 @@ function syncRouteFromHash() {
 	if (!window.location.hash || String(window.location.hash).replace(/^#\/?/, '').trim() !== next) {
 		window.location.hash = routeToHash(next);
 	}
+	void loadRouteData(next);
 }
 
 function navigate(route) {
@@ -459,6 +463,7 @@ function navigate(route) {
 	if (typeof window !== 'undefined') {
 		window.location.hash = routeToHash(next);
 	}
+	void loadRouteData(next);
 }
 
 function ensureVisibleRoute() {
@@ -664,6 +669,7 @@ async function logoutAdmin() {
 	noticeConfigForm.value = emptyNoticeConfig();
 	noticeSendForm.value = emptyNoticeSend();
 	selectedSchema.value = '';
+	resetRouteCache();
 	navigate('login');
 	await loadAccessProfile();
 }
@@ -1407,6 +1413,95 @@ function selectNoticeRecord(item) {
 	};
 }
 
+function setRouteLoading(route, loading) {
+	routeLoading.value = Object.assign({}, routeLoading.value, { [route]: loading });
+}
+
+function markRouteLoaded(route) {
+	routeLoadedAt.value = Object.assign({}, routeLoadedAt.value, { [route]: Date.now() });
+}
+
+function resetRouteCache() {
+	routeLoadedAt.value = {};
+	routeLoading.value = {};
+	routeLoadPromises.clear();
+}
+
+async function loadRouteData(route = activeRoute.value, options = {}) {
+	const key = route || activeRoute.value || 'dashboard';
+	if (!isLoggedIn.value || !selectedSchema.value || key === 'login' || !canMenu(key)) return;
+	if (!options.force && routeLoadedAt.value[key]) return;
+	if (routeLoadPromises.has(key)) return routeLoadPromises.get(key);
+
+	const promise = (async () => {
+		setRouteLoading(key, true);
+		adminApi.setSchemaName(selectedSchema.value);
+		try {
+			if (key === 'dashboard') {
+				const dashboard = await adminApi.dashboard();
+				stats.value = dashboard.stats || [];
+				dashboardTodos.value = dashboard.todos || [];
+				dashboardTodoLists.value = Object.assign(emptyDashboardTodoLists(), dashboard.todoLists || {});
+				dashboardStaffTodos.value = dashboard.staffTodos || [];
+				dashboardCrossModuleStats.value = dashboard.crossModuleStats || {};
+			} else if (key === 'owners') {
+				const [ownerData, tenantData, residentLogData] = await Promise.all([
+					adminApi.ownerList(),
+					adminApi.tenantList(),
+					adminApi.residentChangeLogList({ limit: 100 })
+				]);
+				owners.value = ownerData.list || [];
+				tenantRecords.value = tenantData.list || [];
+				residentChangeLogs.value = residentLogData.list || [];
+			} else if (key === 'permissions') {
+				await loadPermissionTables();
+			} else if (key === 'communities') {
+				if (canAction('community:module:view') || canAction('community:module:manage')) {
+					await loadModuleRecords();
+				}
+			} else if (key === 'staff') {
+				const staffData = await adminApi.staffList();
+				propertyStaff.value = staffData.list || [];
+			} else if (key === 'repairs') {
+				const [repairData, repairStaffData, staffData] = await Promise.all([
+					adminApi.repairList(),
+					adminApi.repairStaffList(),
+					adminApi.staffList()
+				]);
+				repairs.value = repairData.list || [];
+				repairStaff.value = repairStaffData.list || [];
+				propertyStaff.value = staffData.list || [];
+			} else if (key === 'fees') {
+				const [feeData, paymentData] = await Promise.all([
+					adminApi.feeList(),
+					adminApi.feePayments()
+				]);
+				fees.value = feeData.list || [];
+				paymentRecords.value = paymentData.list || [];
+			} else if (key === 'notices') {
+				const [noticeConfigData, noticeRecordData, staffData] = await Promise.all([
+					adminApi.noticeConfigList(),
+					adminApi.noticeList(),
+					adminApi.staffList()
+				]);
+				noticeConfigs.value = noticeConfigData.list || [];
+				noticeRecords.value = noticeRecordData.list || [];
+				propertyStaff.value = staffData.list || [];
+			} else if (['complaints', 'property_service', 'customer_service'].includes(key)) {
+				const staffData = await adminApi.staffList();
+				propertyStaff.value = staffData.list || [];
+			}
+			markRouteLoaded(key);
+		} finally {
+			setRouteLoading(key, false);
+			routeLoadPromises.delete(key);
+		}
+	})();
+
+	routeLoadPromises.set(key, promise);
+	return promise;
+}
+
 async function reload() {
 	await Promise.all([
 		loadAdminDirectory(),
@@ -1443,49 +1538,16 @@ async function reload() {
 		permissions.value = [];
 		auditLogs.value = [];
 		moduleRecords.value = [];
+		resetRouteCache();
 		return;
 	}
 	adminApi.setSchemaName(selectedSchema.value);
-	const [dashboard, ownerData, tenantData, residentLogData, staffData, repairData, repairStaffData, feeData, paymentData, noticeConfigData, noticeRecordData] = await Promise.all([
-		canMenu('dashboard') ? adminApi.dashboard() : Promise.resolve({ stats: [] }),
-		canMenu('owners') ? adminApi.ownerList() : Promise.resolve({ list: [] }),
-		canMenu('owners') ? adminApi.tenantList() : Promise.resolve({ list: [] }),
-		canMenu('owners') ? adminApi.residentChangeLogList({ limit: 100 }) : Promise.resolve({ list: [] }),
-		canMenu('staff') || canMenu('repairs') || canMenu('notices') || canMenu('complaints') || canMenu('property_service') || canMenu('customer_service') ? adminApi.staffList() : Promise.resolve({ list: [] }),
-		canMenu('repairs') ? adminApi.repairList() : Promise.resolve({ list: [] }),
-		canMenu('repairs') ? adminApi.repairStaffList() : Promise.resolve({ list: [] }),
-		canMenu('fees') ? adminApi.feeList() : Promise.resolve({ list: [] }),
-		canMenu('fees') ? adminApi.feePayments() : Promise.resolve({ list: [] }),
-		canMenu('notices') ? adminApi.noticeConfigList() : Promise.resolve({ list: [] }),
-		canMenu('notices') ? adminApi.noticeList() : Promise.resolve({ list: [] })
-	]);
-	if (canMenu('permissions')) {
-		await loadPermissionTables();
-	} else {
-		admins.value = [];
-		permissions.value = [];
-		auditLogs.value = [];
-		moduleRecords.value = [];
-	}
-	stats.value = dashboard.stats || [];
-	dashboardTodos.value = dashboard.todos || [];
-	dashboardTodoLists.value = Object.assign(emptyDashboardTodoLists(), dashboard.todoLists || {});
-	dashboardStaffTodos.value = dashboard.staffTodos || [];
-	dashboardCrossModuleStats.value = dashboard.crossModuleStats || {};
-	owners.value = ownerData.list || [];
-	tenantRecords.value = tenantData.list || [];
-	residentChangeLogs.value = residentLogData.list || [];
-	propertyStaff.value = staffData.list || [];
-	repairs.value = repairData.list || [];
-	repairStaff.value = repairStaffData.list || [];
-	fees.value = feeData.list || [];
-	paymentRecords.value = paymentData.list || [];
-	noticeConfigs.value = noticeConfigData.list || [];
-	noticeRecords.value = noticeRecordData.list || [];
+	await loadRouteData(activeRoute.value === 'login' ? 'dashboard' : activeRoute.value, { force: true });
 }
 
 async function onSchemaChange() {
 	adminApi.setSchemaName(selectedSchema.value);
+	resetRouteCache();
 	resetFeeForm();
 	selectedRepairId.value = '';
 	repairDetail.value = null;
@@ -1522,6 +1584,8 @@ export function useAdminWorkspaceStore() {
 		routeLabels,
 		routeOrder,
 		activeRoute,
+		routeLoadedAt,
+		routeLoading,
 		stats,
 		dashboardTodos,
 		dashboardTodoLists,
@@ -1615,6 +1679,7 @@ export function useAdminWorkspaceStore() {
 		start,
 		stop,
 		reload,
+		loadRouteData,
 		loadAccessProfile,
 		loadOwnerRecords,
 		loadTenantRecords,
