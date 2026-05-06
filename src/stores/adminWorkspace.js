@@ -731,6 +731,21 @@ async function auditOwner(owner, auditStatus) {
 	owner.auditStatus = auditStatus;
 }
 
+async function convertOwnerToTenant(owner) {
+	const result = await adminApi.convertOwnerToTenant({
+		id: owner.id,
+		name: owner.name || '',
+		mobile: owner.mobile || '',
+		house: owner.house || ''
+	});
+	await Promise.all([
+		loadOwnerRecords(),
+		loadTenantRecords(),
+		loadResidentChangeLogs({ limit: 100 })
+	]);
+	return result;
+}
+
 function editAdmin(item) {
 	editingAdminId.value = String(item.id || '');
 	activePermissionTab.value = 'admins';
@@ -1033,9 +1048,9 @@ async function resolveFeeOwnerByMobile(mobileValue = feeForm.value.ownerMobile, 
 		if (!owner) {
 			feeForm.value.ownerName = '';
 			feeForm.value.house = '';
-			feeOwnerLookupText.value = '未找到对应业主，请核对手机号或先完成业主认证';
+			feeOwnerLookupText.value = '未找到对应业主，请核对手机号或先完成住户认证';
 			if (!options.silent) {
-				window.alert('未找到对应业主，请核对手机号或先完成业主认证');
+				window.alert('未找到对应业主，请核对手机号或先完成住户认证');
 			}
 			return null;
 		}
@@ -1689,6 +1704,7 @@ export function useAdminWorkspaceStore() {
 		logoutAdmin,
 		resetLoginForm,
 		auditOwner,
+		convertOwnerToTenant,
 		resetCommunityForm,
 		editCommunity,
 		saveCommunity,

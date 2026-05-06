@@ -147,9 +147,9 @@ const priorityRows = computed(() => {
 	return [
 		{
 			key: 'owners',
-			title: '待审核业主',
+			title: '待审核住户',
 			count: ownerPending,
-			note: ownerPending ? `还有 ${ownerPending} 户等待认证` : '当前没有待审核业主',
+			note: ownerPending ? `还有 ${ownerPending} 户等待认证` : '当前没有待审核住户',
 			route: 'owners'
 		},
 		{
@@ -193,7 +193,7 @@ const visualRows = computed(() => {
 	return [
 		{
 			key: 'owners',
-			title: '业主认证',
+			title: '住户认证',
 			value: ownerPending,
 			unit: '户',
 			percent: ownerTotal ? Math.min(100, Math.round(ownerPending / ownerTotal * 100)) : 0,

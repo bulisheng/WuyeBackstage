@@ -38,7 +38,7 @@
 					<button type="button" @click="workspace.fillFeeImportExample">载入样例数据</button>
 			</div>
 			<textarea v-model="workspace.feeImportText" rows="6" placeholder="手机号	标题	金额	类型	截止日期&#10;13363280414	2026年5月物业费	188.50	物业费	2026-05-31"></textarea>
-			<p class="field-hint">样例数据统一使用手机号 13363280414；正式导入前请确认该手机号已完成业主认证。</p>
+			<p class="field-hint">样例数据统一使用手机号 13363280414；正式导入前请确认该手机号已完成住户认证。</p>
 			<div v-if="workspace.feeImportSummary" class="import-summary">
 				<div class="reconcile-summary">
 					<span>新增 {{ workspace.feeImportSummary.created || 0 }} 条</span>

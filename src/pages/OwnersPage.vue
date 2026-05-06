@@ -1,7 +1,7 @@
 <template>
 	<section class="panel">
 		<div class="panel-head">
-			<h2>业主认证审核</h2>
+			<h2>住户认证审核</h2>
 			<span>{{ filteredOwners.length }} 条待处理 / 共 {{ workspace.owners.length }} 条</span>
 		</div>
 		<div class="filter-row">

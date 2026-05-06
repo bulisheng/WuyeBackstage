@@ -75,7 +75,7 @@ const ACTION_LABELS = {
 	'staff:manage': '物业人员管理',
 	'owner:view': '查看业主',
 	'owner:manage': '业主管理',
-	'owner:audit': '业主审核',
+	'owner:audit': '住户认证审核',
 	'tenant:view': '查看租户',
 	'tenant:manage': '租户管理',
 	'resident:import': '住户导入',

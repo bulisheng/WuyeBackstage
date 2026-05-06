@@ -3,7 +3,7 @@
 		<div class="panel-head">
 			<div>
 				<h2>住户管理</h2>
-				<p class="panel-subtitle">手机号优先绑定，业主和租户分开管理，关键资料变更留痕。</p>
+				<p class="panel-subtitle">手机号优先绑定，住户认证统一审核，业主和租户分开管理，关键资料变更留痕。</p>
 			</div>
 			<div class="resident-head-actions">
 				<span>{{ visibleRows.length }} 条记录</span>
@@ -62,6 +62,7 @@
 			<thead>
 				<tr>
 					<th>类型</th>
+					<th>申请</th>
 					<th>姓名</th>
 					<th>手机号</th>
 					<th>房屋</th>
@@ -77,13 +78,15 @@
 					@click="selectResident(item)"
 				>
 					<td>{{ item.identityType === 'tenant' ? '租户' : '业主' }}</td>
+					<td>{{ requestLabel(item) }}</td>
 					<td>{{ item.name || '-' }}</td>
 					<td>{{ item.mobile || '-' }}</td>
 					<td>{{ item.house || '-' }}</td>
 					<td><span class="status" :class="item.status">{{ statusLabel(item) }}</span></td>
 					<td class="actions resident-actions">
-						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="workspace.auditOwner(item.raw, 'approved')">审核通过</button>
-						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="workspace.auditOwner(item.raw, 'rejected')">驳回</button>
+						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="approveOwner(item)">通过为业主</button>
+						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="convertToTenant(item)">转为租户</button>
+						<button v-if="item.identityType === 'owner'" :disabled="!workspace.canAction('owner:audit')" @click.stop="rejectOwner(item)">驳回</button>
 						<button :disabled="!canManage(item)" @click.stop="toggleResidentStatus(item)">{{ item.status === 'disabled' ? '解冻' : '冻结' }}</button>
 						<button :disabled="!canManage(item)" @click.stop="editResident(item)">编辑</button>
 						<button :disabled="!canManage(item)" @click.stop="changeResidentMobile(item)">换手机号</button>
@@ -171,7 +174,7 @@ const tenantRows = computed(() => workspace.tenantRecords.map((item) => ({
 const allRows = computed(() => [...ownerRows.value, ...tenantRows.value]);
 
 const tabs = computed(() => [
-	{ key: 'owner_audit', label: '业主审核', count: ownerRows.value.filter((item) => ['pending', 'rejected'].includes(item.status)).length },
+	{ key: 'owner_audit', label: '住户认证审核', count: ownerRows.value.filter((item) => ['pending', 'rejected'].includes(item.status)).length },
 	{ key: 'owners', label: '业主管理', count: ownerRows.value.length },
 	{ key: 'tenants', label: '租户管理', count: tenantRows.value.length },
 	{ key: 'logs', label: '变更记录', count: workspace.residentChangeLogs.length }
@@ -233,6 +236,11 @@ function statusLabel(item) {
 	return workspace.statusText(item.status);
 }
 
+function requestLabel(item) {
+	if (item.identityType === 'tenant') return '租户';
+	return item.raw?.requestedIdentityType === 'tenant' ? '申请租户' : '申请业主';
+}
+
 function canManage(item) {
 	return item.identityType === 'tenant' ? workspace.canAction('tenant:manage') : workspace.canAction('owner:manage');
 }
@@ -243,6 +251,40 @@ async function refreshResidents() {
 		workspace.loadTenantRecords(),
 		workspace.loadResidentChangeLogs({ limit: 100 })
 	]);
+}
+
+async function approveOwner(item) {
+	try {
+		await workspace.auditOwner(item.raw, 'approved');
+		actionHint.value = '已通过为业主';
+		await refreshResidents();
+	} catch (err) {
+		window.alert(err.message || '审核失败');
+	}
+}
+
+async function rejectOwner(item) {
+	try {
+		await workspace.auditOwner(item.raw, 'rejected');
+		actionHint.value = '认证申请已驳回';
+		await refreshResidents();
+	} catch (err) {
+		window.alert(err.message || '驳回失败');
+	}
+}
+
+async function convertToTenant(item) {
+	const confirmed = window.confirm(`确认将「${item.name || item.mobile || item.id}」转为租户？`);
+	if (!confirmed) return;
+	try {
+		await workspace.convertOwnerToTenant(item.raw);
+		actionHint.value = '已转为租户';
+		if (workspace.residentSelectedId === `${item.identityType}-${item.id}`) {
+			clearSelectedResident();
+		}
+	} catch (err) {
+		window.alert(err.message || '转为租户失败');
+	}
 }
 
 function buildResidentPayload(item, overrides = {}) {

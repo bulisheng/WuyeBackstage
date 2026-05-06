@@ -96,6 +96,7 @@ export const adminApi = {
 	ownerLookup: (payload) => request('admin/owner/lookup', payload),
 	feeOwnerLookup: (payload) => request('admin/fee/owner_lookup', payload),
 	auditOwner: (id, auditStatus) => request('admin/owner/audit', { id, auditStatus }),
+	convertOwnerToTenant: (payload) => request('admin/owner/convert_to_tenant', payload),
 	tenantList: (payload = {}) => request('admin/tenant/list', payload),
 	tenantDetail: (id) => request('admin/tenant/detail', { id }),
 	tenantSave: (payload) => request('admin/tenant/save', payload),
